@@ -46,7 +46,7 @@ interface HealthcareProviderSearchProps {
     embedded?: boolean; // Whether component is embedded in another modal
 }
 
-export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'Dermatology', embedded = false }) => {
+export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinologist', embedded = false }) => {
     const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection } = useProviderSearch();
 
     // Legacy state for backward compatibility
