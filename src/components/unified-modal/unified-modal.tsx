@@ -402,34 +402,27 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         const service = serviceContents[selectedService] || serviceContents.doctor;
         
         const handleGetStarted = () => {
-            if (isAuthenticatedSession) {
-                if (selectedService === 'doctor') {
-                    setStep('healthcare_search');
-                } else if (selectedService === 'insurance') {
-                    setStep('insurance_assistance');
-                } else if (selectedService === 'pharmacy') {
-                    setStep('pharmacy_select');
-                } else if (selectedService === 'chat') {
-                    openEmbeddedChatAndSend();
-                } else if (selectedService === 'learn') {
-                    setShowLearnOverlay(true);
-                    setStep('embedded_chat');
-                    setIsChatActive(false);
-                } else {
-                    handleClose();
-                }
+            // Skip verification step - go directly to selected service
+            if (selectedService === 'doctor') {
+                setStep('healthcare_search');
+            } else if (selectedService === 'insurance') {
+                setStep('insurance_assistance');
+            } else if (selectedService === 'pharmacy') {
+                setStep('pharmacy_select');
+            } else if (selectedService === 'chat') {
+                openEmbeddedChatAndSend();
+            } else if (selectedService === 'learn') {
+                setShowLearnOverlay(true);
+                setStep('embedded_chat');
+                setIsChatActive(false);
             } else {
-                setStep('phone');
+                handleClose();
             }
         };
         
         const handleLearnQuestionClick = (question: string) => {
-            if (isAuthenticatedSession) {
-                openEmbeddedChatAndSend(question);
-            } else {
-                setPendingChatMessage(question);
-                setStep('phone');
-            }
+            // Skip verification step - go directly to chat
+            openEmbeddedChatAndSend(question);
         };
 
         return (

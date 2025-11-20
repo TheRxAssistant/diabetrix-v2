@@ -1067,6 +1067,12 @@
   min-height: 80vh;
   overflow-y: auto;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+  }
+
   animation: slideInFromTop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   margin-top: 60px;
   box-shadow: $box_shadow;
