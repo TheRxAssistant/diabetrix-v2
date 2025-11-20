@@ -1,0 +1,505 @@
+@use "../../../styles/variables" as *;
+
+// iPhone optimizations
+
+// ChatBody.scss - Message container styles
+.messages-container {
+  //flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  height: 100%; // Take full available height from parent container
+  min-height: 0; // Remove fixed min-height to prevent overflow on small screens
+  max-height: 100%; // Use full container height instead of viewport height
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, rgba(26, 42, 58, 0.03), transparent);
+    pointer-events: none;
+  }
+
+  /* Custom scrollbar for the messages container */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+  }
+}
+
+// ChatMessage.scss - Individual message styles
+.message {
+  display: flex;
+  margin-bottom: 0.5rem;
+  position: relative;
+  max-width: 80%;
+  font-size: $font_size_base; /* iPhone optimized - prevents zoom */
+  line-height: 1.5;
+  transition: all 0.3s ease;
+
+  // Only animate new messages
+  &.new-message {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: messageAppear 0.3s ease forwards;
+  }
+
+  &.user-message {
+    margin-left: auto;
+    margin-right: 2px;
+
+    .message-content {
+      background: linear-gradient(135deg, #0066ff 0%, #0052cc 100%);
+      color: white;
+      border-radius: 1.25rem 0.25rem 1.25rem 1.25rem;
+      padding: 0.75rem 1rem;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+      font-weight: 400;
+      box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2);
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  &.system-message {
+    margin-right: auto;
+    margin-left: 2px;
+
+    .message-content {
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      color: #2c3e50;
+      border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.08),
+        0 8px 24px rgba(0, 0, 0, 0.05),
+        0 1px 2px rgba(0, 0, 0, 0.1);
+      padding: 0.75rem 1rem;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow:
+          0 6px 16px rgba(0, 0, 0, 0.1),
+          0 12px 32px rgba(0, 0, 0, 0.06),
+          0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+}
+
+.message-content {
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.message-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.375rem;
+  background: rgba(248, 250, 252, 0.5);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.option-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+  color: #007aff;
+  font-size: $font_size_base; /* iPhone optimized */
+  min-height: $touch_target_min; /* Apple recommended touch target */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  min-width: 120px;
+  text-align: center;
+  letter-spacing: -0.01em;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 122, 255, 0.1) 0%,
+      rgba(0, 122, 255, 0.05) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow:
+      0 4px 12px rgba(0, 122, 255, 0.2),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 122, 255, 0.2);
+  }
+}
+
+.checkbox-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(248, 250, 252, 0.5);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+
+  &:hover {
+    background: rgba(0, 122, 255, 0.05);
+    transform: translateX(4px);
+  }
+
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #007aff;
+    appearance: none;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    background: white;
+
+    &:checked {
+      background: #007aff;
+      border-color: #007aff;
+
+      &:after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+    }
+
+    &:hover {
+      border-color: #0052cc;
+      transform: scale(1.05);
+    }
+  }
+}
+
+// Initial loading animation styles
+.connecting-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 2rem;
+  text-align: center;
+  background: white;
+
+  .avatar-container {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15);
+    }
+
+    .connecting-ring {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border: 2px solid #0066ff;
+      border-radius: 50%;
+      opacity: 0;
+      animation: ringPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+
+      &::after {
+        content: "";
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border: 2px solid #0066ff;
+        border-radius: 50%;
+        animation: ringPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation-delay: 0.5s;
+      }
+    }
+  }
+
+  .connecting-text {
+    color: #2c3e50;
+    font-size: 1rem;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: textFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+
+    .dots {
+      display: inline-flex;
+      margin-left: 2px;
+
+      span {
+        opacity: 0.6;
+        animation: dotFade 1.4s infinite;
+
+        &:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+
+        &:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+      }
+    }
+  }
+}
+
+// Reconnecting indicator
+.reconnecting-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2c3e50;
+  font-size: $font_size_base; /* iPhone optimized */
+
+  svg {
+    color: #0066ff;
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.2;
+  }
+
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes textFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dotFade {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes messageAppear {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: $mobile_breakpoint) {
+  .messages-container {
+    padding: 0.5rem; // Reduced padding for mobile
+    min-height: calc(85vh - 157px - 40px - env(safe-area-inset-bottom, 0));
+    max-height: calc(85vh - 157px - 40px - env(safe-area-inset-bottom, 0));
+  }
+
+  .message {
+    max-width: 89%;
+    font-size: $font_size_base; /* iPhone optimized - larger for better readability */
+
+    &.user-message {
+      margin-right: 2px;
+    }
+
+    &.system-message {
+      margin-left: 2px;
+    }
+
+    .message-content {
+      padding: 10px 14px;
+    }
+  }
+}
+
+// Typing indicator
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 1rem;
+  width: fit-content;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: #0066ff;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: dotPulse 1.4s infinite;
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+// Markdown content
+.md-content {
+  background: transparent !important;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  line-height: 1.5;
+
+  p,
+  ul,
+  ol {
+    margin: 0.375rem 0;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  a {
+    color: #0066ff;
+    text-decoration: none;
+    font-weight: 500;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  code {
+    color: #2c3e50;
+    background: rgba(44, 62, 80, 0.05);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+}
+
+// Make message input area solid
+.message-input-container {
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  position: relative;
+  z-index: 2;
+}

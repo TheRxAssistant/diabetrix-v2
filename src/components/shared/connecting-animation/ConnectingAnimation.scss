@@ -1,0 +1,174 @@
+// ConnectingAnimation.scss
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  70% { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.connecting-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  //background: linear-gradient(135deg, #1a1f25 0%, #121417 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  .connecting-card {
+    position: relative;
+    //background-color: rgba(30, 35, 44, 0.95);
+    border-radius: 1.25rem;
+    box-shadow:
+            0 20px 40px rgba(0, 0, 0, 0.3),
+            0 8px 16px rgba(0, 0, 0, 0.2),
+            0 0 0 1px rgba(255, 255, 255, 0.05);
+    padding: 2.5rem;
+    width: 22rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+
+    // Ambient background effects
+    &::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(
+                      circle at center,
+                      rgba(114, 137, 218, 0.05) 0%,
+                      rgba(114, 137, 218, 0) 70%
+      );
+      z-index: 0;
+    }
+
+    &.connected {
+      animation: fadeIn 0.5s ease-out forwards;
+
+      .icon-circle {
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        box-shadow:
+                0 0 0 10px rgba(16, 185, 129, 0.1),
+                0 0 30px rgba(16, 185, 129, 0.3);
+
+        .icon {
+          color: #ffffff;
+        }
+      }
+
+      .status-text {
+        background: black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    }
+  }
+
+  .icon-container {
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+
+    .icon-circle {
+      width: 5rem;
+      height: 5rem;
+      margin: 0 auto 1.5rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7289da 0%, #5865f2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 10px rgba(88, 101, 242, 0.1);
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        animation: pulse 2s infinite;
+      }
+
+      .icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        color: #ffffff;
+      }
+    }
+  }
+
+  .status-text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.01em;
+  }
+
+  .dots-container {
+    display: inline-block;
+    width: 2rem;
+    text-align: left;
+    opacity: 0.8;
+  }
+
+  .progress-bar-container {
+    position: relative;
+    height: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+
+    .progress-bar-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #7289da 0%, #5865f2 100%);
+      transition: width 700ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 9999px;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 30%;
+        height: 100%;
+        background: linear-gradient(
+                        90deg,
+                        rgba(255, 255, 255, 0) 0%,
+                        rgba(255, 255, 255, 0.3) 50%,
+                        rgba(255, 255, 255, 0) 100%
+        );
+        animation: shimmer 2s infinite;
+      }
+    }
+  }
+
+  // Display progress percentage
+  &::after {
+    content: attr(data-progress) '%';
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+}

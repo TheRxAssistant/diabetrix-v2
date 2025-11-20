@@ -1,0 +1,146 @@
+import React, { useState } from 'react';
+import avatarImage from '../../../assets/images/avatar.png';
+// Using inline styles instead of module import to avoid lint errors
+
+interface BookAppointmentModalProps {
+    provider: any;
+    onClose: () => void;
+    onRequestAppointment: (provider: any, reason: string, availability: string) => any;
+}
+
+const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, onClose, onRequestAppointment }) => {
+    const [reason, setReason] = useState('');
+    const [availability, setAvailability] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async () => {
+        if (!reason.trim()) {
+            setError('Please provide a reason for your visit');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setError('');
+
+        try {
+            // Show loading state for 2 seconds
+            setTimeout(async () => {
+                setIsSubmitting(false);
+                setIsSuccess(true);
+
+                // Close modal after showing success message for 2 seconds
+                setTimeout(async () => {
+                    await onRequestAppointment(provider, reason, availability);
+                    onClose();
+                }, 2000);
+            }, 2000);
+        } catch (err) {
+            setError('Failed to request appointment. Please try again.');
+            setIsSubmitting(false);
+        }
+    };
+
+    const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
+    const providerSpecialty = provider?.provider_specialty || provider?.facility_type || 'Healthcare Provider';
+
+    return (
+        <div onClick={onClose} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div style={{ height: 'calc(100vh - 300px)', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-auto relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">
+                    ×
+                </button>
+
+                <h2 className="text-xl font-semibold mt-0 mb-6">{isSuccess ? 'Appointment Requested' : 'Book Appointment'}</h2>
+
+                {isSuccess ? (
+                    <div className="text-center mb-6">
+                        <div className="w-15 h-15 rounded-full bg-green-500 text-white flex items-center justify-center text-2xl mx-auto mb-4">✓</div>
+                        <h3 className="text-lg font-medium mb-4">Request Successful!</h3>
+                        <p className="mb-4 text-gray-600 text-sm">Your appointment request with {providerName} has been submitted.</p>
+                        <p className="mb-6 text-gray-600 text-sm">We will contact you shortly with confirmation details.</p>
+                    </div>
+                ) : (
+                    <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50">
+                        <div className="flex items-center">
+                            <div
+                                className="w-12 h-12 min-w-[3rem] min-h-[3rem] rounded-full bg-gray-200 mr-4 bg-cover bg-center bg-no-repeat"
+                                style={{
+                                    backgroundImage: `url(${avatarImage})`,
+                                }}
+                                aria-label={`${providerName} avatar`}
+                            />
+                            <div>
+                                <h3 className="text-base font-medium text-gray-900 m-0">{providerName}</h3>
+                                <p className="text-sm text-gray-600 mt-1 m-0">{providerSpecialty}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!isSuccess && (
+                    <>
+                        <div className="mb-4">
+                            <label htmlFor="reason" className="block mb-2 text-sm font-medium text-gray-700">
+                                Reason for visit
+                            </label>
+                            <textarea
+                                id="reason"
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                placeholder="Please describe your symptoms or reason for the appointment"
+                                className="w-full p-3 border border-gray-300 rounded-md min-h-[100px] resize-vertical text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                disabled={isSubmitting}
+                            />
+                        </div>
+
+                        <div className="mb-6">
+                            <label htmlFor="availability" className="block mb-2 text-sm font-medium text-gray-700">
+                                Availability
+                            </label>
+                            <textarea
+                                id="availability"
+                                value={availability}
+                                onChange={(e) => setAvailability(e.target.value)}
+                                placeholder="Tell us about your availability"
+                                className="w-full p-3 border border-gray-300 rounded-md min-h-[100px] resize-vertical text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                    </>
+                )}
+
+                {error && <div className="text-red-700 mb-4 p-2 bg-red-50 rounded text-sm">{error}</div>}
+
+                <div className={`flex gap-3 ${isSuccess ? 'flex-row justify-center' : 'flex-col'}`}>
+                    {isSubmitting && (
+                        <div className="text-center w-full mb-4">
+                            <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin" />
+                            <p className="m-0 text-gray-600 text-sm">Processing your request...</p>
+                        </div>
+                    )}
+
+                    {!isSubmitting && !isSuccess && (
+                        <>
+                            <button onClick={onClose} className="w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 text-sm">
+                                Cancel
+                            </button>
+                            <button onClick={handleSubmit} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm">
+                                Place Request
+                            </button>
+                        </>
+                    )}
+
+                    {isSuccess && (
+                        <button onClick={onClose} className="py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm w-full max-w-[200px] text-sm">
+                            Close
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default BookAppointmentModal;

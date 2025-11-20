@@ -1,0 +1,112 @@
+@use '../../../styles/variables' as *;
+
+.chat-button {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    background: #0069CC;
+    border: none;
+    border-radius: 100px;
+    padding: 8px 24px 8px 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9997;
+    font-family: 'Inter', sans-serif;
+    min-width: 200px;
+    display: block;
+
+    &.goodrx-theme {
+        background: #000000; /* Dark golden/yellow color */
+    }
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        background: #0052A3;
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    .button-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .avatar-container-chat-button {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: white;
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .status-badge {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background-color: #28a745;
+            border: 2px solid #0069CC;
+            border-radius: 10px;
+            padding: 1px 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+            span {
+                color: white;
+                font-size: 8px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                line-height: 1;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            }
+        }
+    }
+
+    .button-text {
+        color: white;
+        font-size: 15px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: $mobile_breakpoint) {
+    .chat-button {
+        bottom: 130px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 130px);
+        //max-width: 400px;
+        padding: 10px 24px 10px 10px;
+
+        &:hover {
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        &:active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .avatar-container {
+            width: 36px;
+            height: 36px;
+        }
+
+        .button-text {
+            font-size: 14px;
+        }
+    }
+}

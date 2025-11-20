@@ -1,0 +1,66 @@
+@import url("https://fonts.cdnfonts.com/css/avenir");
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+
+$font_family: Avenir, "avenir", sans-serif;
+$font_family_button: "Barlow Condensed", sans-serif;
+$primary_color: #0066cc;
+$primary_hover_color: #00336a;
+$secondary_color: #00868b;
+$text_color: #414141;
+$text_light_color: white;
+$border_color: #e0e0e0;
+$background_light: #fff;
+$background_medium: #f5f5f5;
+$background_dark: rgb(7, 30, 47);
+$box_shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+$box_shadow_light: 0 1px 2px rgba(0, 0, 0, 0.1);
+$border_radius: 15px;
+$border_radius_small: 4px;
+$border_radius_large: 12px;
+$border_radius_round: 24px;
+$border_radius_circle: 50%;
+$transition_time: 0.2s;
+$zindex_chat: 10;
+$zindex_chat_button: 1001;
+
+// Breakpoints
+$mobile_breakpoint: 600px;
+$small_screen_breakpoint: 360px;
+$iphone_breakpoint: 768px;
+
+// iPhone-optimized font sizes
+$font_size_xs: 12px; // Small text, captions
+$font_size_sm: 14px; // Body text
+$font_size_base: 16px; // Base text size (prevents zoom on iOS)
+$font_size_md: 18px; // Larger body text
+$font_size_lg: 20px; // Headings
+$font_size_xl: 24px; // Large headings
+$font_size_2xl: 28px; // Hero text
+$font_size_3xl: 32px; // Display text
+
+// Touch target sizes for iPhone
+$touch_target_min: 44px; // Apple recommended minimum
+$touch_target_comfortable: 48px;
+
+// Mixins
+@mixin flex_center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex_between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex_start {
+  display: flex;
+  align-items: center;
+}
+
+@mixin transition($property: all) {
+  transition: $property $transition_time;
+}
+

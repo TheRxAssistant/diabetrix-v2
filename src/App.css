@@ -1,0 +1,82 @@
+/* Custom styles for Diabetrix */
+
+/* Main container */
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Animation for hero elements */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* Custom gradient backgrounds */
+.bg-gradient-blue {
+  background: linear-gradient(135deg, #0066cc 0%, #0077cc 50%, #0099dd 100%);
+}
+
+.bg-gradient-light {
+  background: linear-gradient(120deg, #f8fafc, #e2e8f0);
+}
+
+/* For pill/medicine graphics */
+.pill-animation {
+  transition: transform 0.3s ease-in-out;
+}
+
+.pill-animation:hover {
+  transform: translateY(-5px) rotate(3deg);
+}
+
+/* ISI disclaimer toggle */
+.isi-toggle {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  background-color: var(--primary);
+  color: white;
+  border-radius: 0.5rem 0.5rem 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Medical professionals verification modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 600px;
+  width: 90%;
+}
+
+/* Accessibility focus styles */
+*:focus {
+  /*outline: 2px solid var(--secondary);*/
+  outline-offset: 2px;
+}

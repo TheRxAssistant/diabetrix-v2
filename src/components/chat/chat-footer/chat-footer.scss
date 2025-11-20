@@ -1,0 +1,60 @@
+@use "../../../styles/variables" as *;
+
+.message-input-form {
+  display: flex;
+  position: relative; /* Changed from fixed to relative for modal usage */
+  width: 100%;
+  padding: 0 16px;
+  border-top: 1px solid rgb(236, 235, 233);
+  background: white !important;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-sizing: border-box; /* Ensure padding doesn't cause overflow */
+
+  /* Only use fixed positioning in standalone chat mode */
+  &.standalone-chat {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0) + 70px);
+    z-index: 10;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+
+  .message-input {
+    flex: 1;
+    padding: 12px 0 16px;
+    border: none;
+    font-size: $font_size_base; /* iPhone optimized - prevents zoom */
+    min-height: $touch_target_min; /* Apple recommended touch target */
+    outline: none;
+    background: transparent;
+    @include transition(border-color);
+    &:focus {
+      outline: none;
+      box-shadow: none;
+    }
+  }
+
+  .send-button {
+    margin-left: 10px;
+    background-color: #fff !important;
+    color: #666;
+    border: none;
+    border-radius: $border_radius_circle;
+    min-width: $touch_target_min; /* iPhone optimized touch target */
+    min-height: $touch_target_min;
+    cursor: pointer;
+    @include flex_center;
+    @include transition(background-color);
+
+    &:hover {
+      background-color: #e0e0e0;
+    }
+
+    &:disabled {
+      background-color: #fff;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+}
