@@ -23,10 +23,12 @@ const create_info_window = (
   const info_window = new google.maps.InfoWindow({
     position: {
       lat:
+        item.latitude ||
         item.provider_full_address_obj?.lat ||
         item.facility_full_address_obj?.lat ||
         0,
       lng:
+        item.longitude ||
         item.provider_full_address_obj?.long ||
         item.facility_full_address_obj?.long ||
         0,
@@ -214,12 +216,12 @@ const PlotMap: React.FC<ProviderMapProps> = ({
       const providerItem = item as Provider;
       const facilityItem = item as Facility;
       
-      // Ensure we have valid coordinates
+      // Ensure we have valid coordinates - check new API format first (latitude/longitude), then legacy format
       const lat =
-        (isProvider && providerItem.provider_full_address_obj?.lat) ||
+        (isProvider && (providerItem.latitude || providerItem.provider_full_address_obj?.lat)) ||
         (isFacility && facilityItem.facility_full_address_obj?.lat);
       const lng =
-        (isProvider && providerItem.provider_full_address_obj?.long) ||
+        (isProvider && (providerItem.longitude || providerItem.provider_full_address_obj?.long)) ||
         (isFacility && facilityItem.facility_full_address_obj?.long);
 
       if (typeof lat !== "number" || typeof lng !== "number") {
@@ -300,17 +302,21 @@ const PlotMap: React.FC<ProviderMapProps> = ({
       );
       if (
         selected_provider &&
-        (selected_provider.provider_full_address_obj?.lat ||
+        (selected_provider.latitude ||
+          selected_provider.provider_full_address_obj?.lat ||
           selected_provider.facility_full_address_obj?.lat) &&
-        (selected_provider.provider_full_address_obj?.long ||
+        (selected_provider.longitude ||
+          selected_provider.provider_full_address_obj?.long ||
           selected_provider.facility_full_address_obj?.long)
       ) {
-        // Get the position of the selected provider
+        // Get the position of the selected provider - check new API format first
         const position = {
           lat:
+            selected_provider.latitude ||
             selected_provider.provider_full_address_obj?.lat ||
             selected_provider.facility_full_address_obj?.lat,
           lng:
+            selected_provider.longitude ||
             selected_provider.provider_full_address_obj?.long ||
             selected_provider.facility_full_address_obj?.long,
         };

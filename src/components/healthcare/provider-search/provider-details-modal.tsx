@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Star, MapPin, Phone, Calendar } from 'lucide-react';
-import { Provider, Facility } from '../../../hooks/useProviderSearch';
+import { Provider, Facility } from '../../../services/provider-search/useProviderSearch';
 import { MAPS_API_KEY } from '../../../services/types/healthcare/types';
 
 interface LegacyProvider {

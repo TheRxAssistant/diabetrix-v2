@@ -95,9 +95,12 @@ export const postAPI = async (
         'Content-Type': 'application/json',
     };
 
-    // Add domain header if available (for core engine APIs)
+    // Add domain header if available (for core engine and capabilities APIs)
     const domain = 'diabetrix'; // Default domain for diabetrix-v2
     if (url in CORE_ENGINE_API_URLS || Object.values(CORE_ENGINE_API_URLS).includes(url as any)) {
+        headers['domain'] = domain;
+    }
+    if (url in CAPABILITIES_API_URLS || Object.values(CAPABILITIES_API_URLS).includes(url as any)) {
         headers['domain'] = domain;
     }
 
@@ -216,17 +219,12 @@ export const streamAPI = async (
     }
 };
 
-// Index Member API endpoints (auth, providers, AI)
+// Index Member API endpoints (auth, AI)
 export const INDEX_MEMBER_API_URLS = {
     // Auth
     SEND_OTP: 'auth/send-otp',
     VERIFY_OTP: 'auth/verify-otp',
     VERIFY_USER_BY_VERIFIED: 'auth/verify-user-by-verified',
-    
-    // Providers
-    PROVIDER_CATEGORY: 'providers/category',
-    PROVIDER_MATCHING_FACILITY: 'providers/matching-facility',
-    PROVIDER_MATCHING_INDIVIDUAL: 'providers/matching-individual',
     
     // AI
     AI_GENERATE_OBJECT: 'ai/generate-object',
@@ -242,6 +240,13 @@ export const RX_HUB_API_URLS = {
 export const CAPABILITIES_API_URLS = {
     SEND_OTP: 'authenticate/send-otp',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
+    // Find Care APIs
+    GET_CARE_CATEGORY: 'find-care/get-care-categories',
+    GET_CARE_CATEGORY_V2: 'find-care/get-care-categories-v2',
+    GET_NEARBY_CARE_DETAILS: 'find-care/get-care-details',
+    GET_NEARBY_CARE: 'find-care/find-nearby-care',
+    GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
+    SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
 } as const;
 
 // Core Engine API endpoints

@@ -1,7 +1,8 @@
 import { Camera, CreditCard, Hospital, Microscope, Search, Stethoscope, Syringe, User2, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { SearchCategory } from '../../../hooks/useProviderSearch';
+import React, { useEffect, useState, useCallback } from 'react';
+import { SearchCategory, useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 import { InsuranceCardScanModal } from '../../insurance/insurance-card-scan/insurance-card-scan-modal';
+import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
 
 interface InsuranceProvider {
     id: number;
@@ -22,11 +23,16 @@ interface InsuranceCardData {
     deductible: string;
 }
 
+interface InsuranceOption {
+    plan_name: string;
+    payer_name: string;
+}
+
 interface SearchModalProps {
     searchTerm: string;
     setSearchTerm: (term: string) => void;
     onClose: () => void;
-    onCategoryClick: (category: SearchCategory) => void;
+    onCategoryClick: (category: SearchCategory, insurance?: InsuranceOption | null) => void;
     userLocation: string;
 }
 
@@ -38,13 +44,9 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
     const [showInsuranceCardModal, setShowInsuranceCardModal] = useState(false);
     const [scannedInsuranceData, setScannedInsuranceData] = useState<InsuranceCardData | null>(null);
 
-    // Hardcoded specialty option
-    const hardcodedSpecialty: SearchCategory = {
-        reference_third_party_id: '207RE0101X',
-        category_name: 'Endocrinology, Diabetes & Metabolism',
-        integration_id: '1',
-        category_type: 'specialty',
-    };
+    // API-based category search
+    const [filteredCategories, setFilteredCategories] = useState<SearchCategory[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     // Insurance providers with detailed payor and plan information
     const insuranceProviders: InsuranceProvider[] = [
@@ -102,32 +104,62 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         { id: 52, payor: "WellCare", plan: "WellCare Medicaid Managed Care" }
     ];
 
-    const [filteredCategories, setFilteredCategories] = useState<SearchCategory[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-
-    // Function to filter the hardcoded specialty based on search term
-    const filterHardcodedSpecialty = (query: string) => {
+    // Fetch categories from API
+    const fetchCategories = useCallback(async (query: string, payer_name?: string) => {
         if (!query.trim()) {
             setFilteredCategories([]);
+            setIsSearching(false);
             return;
         }
 
-        // Show the hardcoded specialty if search term matches
-        if (hardcodedSpecialty.category_name.toLowerCase().includes(query.toLowerCase()) || query.toLowerCase().includes('endo') || query.toLowerCase().includes('diabetes') || query.toLowerCase().includes('metabolism')) {
-            setFilteredCategories([hardcodedSpecialty]);
-        } else {
-            setFilteredCategories([]);
-        }
-    };
+        setIsSearching(true);
+        try {
+            const payload: { query: string; payer_name?: string } = { query: query.trim() };
+            if (payer_name || selectedInsurance?.payor) {
+                payload.payer_name = payer_name || selectedInsurance?.payor || '';
+            }
 
-    // Filter hardcoded specialty based on search input
+            const result = await postAPI(CAPABILITIES_API_URLS.GET_CARE_CATEGORY_V2, payload);
+            
+            if (result.statusCode === 200) {
+                const categories_data = result.data || [];
+                // Convert API response to SearchCategory format
+                const categories: SearchCategory[] = categories_data.map((item: any) => ({
+                    care_category_id: item.care_category_id,
+                    care_category_name: item.care_category_name,
+                    care_category_type: item.care_category_type || 'specialty',
+                    // Keep old format for backward compatibility
+                    reference_third_party_id: item.care_category_id,
+                    category_name: item.care_category_name,
+                    category_type: item.care_category_type || 'specialty',
+                }));
+                setFilteredCategories(categories);
+            } else {
+                setFilteredCategories([]);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+            setFilteredCategories([]);
+        } finally {
+            setIsSearching(false);
+        }
+    }, [selectedInsurance]);
+
+    // Debounced search for categories
     useEffect(() => {
         const timer = setTimeout(() => {
-            filterHardcodedSpecialty(searchTerm);
+            fetchCategories(searchTerm);
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [searchTerm, fetchCategories]);
+
+    // Re-fetch categories when insurance changes
+    useEffect(() => {
+        if (selectedInsurance && searchTerm.trim()) {
+            fetchCategories(searchTerm, selectedInsurance.payor);
+        }
+    }, [selectedInsurance, fetchCategories]);
 
     // Handle specialty selection and move to step 2
     const handleSpecialtySelect = (specialty: SearchCategory) => {
@@ -161,18 +193,22 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
     // Handle final search
     const handleSearch = () => {
         if (selectedSpecialty) {
-            // Pass the selected specialty without modifying its type
-            // Insurance information could be handled separately or stored in a different way
-            onCategoryClick(selectedSpecialty);
-
-            // Store insurance info globally or pass it through a different mechanism if needed
-            // For now, we'll just console.log it for demonstration
+            // Convert insurance to the format expected by the API
+            let insuranceOption: InsuranceOption | null = null;
             if (selectedInsurance) {
-                console.log('Selected Insurance:', selectedInsurance);
+                insuranceOption = {
+                    plan_name: selectedInsurance.plan,
+                    payer_name: selectedInsurance.payor,
+                };
+            } else if (scannedInsuranceData) {
+                insuranceOption = {
+                    plan_name: scannedInsuranceData.planType || 'Unknown',
+                    payer_name: scannedInsuranceData.providerName,
+                };
             }
-            if (scannedInsuranceData) {
-                console.log('Scanned Insurance Data:', scannedInsuranceData);
-            }
+
+            // Pass the selected specialty and insurance information
+            onCategoryClick(selectedSpecialty, insuranceOption);
 
             onClose();
         }
@@ -233,17 +269,20 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                         <p className="text-sm font-medium text-gray-700 mb-4">Suggestions</p>
                         <div className="space-y-2">
                             {filteredCategories.map((category, index) => {
-                                // Determine icon based on category type
+                                // Determine icon based on category type (check both formats)
+                                const categoryType = category.care_category_type || category.category_type || 'specialty';
+                                const categoryName = category.care_category_name || category.category_name || '';
+                                
                                 const iconNode =
-                                    category.category_type === 'condition' ? (
+                                    categoryType === 'condition' ? (
                                         <Stethoscope size={18} className="text-blue-600" />
-                                    ) : category.category_type === 'provider' ? (
+                                    ) : categoryType === 'provider' ? (
                                         <User2 size={18} className="text-green-600" />
-                                    ) : category.category_type === 'facility' ? (
+                                    ) : categoryType === 'facility' ? (
                                         <Hospital size={18} className="text-red-600" />
-                                    ) : category.category_type === 'procedure' ? (
+                                    ) : categoryType === 'procedure' ? (
                                         <Syringe size={18} className="text-purple-600" />
-                                    ) : category.category_type === 'specialty' ? (
+                                    ) : categoryType === 'specialty' ? (
                                         <Microscope size={18} className="text-indigo-600" />
                                     ) : (
                                         <Search size={18} className="text-gray-600" />
@@ -253,8 +292,8 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                                     <div key={index} className="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all group" onClick={() => handleSpecialtySelect(category)}>
                                         <div className="flex-shrink-0 mr-3">{iconNode}</div>
                                         <div className="flex-1">
-                                            <span className="block font-medium text-gray-900 group-hover:text-blue-700">{category.category_name}</span>
-                                            <span className="text-sm text-gray-500 capitalize">{category.category_type || 'specialty'}</span>
+                                            <span className="block font-medium text-gray-900 group-hover:text-blue-700">{categoryName}</span>
+                                            <span className="text-sm text-gray-500 capitalize">{categoryType}</span>
                                         </div>
                                     </div>
                                 );

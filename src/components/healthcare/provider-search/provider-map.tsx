@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 // Import Provider interface from useProviderSearch
-import { Provider } from '../../../hooks/useProviderSearch';
+import { Provider } from '../../../services/provider-search/useProviderSearch';
 import styles from './healthcare-provider-search.module.scss';
 
 // Map container style
@@ -35,19 +35,26 @@ const ProviderMap: React.FC<ProviderMapProps> = ({ providers, onBackToList, sing
     initialSelectedProvider || (singleProviderView && providers.length === 1 ? providers[0] : null)
   );
 
-  // Calculate map center based on providers
+  // Calculate map center based on providers - check new API format first
   const calculateCenter = () => {
-    if (providers.length === 1 && providers[0].provider_lat && providers[0].provider_lng) {
-      return { lat: providers[0].provider_lat, lng: providers[0].provider_lng };
+    if (providers.length === 1) {
+      const coords = getProviderCoordinates(providers[0]);
+      if (coords.lat !== defaultCenter.lat && coords.lng !== defaultCenter.lng) {
+        return coords;
+      }
     }
     
     // If we have multiple providers, calculate the center point
     if (providers.length > 1) {
-      const validProviders = providers.filter(p => p.provider_lat && p.provider_lng);
+      const validProviders = providers.filter(p => {
+        const coords = getProviderCoordinates(p);
+        return coords.lat !== defaultCenter.lat && coords.lng !== defaultCenter.lng;
+      });
       
       if (validProviders.length > 0) {
-        const latSum = validProviders.reduce((sum, p) => sum + (p.provider_lat || 0), 0);
-        const lngSum = validProviders.reduce((sum, p) => sum + (p.provider_lng || 0), 0);
+        const coordsList = validProviders.map(p => getProviderCoordinates(p));
+        const latSum = coordsList.reduce((sum, c) => sum + c.lat, 0);
+        const lngSum = coordsList.reduce((sum, c) => sum + c.lng, 0);
         
         return {
           lat: latSum / validProviders.length,
@@ -69,9 +76,14 @@ const ProviderMap: React.FC<ProviderMapProps> = ({ providers, onBackToList, sing
     return 10;
   };
 
-  // Extract coordinates from provider's full_address_obj if available
+  // Extract coordinates from provider - check new API format first (latitude/longitude), then legacy format
   const getProviderCoordinates = (provider: MapProvider) => {
-    // Check if provider has valid numeric lat/lng
+    // Check new API format first (latitude/longitude)
+    if (typeof provider.latitude === 'number' && typeof provider.longitude === 'number') {
+      return { lat: provider.latitude, lng: provider.longitude };
+    }
+    
+    // Check if provider has valid numeric lat/lng (legacy format)
     if (typeof provider.provider_lat === 'number' && typeof provider.provider_lng === 'number') {
       return { lat: provider.provider_lat, lng: provider.provider_lng };
     }
@@ -86,7 +98,8 @@ const ProviderMap: React.FC<ProviderMapProps> = ({ providers, onBackToList, sing
     }
     
     // Log the provider that's missing coordinates
-    console.log('Provider missing coordinates:', provider.provider_name);
+    const providerName = provider.name || provider.provider_name;
+    console.log('Provider missing coordinates:', providerName);
     
     // Default coordinates if none available
     return { lat: defaultCenter.lat + (Math.random() * 0.05), lng: defaultCenter.lng + (Math.random() * 0.05) };

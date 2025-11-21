@@ -6,9 +6,11 @@ interface ChatHeaderProps {
     onClose: () => void;
     chat_mode?: 'input' | 'mcq';
     on_mode_change?: (mode: 'input' | 'mcq') => void;
+    show_input?: boolean;
+    on_toggle_input?: (show: boolean) => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', on_mode_change }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', on_mode_change, show_input = true, on_toggle_input }) => {
     return (
         <div className="chat-header">
             <div className="concierge-info">
@@ -35,8 +37,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', o
                 </div>
             </div>
             <div className="chat-header-actions">
-                {/* Chat Mode Toggle */}
-                {on_mode_change && (
+                {/* Chat Mode Toggle - Only show when input is visible */}
+                {on_mode_change && show_input && (
                     <div className="chat-mode-toggle">
                         <span className={`toggle-label ${chat_mode === 'input' ? 'active' : ''}`}>Input</span>
                         <button
@@ -49,6 +51,31 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', o
                         </button>
                         <span className={`toggle-label ${chat_mode === 'mcq' ? 'active' : ''}`}>MCQ</span>
                     </div>
+                )}
+                {/* Hide/Show Input Toggle */}
+                {on_toggle_input && (
+                    <button 
+                        className="input-toggle-button" 
+                        onClick={() => on_toggle_input(!show_input)}
+                        aria-label={show_input ? "Hide input" : "Show input"}
+                        type="button"
+                        title={show_input ? "Hide input" : "Show input"}
+                    >
+                        {show_input ? (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="6" width="20" height="12" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M6 14h12" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="6" width="20" height="12" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M6 14h12" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M2 2l20 20" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        )}
+                    </button>
                 )}
                 <button className="close-button" onClick={onClose} aria-label="Close chat">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

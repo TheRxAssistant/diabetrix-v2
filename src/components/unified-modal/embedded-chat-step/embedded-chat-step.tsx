@@ -1,4 +1,4 @@
-import React, { RefObject, useState, useEffect } from 'react';
+import React, { RefObject, useState, useEffect, useRef } from 'react';
 import styles from '../unified-modal.module.scss';
 import ChatHeader from '../../chat/chat-header/chat-header';
 import ChatBody from '../../chat/chat-body/chat-body';
@@ -64,10 +64,67 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     streaming_message = '',
     is_streaming = false
 }) => {
+    // State to control input visibility
+    const [show_input, set_show_input] = useState<boolean>(true);
     // Chat mode state (input or mcq)
     const [chat_mode, set_chat_mode] = useState<'input' | 'mcq'>('input');
     const [mcq_options, set_mcq_options] = useState<{ text: string; type?: string }[]>([]);
     const [mcq_loading, set_mcq_loading] = useState(false);
+    
+    // Ref to track if we've generated quick replies for disabled input state
+    const quickRepliesGeneratedForDisabledInput = useRef<boolean>(false);
+
+    // Generate quick replies when input is disabled
+    useEffect(() => {
+        if (!show_input && chat_mode === 'input') {
+            // Reset the flag when input becomes disabled
+            if (!quickRepliesGeneratedForDisabledInput.current) {
+                quickRepliesGeneratedForDisabledInput.current = true;
+                
+                const generateQuickReplies = async () => {
+                    try {
+                        console.log('🔄 Generating quick replies because input is disabled', {
+                            isChatActive,
+                            messagesLength: messages.length,
+                            currentQuickRepliesLength: currentQuickReplies.length
+                        });
+                        
+                        // Use messages if available, otherwise use empty array (API will handle it)
+                        const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
+                        const quickReplies = await AIService.generateQuickReplies(currentMessages.length > 0 ? currentMessages : []);
+                        const replyTexts = quickReplies.map((reply) => reply.text);
+                        console.log('✨ Generated quick replies:', replyTexts);
+                        
+                        // Always update when input is disabled
+                        if (replyTexts.length > 0) {
+                            onSetCurrentQuickReplies(replyTexts);
+                            onSetShowQuickReplies(true);
+                            console.log('✅ Quick replies set and shown');
+                        } else {
+                            // Fallback if no replies generated
+                            console.log('⚠️ No quick replies generated, using fallback');
+                            const fallbackReplies = ['Tell me more', 'What else?', 'Any concerns?', 'How can I help?'];
+                            onSetCurrentQuickReplies(fallbackReplies);
+                            onSetShowQuickReplies(true);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error generating quick replies when input is disabled:', error);
+                        // Set fallback replies on error
+                        const fallbackReplies = ['Tell me more', 'What else?', 'Any concerns?', 'How can I help?'];
+                        onSetCurrentQuickReplies(fallbackReplies);
+                        onSetShowQuickReplies(true);
+                    }
+                };
+                
+                // Small delay to ensure state is updated
+                const timer = setTimeout(generateQuickReplies, 300);
+                return () => clearTimeout(timer);
+            }
+        } else if (show_input) {
+            // Reset flag when input becomes visible again
+            quickRepliesGeneratedForDisabledInput.current = false;
+        }
+    }, [show_input, chat_mode, isChatActive, messages.length, isLearnFlow, onSetCurrentQuickReplies, onSetShowQuickReplies]);
 
     // Clear MCQ options when switching modes
     useEffect(() => {
@@ -125,6 +182,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     onClose={onClose}
                     chat_mode={chat_mode}
                     on_mode_change={set_chat_mode}
+                    show_input={show_input}
+                    on_toggle_input={set_show_input}
                 />
                 <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                     {isChatActive ? (
@@ -210,8 +269,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         width: '100%',
                         boxSizing: 'border-box',
                     }}>
-                    {/* Quick Replies - Only show in input mode */}
-                    {chat_mode === 'input' && showQuickReplies && currentQuickReplies.length > 0 && (
+                    {/* Quick Replies - Show in input mode, or always show when input is hidden */}
+                    {(chat_mode === 'input' && currentQuickReplies.length > 0) || (showQuickReplies && !show_input) ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (
@@ -224,16 +283,19 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                         onClick={() => {
                                             onSendMessage(reply);
                                             onSetUsedQuickReplies((prev) => [...prev, reply]);
-                                            onSetShowQuickReplies(false);
+                                            // Only hide quick replies if input is visible
+                                            if (show_input) {
+                                                onSetShowQuickReplies(false);
+                                            }
                                         }}>
                                         {reply}
                                     </button>
                                 ))}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
-                    {!showLearnOverlay && (
+                    {!showLearnOverlay && show_input && (
                         <div
                             style={{
                                 padding: '0 8px 8px 8px',
