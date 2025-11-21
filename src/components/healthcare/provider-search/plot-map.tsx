@@ -213,8 +213,8 @@ const PlotMap: React.FC<ProviderMapProps> = ({
       // Type guard to check if it's a Provider or Facility
       const isProvider = 'provider_id' in item;
       const isFacility = 'facility_id' in item;
-      const providerItem = item as Provider;
-      const facilityItem = item as Facility;
+      const providerItem = item as any;
+      const facilityItem = item as any;
       
       // Ensure we have valid coordinates - check new API format first (latitude/longitude), then legacy format
       const lat =
