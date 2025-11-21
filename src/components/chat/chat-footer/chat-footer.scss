@@ -56,5 +56,32 @@
       color: #ccc;
       cursor: not-allowed;
     }
+
+    img {
+      width: 20px;
+      height: 20px;
+    }
+
+    // Search button styling for MCQ mode
+    &.search-button {
+      background-color: transparent !important;
+      color: #007aff;
+
+      &:hover {
+        background-color: transparent !important;
+        color: #0052cc;
+      }
+
+      &:disabled {
+        background-color: transparent !important;
+        color: #9ca3af;
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+      }
+    }
   }
 }

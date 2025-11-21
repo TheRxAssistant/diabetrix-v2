@@ -455,6 +455,21 @@
   }
 }
 
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
 // Markdown content
 .md-content {
   background: transparent !important;
@@ -502,4 +517,117 @@
   padding: 1rem;
   position: relative;
   z-index: 2;
+}
+
+// MCQ Options Styles - Right Side
+.mcq-options-container {
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: flex-start;
+
+  &.mcq-right-side {
+    justify-content: flex-end;
+    margin-left: auto;
+    margin-right: 2px;
+
+    .mcq-options-content {
+      border-radius: 1.25rem 0.25rem 1.25rem 1.25rem;
+      background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+    }
+  }
+}
+
+.mcq-options-content {
+  max-width: 80%;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.mcq-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.75rem;
+}
+
+.mcq-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mcq-option-button {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.75rem;
+  text-align: left;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+
+  &:hover {
+    background: #007aff;
+    color: white;
+    border-color: #007aff;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+  }
+
+  &:active {
+    transform: translateX(2px);
+  }
+}
+
+.mcq-loading {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 60px;
+  justify-content: center;
+}
+
+.mcq-loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 1rem;
+  width: fit-content;
+}
+
+.mcq-loading-dot {
+  width: 6px;
+  height: 6px;
+  background: #007aff;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: dotPulse 1.4s infinite;
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+.mcq-loading-text {
+  font-size: 0.875rem;
+  color: #65737e;
+  font-weight: 500;
 }

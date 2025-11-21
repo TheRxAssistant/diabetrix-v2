@@ -95,6 +95,12 @@ export const postAPI = async (
         'Content-Type': 'application/json',
     };
 
+    // Add domain header if available (for core engine APIs)
+    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    if (url in CORE_ENGINE_API_URLS || Object.values(CORE_ENGINE_API_URLS).includes(url as any)) {
+        headers['domain'] = domain;
+    }
+
     const finalPayload = { ...payload };
 
     try {
@@ -149,6 +155,67 @@ export const postAPI = async (
     }
 };
 
+/**
+ * Stream API function for handling streaming responses
+ */
+export const streamAPI = async (
+    url: keyof typeof CORE_ENGINE_API_URLS,
+    payload: any = {},
+    onChunk: (chunk: string) => void
+): Promise<void> => {
+    const apiPath = CORE_ENGINE_API_URLS[url];
+    const baseUrl = getBaseUrl('CORE_ENGINE');
+    
+    // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanApiPath = apiPath.replace(/^\//, '');
+    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
+
+    // Build headers
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    // Add domain header for core engine APIs
+    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    headers['domain'] = domain;
+
+    try {
+        console.log('🔵 streamAPI called:', { url, finalUrl, payload });
+        const response = await fetch(finalUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        if (!response.body) {
+            throw new Error('ReadableStream not supported');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                onChunk(chunk);
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    } catch (error) {
+        console.error('Error in streamAPI:', error);
+        throw error;
+    }
+};
+
 // Index Member API endpoints (auth, providers, AI)
 export const INDEX_MEMBER_API_URLS = {
     // Auth
@@ -174,10 +241,15 @@ export const RX_HUB_API_URLS = {
 // Capabilities API endpoints
 export const CAPABILITIES_API_URLS = {
     SEND_OTP: 'authenticate/send-otp',
+    GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
 } as const;
 
 // Core Engine API endpoints
 export const CORE_ENGINE_API_URLS = {
     SYNC_USER: 'users/sync-user',
+    SYNC_CHAT_THREAD: 'conversation/sync-conversation',
+    GET_CHAT_THREADS: 'conversation/get-conversations',
+    GET_CHAT_MESSAGES: 'conversation/get-messages',
+    STREAM_CHAT_MESSAGE: 'conversation/stream-message',
 } as const;
 

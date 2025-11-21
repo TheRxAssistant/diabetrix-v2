@@ -1,4 +1,4 @@
-import { postAPI, INDEX_MEMBER_API_URLS } from './api';
+import { postAPI, INDEX_MEMBER_API_URLS, CAPABILITIES_API_URLS } from './api';
 
 // AI Service for generating quick replies and contextual responses
 export interface AIResponse {
@@ -16,82 +16,37 @@ export interface QuickReply {
 export class AIService {
 
     /**
-     * Generate contextual quick replies based on conversation history
+     * Generate contextual quick replies based on conversation history or search text
+     * Schema: search_text is optional. If provided, send both messages and search_text. Otherwise, send only messages array.
      */
-    static async generateQuickReplies(messages: any[]): Promise<QuickReply[]> {
+    static async generateQuickReplies(messages: any[] = [], search_text?: string): Promise<QuickReply[]> {
         try {
-            const conversationContext = this.buildConversationContext(messages);
-
-            const prompt = `
-        Based on the following conversation context, generate 3-4 medication-related quick reply suggestions. 
-        
-        Conversation context:
-        ${conversationContext}
-        
-        Generate quick replies that are:
-        1. ONLY about medication questions (dosage, usage, side effects, storage, etc.)
-        2. Short and direct (max 6 words each)
-        3. Related to Diabetrix® medication if applicable
-        
-        Examples of good medication-related quick replies:
-        - "What is the dosage?"
-        - "Tell me more"
-        - "How to use?"
-        - "Any side effects?"
-        - "Storage instructions?"
-        - "When to take it?"
-        - "Can I adjust dose?"
-        - "How often should I take?"
-        - "What if I miss dose?"
-        - "Can I take with food?"
-        
-        Focus ONLY on medication-specific questions. Return responses as very concise medication questions (max 6 words each).
-      `;
-
-            const schema = {
-                type: 'object',
-                properties: {
-                    quick_replies: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                text: {
-                                    type: 'string',
-                                    description: 'The quick reply text',
-                                },
-                                type: {
-                                    type: 'string',
-                                    enum: ['question', 'clarification', 'action'],
-                                    description: 'The type of quick reply',
-                                },
-                            },
-                            required: ['text', 'type'],
-                        },
-                    },
-                },
-                required: ['quick_replies'],
+            // Build payload: messages is always sent, search_text is optional
+            const payload: { search_text?: string; messages: any[] } = {
+                messages: Array.isArray(messages) ? messages : []
             };
+            
+            // If search_text is provided, add it to payload (optional field)
+            if (search_text && search_text.trim()) {
+                payload.search_text = search_text.trim();
+            }
 
-            const result = await postAPI(INDEX_MEMBER_API_URLS.AI_GENERATE_OBJECT, {
-                prompt,
-                schema: JSON.stringify(schema),
-            });
+            const result = await postAPI(CAPABILITIES_API_URLS.GENERATE_QUICK_REPLIES, payload);
 
             console.log('📡 API Response status:', result.statusCode);
             console.log('text', result.data);
             
-            if (result.statusCode !== 200) {
-                throw new Error(`AI service error: ${result.statusCode} - ${result.message}`);
-            }
-
-            const data = result.data;
-            if (data?.res?.object?.quick_replies) {
-                return data.res.object.quick_replies;
+            if (result.statusCode === 200 && result.data.quick_replies && result.data.quick_replies.length > 0) {
+                // Map the response to match QuickReply interface
+                return result.data.quick_replies.map((reply: any) => ({
+                    text: reply.text || reply,
+                    type: reply.type || 'question',
+                }));
             }
 
             return this.getFallbackQuickReplies();
         } catch (error) {
+            console.error('Error generating quick replies:', error);
             return this.getFallbackQuickReplies();
         }
     }

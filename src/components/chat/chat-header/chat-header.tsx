@@ -4,9 +4,11 @@ import "./chat-header.scss";
 
 interface ChatHeaderProps {
     onClose: () => void;
+    chat_mode?: 'input' | 'mcq';
+    on_mode_change?: (mode: 'input' | 'mcq') => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', on_mode_change }) => {
     return (
         <div className="chat-header">
             <div className="concierge-info">
@@ -32,11 +34,28 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose }) => {
                     </div>
                 </div>
             </div>
-            <button className="close-button" onClick={onClose} aria-label="Close chat">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-            </button>
+            <div className="chat-header-actions">
+                {/* Chat Mode Toggle */}
+                {on_mode_change && (
+                    <div className="chat-mode-toggle">
+                        <span className={`toggle-label ${chat_mode === 'input' ? 'active' : ''}`}>Input</span>
+                        <button
+                            onClick={() => on_mode_change(chat_mode === 'input' ? 'mcq' : 'input')}
+                            className={`toggle-switch ${chat_mode === 'mcq' ? 'active' : ''}`}
+                            aria-label="Toggle chat mode"
+                            type="button"
+                        >
+                            <span className="toggle-slider" />
+                        </button>
+                        <span className={`toggle-label ${chat_mode === 'mcq' ? 'active' : ''}`}>MCQ</span>
+                    </div>
+                )}
+                <button className="close-button" onClick={onClose} aria-label="Close chat">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     );
 };

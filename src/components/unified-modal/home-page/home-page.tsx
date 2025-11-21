@@ -59,7 +59,7 @@ const HomePage = ({
         if (setCurrentQuickReplies) setCurrentQuickReplies([]);
 
         // Only create connection if not already active
-        if ((!messages || !messages.length || is_reconnecting) && create_websocket_connection) {
+        if (create_websocket_connection) {
             create_websocket_connection();
         }
 

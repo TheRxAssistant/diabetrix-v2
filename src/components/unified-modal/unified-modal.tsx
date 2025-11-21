@@ -11,7 +11,7 @@ import { postAPI, INDEX_MEMBER_API_URLS } from '../../services/api';
 import ChatHeader from '../chat/chat-header/chat-header';
 import ChatBody from '../chat/chat-body/chat-body';
 import ChatFooter from '../chat/chat-footer/chat-footer';
-import { useWebSocketManager } from '../chat/web-socket-manager/web-socket-manager';
+import { useChat } from '../../services/chat/hooks-chat';
 import HomePage from './home-page/home-page';
 import MorePage from './more-page/more-page';
 import BottomNavigation from './bottom-navigation/bottom-navigation';
@@ -84,24 +84,47 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     const [pendingExternalUrl, setPendingExternalUrl] = useState<string>('');
     
     const messages_end_ref = useRef<HTMLDivElement | null>(null);
-    const { messages, loading, is_reconnecting, send_message, create_websocket_connection } = useWebSocketManager('diabetrix');
+    const { 
+        messages: chatMessages, 
+        is_loading: chatLoading, 
+        is_waiting_for_response, 
+        is_streaming, 
+        streaming_message,
+        sendMessage: sendChatMessage, 
+        createChatThread,
+        conversation_id,
+        error_message: chatError
+    } = useChat();
+
+    // Convert chat messages to the format expected by ChatBody
+    const messages = chatMessages.map((msg, index) => ({
+        id: index + 1,
+        content: msg.message,
+        role: msg.role === 'human' ? 'user' : 'assistant',
+        buttons: msg.buttons,
+        timestamp: new Date(msg.created_at),
+    }));
+
+    const loading = is_waiting_for_response || chatLoading;
+    const is_reconnecting = false; // Not needed with streaming API
 
     // Wrapper function for setStep to match expected type signature
     const handleSetStep = (newStep: string) => {
         setStep(newStep as any);
     };
 
-    const openEmbeddedChatAndSend = useCallback((message?: string) => {
+    const openEmbeddedChatAndSend = useCallback(async (message?: string) => {
         setIsChatActive(true);
-        // Only create connection if not already active
-        if (!messages.length || is_reconnecting) {
-            create_websocket_connection();
+        // Create chat thread if not already created
+        if (!conversation_id) {
+            await createChatThread();
         }
         setStep('embedded_chat' as any);
-        // if (message && typeof message === "string" && message.trim().length > 0) {
-        //   setPendingMessages([message]);
-        // }
-    }, [messages.length, is_reconnecting, create_websocket_connection, setIsChatActive, setStep]);
+        // Send initial message if provided
+        if (message && typeof message === "string" && message.trim().length > 0) {
+            setPendingMessages([message]);
+        }
+    }, [conversation_id, createChatThread, setIsChatActive, setStep]);
 
     // AI-powered follow-up replies generation
     const getFollowUpReplies = useCallback(async (usedReply: string, messages: any[]): Promise<string[]> => {
@@ -150,35 +173,50 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         }
     }, [usedQuickReplies]);
 
-    // Effect to send pending messages when chat becomes active and connection is ready
+    // Effect to send pending messages when chat becomes active and conversation is ready
     useEffect(() => {
-        if (pendingMessages.length > 0 && isChatActive) {
-            const tryToSendMessages = () => {
+        if (pendingMessages.length > 0 && isChatActive && conversation_id) {
+            const tryToSendMessages = async () => {
                 const messagesToSend = [...pendingMessages];
 
-                messagesToSend.forEach((msg, index) => {
-                    setTimeout(() => {
-                        const success = send_message(msg);
-                        console.log(`Sending message "${msg}": ${success}`);
-                        if (success && index === messagesToSend.length - 1) {
+                for (let index = 0; index < messagesToSend.length; index++) {
+                    await new Promise(resolve => setTimeout(resolve, index * 800));
+                    try {
+                        await sendChatMessage(messagesToSend[index]);
+                        console.log(`Sending message "${messagesToSend[index]}"`);
+                        if (index === messagesToSend.length - 1) {
                             // Clear pending messages only after the last message is sent successfully
                             setPendingMessages([]);
                         }
-                    }, index * 800); // Reduced stagger time from 1.5s to 0.8s
-                });
+                    } catch (error) {
+                        console.error(`Failed to send message "${messagesToSend[index]}":`, error);
+                    }
+                }
             };
 
-            const timer = setTimeout(tryToSendMessages, 500); // Reduced initial delay from 1s to 0.5s
+            const timer = setTimeout(tryToSendMessages, 500);
             return () => clearTimeout(timer);
         }
-    }, [pendingMessages, isChatActive]);
+    }, [pendingMessages, isChatActive, conversation_id, sendChatMessage]);
+
+    // Track the last message ID we've generated quick replies for to prevent infinite loops
+    const lastProcessedMessageIdRef = useRef<string | number | null>(null);
 
     // Effect to show AI-generated quick replies after AI responds (works for all chat types)
     useEffect(() => {
-        if (messages.length > 0 && !loading && step === 'embedded_chat') {
+        if (messages.length > 0 && !loading && !is_streaming && step === 'embedded_chat') {
             // Check if the last message is from the assistant (AI)
             const lastMessage = messages[messages.length - 1];
-            if (lastMessage && lastMessage.role !== 'user') {
+            const lastMessageId = lastMessage?.id;
+            
+            // Only generate quick replies if:
+            // 1. Last message is from AI
+            // 2. We haven't processed this message yet
+            // 3. Not currently streaming
+            if (lastMessage && lastMessage.role !== 'user' && lastMessageId !== lastProcessedMessageIdRef.current) {
+                // Mark this message as processed
+                lastProcessedMessageIdRef.current = lastMessageId;
+                
                 // Generate AI quick replies after a short delay
                 const timer = setTimeout(async () => {
                     try {
@@ -201,7 +239,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                 return () => clearTimeout(timer);
             }
         }
-    }, [messages, loading, step, lastLearnTopic]);
+    }, [messages.length, loading, is_streaming, step, lastLearnTopic, generateQuickRepliesForTopic]);
 
 
     // Lock body scroll when modal is mounted (prevents background scroll on mobile/desktop)
@@ -524,12 +562,18 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             onSetLastLearnTopic={setLastLearnTopic}
             onSetShowQuickReplies={setShowQuickReplies}
             onSetCurrentQuickReplies={setCurrentQuickReplies}
-            onCreateWebsocketConnection={create_websocket_connection}
+            onCreateWebsocketConnection={async () => {
+                if (!conversation_id) {
+                    await createChatThread();
+                }
+            }}
             onSetChatResetKey={setChatResetKey}
             onSetPendingMessages={setPendingMessages}
             onSetUsedQuickReplies={setUsedQuickReplies}
             onSetInputMessage={setInputMessage}
-            onSendMessage={send_message}
+            onSendMessage={sendChatMessage}
+            streaming_message={streaming_message}
+            is_streaming={is_streaming}
         />
     );
 
@@ -671,16 +715,20 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             setShowQuickReplies={setShowQuickReplies}
             setCurrentQuickReplies={setCurrentQuickReplies}
             setChatResetKey={setChatResetKey}
-            create_websocket_connection={create_websocket_connection}
+            create_websocket_connection={async () => {
+                if (!conversation_id) {
+                    await createChatThread();
+                }
+            }}
             messages={messages}
-            is_reconnecting={is_reconnecting}
+            is_reconnecting={false}
             setUsedQuickReplies={setUsedQuickReplies}
             isNewRoute={isNewRoute}
             isExternalRoute={isExternalRoute}
         />
     ), [handleSetStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, 
         setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, 
-        create_websocket_connection, messages, is_reconnecting, setUsedQuickReplies, 
+        conversation_id, createChatThread, messages, setUsedQuickReplies, 
         isNewRoute, isExternalRoute]);
 
     // Render More page using the imported component
