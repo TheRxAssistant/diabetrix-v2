@@ -31,19 +31,7 @@ interface ChatBodyProps {
     is_streaming?: boolean;
 }
 
-const ChatBody: React.FC<ChatBodyProps> = ({ 
-    messages, 
-    loading, 
-    is_reconnecting, 
-    messages_end_ref, 
-    handle_button_click,
-    chat_mode = 'input',
-    mcq_options = [],
-    mcq_loading = false,
-    on_mcq_select,
-    streaming_message = '',
-    is_streaming = false
-}) => {
+const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false }) => {
     const [allow_chat, set_allow_chat] = useState(false);
 
     useEffect(() => {
@@ -59,10 +47,10 @@ const ChatBody: React.FC<ChatBodyProps> = ({
                 // Scroll when options are loaded
                 setTimeout(() => {
                     if (messages_end_ref.current) {
-                        messages_end_ref.current.scrollIntoView({ 
-                            behavior: 'smooth', 
+                        messages_end_ref.current.scrollIntoView({
+                            behavior: 'smooth',
                             block: 'end',
-                            inline: 'nearest'
+                            inline: 'nearest',
                         });
                     }
                 }, 200);
@@ -70,10 +58,10 @@ const ChatBody: React.FC<ChatBodyProps> = ({
                 // Scroll when loading starts
                 setTimeout(() => {
                     if (messages_end_ref.current) {
-                        messages_end_ref.current.scrollIntoView({ 
-                            behavior: 'smooth', 
+                        messages_end_ref.current.scrollIntoView({
+                            behavior: 'smooth',
                             block: 'end',
-                            inline: 'nearest'
+                            inline: 'nearest',
                         });
                     }
                 }, 100);
@@ -125,11 +113,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({
                                         <div className="mcq-title">Select an option:</div>
                                         <div className="mcq-options-list">
                                             {mcq_options.map((option, index) => (
-                                                <button
-                                                    key={`mcq-option-${index}`}
-                                                    onClick={() => on_mcq_select && on_mcq_select(option.text)}
-                                                    className="mcq-option-button"
-                                                >
+                                                <button key={`mcq-option-${index}`} onClick={() => on_mcq_select && on_mcq_select(option.text)} className="mcq-option-button">
                                                     {option.text}
                                                 </button>
                                             ))}

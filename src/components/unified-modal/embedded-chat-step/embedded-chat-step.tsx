@@ -62,7 +62,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     onSetInputMessage,
     onSendMessage,
     streaming_message = '',
-    is_streaming = false
+    is_streaming = false,
 }) => {
     // State to control input visibility
     const [show_input, set_show_input] = useState<boolean>(true);
@@ -70,7 +70,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     const [chat_mode, set_chat_mode] = useState<'input' | 'mcq'>('input');
     const [mcq_options, set_mcq_options] = useState<{ text: string; type?: string }[]>([]);
     const [mcq_loading, set_mcq_loading] = useState(false);
-    
+
     // Ref to track if we've generated quick replies for disabled input state
     const quickRepliesGeneratedForDisabledInput = useRef<boolean>(false);
 
@@ -80,21 +80,21 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
             // Reset the flag when input becomes disabled
             if (!quickRepliesGeneratedForDisabledInput.current) {
                 quickRepliesGeneratedForDisabledInput.current = true;
-                
+
                 const generateQuickReplies = async () => {
                     try {
                         console.log('🔄 Generating quick replies because input is disabled', {
                             isChatActive,
                             messagesLength: messages.length,
-                            currentQuickRepliesLength: currentQuickReplies.length
+                            currentQuickRepliesLength: currentQuickReplies.length,
                         });
-                        
+
                         // Use messages if available, otherwise use empty array (API will handle it)
                         const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
                         const quickReplies = await AIService.generateQuickReplies(currentMessages.length > 0 ? currentMessages : []);
                         const replyTexts = quickReplies.map((reply) => reply.text);
                         console.log('✨ Generated quick replies:', replyTexts);
-                        
+
                         // Always update when input is disabled
                         if (replyTexts.length > 0) {
                             onSetCurrentQuickReplies(replyTexts);
@@ -115,7 +115,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         onSetShowQuickReplies(true);
                     }
                 };
-                
+
                 // Small delay to ensure state is updated
                 const timer = setTimeout(generateQuickReplies, 300);
                 return () => clearTimeout(timer);
@@ -132,6 +132,17 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
             set_mcq_options([]);
         }
     }, [chat_mode]);
+
+    useEffect(() => {
+        console.log('is_streaming', is_streaming);
+    }, [is_streaming]);
+
+    // Hide quick replies when streaming starts
+    useEffect(() => {
+        if (is_streaming && showQuickReplies) {
+            onSetShowQuickReplies(false);
+        }
+    }, [is_streaming, showQuickReplies, onSetShowQuickReplies]);
 
     // Handle search in MCQ mode - called only on Enter or search icon click
     const handle_search = async (search_text: string) => {
@@ -178,30 +189,9 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     overflow: 'hidden',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
-                <ChatHeader 
-                    onClose={onClose}
-                    chat_mode={chat_mode}
-                    on_mode_change={set_chat_mode}
-                    show_input={show_input}
-                    on_toggle_input={set_show_input}
-                />
+                <ChatHeader onClose={onClose} chat_mode={chat_mode} on_mode_change={set_chat_mode} show_input={show_input} on_toggle_input={set_show_input} />
                 <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-                    {isChatActive ? (
-                        <ChatBody
-                            key={chatResetKey}
-                            messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages}
-                            loading={loading}
-                            is_reconnecting={isReconnecting}
-                            messages_end_ref={messagesEndRef as any}
-                            handle_button_click={(t: string) => onSendMessage(t)}
-                            chat_mode={chat_mode}
-                            mcq_options={mcq_options}
-                            mcq_loading={mcq_loading}
-                            on_mcq_select={handle_mcq_select}
-                            streaming_message={streaming_message}
-                            is_streaming={is_streaming}
-                        />
-                    ) : null}
+                    {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} /> : null}
                     {showLearnOverlay && (
                         <div className={`${styles.learn_overlay} ${isGoodRx ? styles.goodrx_theme : ''}`}>
                             <div className={styles.learn_overlay_header}>
@@ -241,7 +231,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                             onSetLastLearnTopic(item.question);
                                             onSetShowQuickReplies(false);
                                             onSetCurrentQuickReplies([]);
-                                            
+
                                             onCreateWebsocketConnection();
                                             onSetChatResetKey((k) => k + 1);
                                             onSetPendingMessages(['yes', item.question]);
@@ -269,8 +259,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         width: '100%',
                         boxSizing: 'border-box',
                     }}>
-                    {/* Quick Replies - Show in input mode, or always show when input is hidden */}
-                    {(chat_mode === 'input' && currentQuickReplies.length > 0) || (showQuickReplies && !show_input) ? (
+                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but not while streaming */}
+                    {!is_streaming && ((chat_mode === 'input' && currentQuickReplies.length > 0 && showQuickReplies) || (showQuickReplies && !show_input)) ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (
@@ -281,12 +271,10 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                             animationDelay: `${index * 100}ms`,
                                         }}
                                         onClick={() => {
+                                            // Always hide quick replies immediately when clicked (before sending message)
+                                            onSetShowQuickReplies(false);
                                             onSendMessage(reply);
                                             onSetUsedQuickReplies((prev) => [...prev, reply]);
-                                            // Only hide quick replies if input is visible
-                                            if (show_input) {
-                                                onSetShowQuickReplies(false);
-                                            }
                                         }}>
                                         {reply}
                                     </button>
@@ -331,4 +319,3 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         </div>
     );
 };
-
