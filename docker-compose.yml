@@ -1,0 +1,22 @@
+services:
+    diabetrix-v2-frontend:
+        image: diabetrix/diabetrix-v2-frontend:0.1
+        container_name: diabetrix-v2-frontend
+        restart: always
+        stop_signal: SIGKILL
+        build:
+            dockerfile: 'Dockerfile'
+            context: '.'
+        ports:
+            - '16017:80'
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.7'
+                    memory: 512M
+        networks:
+            - global_network
+
+networks:
+    global_network:
+        external: true

@@ -233,6 +233,37 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     if (showMapView) {
         // Get providers for map
         const providersForMap = selectedMapProvider ? [selectedMapProvider] : getAllProvidersForMap();
+        
+        // Convert to PlotMap component compatible format
+        // PlotMap expects Provider[] | Facility[] from types/healthcare/types.ts
+        const providersForMapConverted = providersForMap.map(provider => {
+            const reviewCount = provider.review_count || provider.provider_review_count;
+            const reviewCountNum = typeof reviewCount === 'string' ? parseInt(reviewCount, 10) : reviewCount;
+            
+            const languages = provider.languages || provider.provider_languages;
+            const languagesStr = Array.isArray(languages) ? languages.join(', ') : languages;
+            
+            return {
+                provider_id: provider.provider_id !== undefined ? String(provider.provider_id) : undefined,
+                provider_name: provider.name || provider.provider_name,
+                provider_specialty: provider.provider_specialty,
+                provider_address: provider.address || provider.provider_address,
+                provider_phone: provider.phone || provider.provider_phone || '',
+                provider_email: provider.email || provider.provider_email,
+                provider_website: provider.website || provider.provider_website,
+                provider_image: provider.image || provider.provider_image,
+                provider_rating: provider.rating || provider.provider_rating,
+                provider_distance: provider.provider_distance,
+                provider_next_available: provider.provider_next_available,
+                provider_accepts_insurance: provider.provider_accepts_insurance,
+                provider_review_count: reviewCountNum,
+                provider_degree: provider.provider_degree,
+                provider_languages: languagesStr,
+                provider_facilities: provider.provider_facilities,
+                provider_full_address_obj: provider.provider_full_address_obj,
+                is_bookmarked: provider.is_bookmarked,
+            };
+        });
 
         console.log('providersForMap', providersForMap);
         return (
@@ -269,7 +300,11 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                             height: '100vh',
                             position: 'relative',
                         }}>
-                        <PlotMap list={providersForMap} selected_id={selectedMapProvider?.provider_id} on_provider_select={(provider) => setSelectedMapProvider(provider as MapProvider)} />
+                        <PlotMap 
+                            list={providersForMapConverted} 
+                            selected_id={selectedMapProvider?.provider_id !== undefined ? String(selectedMapProvider.provider_id) : undefined} 
+                            on_provider_select={(provider) => setSelectedMapProvider(provider as MapProvider)} 
+                        />
                         {/* Show List button - floating at bottom */}
                         <button
                             className="fixed bottom-32 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-3 px-6 rounded-full font-medium hover:shadow-lg transition-all duration-200 shadow-lg z-40 flex items-center space-x-2"
