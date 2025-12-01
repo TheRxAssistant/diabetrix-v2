@@ -116,9 +116,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     }
                 };
 
-                // Small delay to ensure state is updated
-                const timer = setTimeout(generateQuickReplies, 300);
-                return () => clearTimeout(timer);
+                // Generate immediately without delay
+                generateQuickReplies();
             }
         } else if (show_input) {
             // Reset flag when input becomes visible again
@@ -143,6 +142,22 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
             onSetShowQuickReplies(false);
         }
     }, [is_streaming, showQuickReplies, onSetShowQuickReplies]);
+
+    // Auto-scroll to bottom when quick replies are generated and shown
+    useEffect(() => {
+        if (showQuickReplies && currentQuickReplies.length > 0) {
+            // Small delay to ensure quick replies are rendered before scrolling
+            setTimeout(() => {
+                if (messagesEndRef.current) {
+                    messagesEndRef.current.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'end',
+                        inline: 'nearest',
+                    });
+                }
+            }, 100);
+        }
+    }, [showQuickReplies, currentQuickReplies.length, messagesEndRef]);
 
     // Handle search in MCQ mode - called only on Enter or search icon click
     const handle_search = async (search_text: string) => {

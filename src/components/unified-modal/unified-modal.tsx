@@ -217,8 +217,8 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                 // Mark this message as processed
                 lastProcessedMessageIdRef.current = lastMessageId;
                 
-                // Generate AI quick replies after a short delay
-                const timer = setTimeout(async () => {
+                // Generate AI quick replies immediately
+                (async () => {
                     try {
                         console.log('🎪 Triggering AI quick replies generation...');
 
@@ -235,8 +235,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                         setCurrentQuickReplies(['Tell me more', 'What else?', 'Any concerns?', 'How can I help?']);
                         setShowQuickReplies(true);
                     }
-                }, 1500); // Slightly longer delay to let AI generate replies
-                return () => clearTimeout(timer);
+                })();
             }
         }
     }, [messages.length, loading, is_streaming, step, lastLearnTopic, generateQuickRepliesForTopic]);

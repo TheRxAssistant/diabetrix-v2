@@ -40,6 +40,20 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
         }, 2000);
     }, []);
 
+    // Auto-scroll when streaming message updates
+    useEffect(() => {
+        if (is_streaming && streaming_message) {
+            // Scroll to bottom when streaming message updates
+            if (messages_end_ref.current) {
+                messages_end_ref.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'end',
+                    inline: 'nearest',
+                });
+            }
+        }
+    }, [streaming_message, is_streaming, messages_end_ref]);
+
     // Auto-scroll when MCQ options appear or finish loading
     useEffect(() => {
         if (chat_mode === 'mcq') {
