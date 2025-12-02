@@ -158,14 +158,14 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
 
             const aiReplies = await AIService.generateQuickReplies(messages);
             const replyTexts = aiReplies.map((reply) => reply.text);
-            const availableReplies = replyTexts.filter((reply) => !usedQuickReplies.includes(reply));
 
-            return availableReplies.length > 0 ? availableReplies : replyTexts;
+            // Return all quick replies from backend without filtering
+            return replyTexts;
         } catch (error) {
             console.error('❌ Error generating quick replies:', error);
             return ['Tell me more', 'What else?', 'Any concerns?', 'How can I help?'];
         }
-    }, [usedQuickReplies]);
+    }, []);
 
     // Effect to send pending messages when chat becomes active and conversation is ready
     useEffect(() => {

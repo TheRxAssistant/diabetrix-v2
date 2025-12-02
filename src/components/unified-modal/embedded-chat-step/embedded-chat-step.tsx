@@ -136,12 +136,20 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         console.log('is_streaming', is_streaming);
     }, [is_streaming]);
 
-    // Hide quick replies when streaming starts
+    // Hide quick replies when streaming starts (input is disabled during streaming)
     useEffect(() => {
         if (is_streaming && showQuickReplies) {
             onSetShowQuickReplies(false);
         }
     }, [is_streaming, showQuickReplies, onSetShowQuickReplies]);
+
+    // Show quick replies once they're available after streaming ends
+    useEffect(() => {
+        if (!is_streaming && currentQuickReplies.length > 0 && !showQuickReplies) {
+            // Show quick replies after streaming ends if they're available
+            onSetShowQuickReplies(true);
+        }
+    }, [is_streaming, currentQuickReplies.length, showQuickReplies, onSetShowQuickReplies]);
 
     // Auto-scroll to bottom when quick replies are generated and shown
     useEffect(() => {
@@ -306,8 +314,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         width: '100%',
                         boxSizing: 'border-box',
                     }}>
-                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but not while streaming */}
-                    {!is_streaming && ((chat_mode === 'input' && currentQuickReplies.length > 0 && showQuickReplies) || (showQuickReplies && !show_input)) ? (
+                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but hide when input is disabled during streaming */}
+                    {!is_streaming && showQuickReplies && currentQuickReplies.length > 0 && ((chat_mode === 'input') || !show_input) ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (
