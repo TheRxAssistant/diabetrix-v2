@@ -1,4 +1,4 @@
-import React, { RefObject, useState, useEffect, useRef } from 'react';
+import React, { RefObject, useState, useEffect, useRef, useCallback } from 'react';
 import styles from '../unified-modal.module.scss';
 import ChatHeader from '../../chat/chat-header/chat-header';
 import ChatBody from '../../chat/chat-body/chat-body';
@@ -159,10 +159,12 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         }
     }, [showQuickReplies, currentQuickReplies.length, messagesEndRef]);
 
-    // Handle search in MCQ mode - called only on Enter or search icon click
-    const handle_search = async (search_text: string) => {
+    // Ref to store the debounce timeout for auto-search in MCQ mode
+    const searchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Handle search in MCQ mode - called on Enter, search icon click, or after debounce
+    const handle_search = useCallback(async (search_text: string) => {
         if (chat_mode === 'mcq' && search_text.trim()) {
-            // Set loading state
             set_mcq_loading(true);
 
             try {
@@ -170,25 +172,55 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                 const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
                 const quickReplies = await AIService.generateQuickReplies(currentMessages, search_text.trim());
                 set_mcq_options(quickReplies);
-                // Clear search input after successful search
-                onSetInputMessage('');
             } catch (error) {
                 console.error('Error searching quick replies:', error);
                 set_mcq_options([]);
-                // Clear search input even on error
                 onSetInputMessage('');
             } finally {
                 set_mcq_loading(false);
             }
-        } else if (chat_mode === 'mcq' && !search_text.trim()) {
-            // Clear options if search text is empty
+        }
+    }, [chat_mode, isLearnFlow, messages, onSetInputMessage]);
+
+    // Debounced search in MCQ mode - triggers after 600ms of idle typing
+    useEffect(() => {
+        // Only in MCQ mode
+        if (chat_mode !== 'mcq') {
+            // Clear any pending timeout if switching away from MCQ mode
+            if (searchDebounceTimeoutRef.current) {
+                clearTimeout(searchDebounceTimeoutRef.current);
+                searchDebounceTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        // Clear previous timeout if user is still typing
+        if (searchDebounceTimeoutRef.current) {
+            clearTimeout(searchDebounceTimeoutRef.current);
+            searchDebounceTimeoutRef.current = null;
+        }
+
+        // Only trigger search if there's text in the input
+        if (inputMessage.trim()) {
+            searchDebounceTimeoutRef.current = setTimeout(() => {
+                handle_search(inputMessage);
+            }, 600);
+        } else {
             set_mcq_options([]);
         }
-    };
+
+        return () => {
+            if (searchDebounceTimeoutRef.current) {
+                clearTimeout(searchDebounceTimeoutRef.current);
+                searchDebounceTimeoutRef.current = null;
+            }
+        };
+    }, [inputMessage, chat_mode, handle_search]);
 
     // Handle MCQ option selection
     const handle_mcq_select = async (option: string) => {
         set_mcq_options([]); // Clear MCQ options after selection
+        onSetInputMessage(''); // Clear input field after selection
         onSendMessage(option);
     };
     return (

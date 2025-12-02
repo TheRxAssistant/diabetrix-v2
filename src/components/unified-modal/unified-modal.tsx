@@ -1,10 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styles from './unified-modal.module.scss';
-// Avatar image - using public path for Vite compatibility
-const avatar = '/assets/images/avatar.png';
 import { sendMedicationAvailability, sendWelcomeMessage } from '../../services/smsService';
-import { AnimatePresence, motion } from 'framer-motion';
-import PharmacyMultiSelect from '../pharmacy/pharmacy-multi-select/PharmacyMultiSelect';
 import { featuredPharmacies } from '../../data/pharmacies/pharmacies';
 import { AIService } from '../../services/ai-service';
 import { postAPI, INDEX_MEMBER_API_URLS } from '../../services/api';
@@ -31,11 +27,9 @@ import { EmbeddedChatStep } from './embedded-chat-step/embedded-chat-step';
 import { useModalState } from './hooks/useModalState';
 import { useChatState } from './hooks/useChatState';
 import { usePharmacyState } from './hooks/usePharmacyState';
-import { usePharmacyCheck } from './hooks/usePharmacyCheck';
 // Utilities
 import { formatPhoneNumber, formatOtp, isValidPhoneNumber } from './utils/phone-utils';
-import { MODAL_CONSTANTS, STEP_TYPES, SERVICE_TYPES } from './utils/constants';
-import { renderHtmlContent, formatServiceName, getServiceRedirectMessage } from './utils/render-utils';
+import { SERVICE_TYPES } from './utils/constants';
 // Services
 import { sendOtp, verifyOtp, checkAuthSession } from './services/auth-service';
 
