@@ -3348,23 +3348,23 @@
         font-size: $font_size_base; /* Prevents zoom on input focus */
     }
 
-    // Better typography hierarchy for iPhone
-    h1,
-    .title-xl {
-        font-size: $font_size_3xl;
-    }
-    h2,
-    .title-lg {
-        font-size: $font_size_2xl;
-    }
-    h3,
-    .title-md {
-        font-size: $font_size_xl;
-    }
-    h4,
-    .title-sm {
-        font-size: $font_size_lg;
-    }
+    // Better typography hierarchy for iPhone - COMMENTED OUT to allow Tailwind classes to work consistently
+    // h1,
+    // .title-xl {
+    //     font-size: $font_size_3xl;
+    // }
+    // h2,
+    // .title-lg {
+    //     font-size: $font_size_2xl;
+    // }
+    // h3,
+    // .title-md {
+    //     font-size: $font_size_xl;
+    // }
+    // h4,
+    // .title-sm {
+    //     font-size: $font_size_lg;
+    // }
 
     // Ensure comfortable reading
     body,

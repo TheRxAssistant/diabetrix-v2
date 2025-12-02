@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import diabetrixLogo from '../../../assets/images/diabetrix_logo_2.png';
-import { ArrowRight, BookOpen, DollarSign, MapPin, Phone, Pill, Search, Stethoscope, Syringe } from 'lucide-react';
+import { ArrowRight, BookOpen, DollarSign, MapPin, Pill, Search, Stethoscope, Syringe } from 'lucide-react';
 import RecentRequests from './recent-requests';
 
 interface Request {
@@ -254,17 +254,6 @@ const HomePage = ({
                             <h1 className="text-lg font-semibold text-gray-900 leading-tight mb-0.5">Diabetrix® Care</h1>
                             <p className="text-xs text-gray-600 font-normal m-0">Your health companion</p>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mr-16">
-                        <button
-                            className="flex items-center justify-center w-10 h-10 bg-emerald-500 text-white border-none rounded-full cursor-pointer transition-all duration-200 shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/40 active:scale-95"
-                            onClick={() => {
-                                window.open('tel:+18005551234', '_blank');
-                            }}
-                            aria-label="Call support">
-                            <Phone className="w-5 h-5" />
-                        </button>
                     </div>
                 </div>
             </div>

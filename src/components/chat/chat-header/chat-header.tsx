@@ -56,7 +56,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', o
                 {on_toggle_input && (
                     <button 
                         className="input-toggle-button" 
-                        onClick={() => on_toggle_input(!show_input)}
+                        onClick={() =>  {
+                            on_toggle_input(!show_input);
+                            if (chat_mode === 'mcq') {
+                                on_mode_change?.('input');
+                            }
+                        }}
                         aria-label={show_input ? "Hide input" : "Show input"}
                         type="button"
                         title={show_input ? "Hide input" : "Show input"}

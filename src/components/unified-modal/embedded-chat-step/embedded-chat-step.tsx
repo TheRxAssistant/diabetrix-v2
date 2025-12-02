@@ -314,8 +314,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         width: '100%',
                         boxSizing: 'border-box',
                     }}>
-                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but hide when input is disabled during streaming */}
-                    {!is_streaming && showQuickReplies && currentQuickReplies.length > 0 && ((chat_mode === 'input') || !show_input) ? (
+                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but hide completely in MCQ mode and during streaming */}
+                    {chat_mode !== 'mcq' && !is_streaming && showQuickReplies && currentQuickReplies.length > 0 && ((chat_mode === 'input') || !show_input) ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (
