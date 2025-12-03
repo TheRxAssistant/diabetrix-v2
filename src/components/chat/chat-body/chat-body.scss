@@ -538,7 +538,8 @@
 }
 
 .mcq-options-content {
-  max-width: 80%;
+  max-width: 90%;
+  min-width: 200px;
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
   box-shadow:
@@ -561,6 +562,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  // Horizontal layout for Yes/No consent options
+  &.mcq-options-row {
+    flex-direction: row;
+    gap: 0.75rem;
+    
+    .mcq-option-button {
+      flex: 1;
+      min-width: 60px;
+      text-align: center;
+    }
+  }
 }
 
 .mcq-option-button {
@@ -630,4 +643,42 @@
   font-size: 0.875rem;
   color: #65737e;
   font-weight: 500;
+}
+
+// Restart Flow Button Styles
+.restart-flow-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0 0.5rem;
+  padding: 0 1rem;
+}
+
+.restart-flow-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
 }

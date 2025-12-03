@@ -114,6 +114,53 @@ export class AIService {
     }
 
     /**
+     * Generate intelligent options based on the last assistant message
+     * Analyzes context to return appropriate options (Yes/No for consent, zipcodes, doctor types, etc.)
+     */
+    static async generateIntelligentOptions(messages: any[] = [], lastAssistantMessage: string): Promise<{ options: QuickReply[], option_type: string }> {
+        try {
+            const payload = {
+                messages: Array.isArray(messages) ? messages : [],
+                last_assistant_message: lastAssistantMessage,
+            };
+
+            const result = await postAPI(CAPABILITIES_API_URLS.GENERATE_INTELLIGENT_OPTIONS, payload);
+
+            console.log('📡 Intelligent Options API Response:', result.statusCode);
+            
+            if (result.statusCode === 200 && result.data.options && result.data.options.length > 0) {
+                return {
+                    options: result.data.options.map((option: any) => ({
+                        text: option.text || option,
+                        type: 'action',
+                    })),
+                    option_type: result.data.option_type || 'generic',
+                };
+            }
+
+            return this.getFallbackIntelligentOptions();
+        } catch (error) {
+            console.error('Error generating intelligent options:', error);
+            return this.getFallbackIntelligentOptions();
+        }
+    }
+
+    /**
+     * Fallback intelligent options when AI generation fails
+     */
+    private static getFallbackIntelligentOptions(): { options: QuickReply[], option_type: string } {
+        return {
+            options: [
+                { text: 'Yes', type: 'action' },
+                { text: 'No', type: 'action' },
+                { text: 'Tell me more', type: 'question' },
+                { text: 'Skip', type: 'action' },
+            ],
+            option_type: 'generic',
+        };
+    }
+
+    /**
      * Determine if quick replies should be shown based on conversation state
      */
     static shouldShowQuickReplies(messages: any[], loading: boolean): boolean {

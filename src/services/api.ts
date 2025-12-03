@@ -240,6 +240,7 @@ export const RX_HUB_API_URLS = {
 export const CAPABILITIES_API_URLS = {
     SEND_OTP: 'authenticate/send-otp',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
+    GENERATE_INTELLIGENT_OPTIONS: 'drugs/generate-intelligent-options',
     // Find Care APIs
     GET_CARE_CATEGORY: 'find-care/get-care-categories',
     GET_CARE_CATEGORY_V2: 'find-care/get-care-categories-v2',
