@@ -17,6 +17,12 @@ interface QuickReply {
     type?: string;
 }
 
+interface InputField {
+    field_type: 'zipcode' | 'personal_name' | 'phone' | 'email' | 'dob' | 'address' | 'member_id' | 'group_number';
+    label: string;
+    placeholder: string;
+}
+
 interface ChatBodyProps {
     messages: Message[];
     loading: boolean;
@@ -31,17 +37,59 @@ interface ChatBodyProps {
     is_streaming?: boolean;
     // Intelligent options props
     intelligent_options?: QuickReply[];
+    intelligent_input_fields?: any[];
     intelligent_options_loading?: boolean;
     intelligent_option_type?: string;
     on_intelligent_option_select?: (option: string) => void;
+    on_intelligent_input_submit?: (values: Record<string, string>) => void;
     show_intelligent_options?: boolean;
-    // Restart flow props
-    on_restart_flow?: () => void;
-    show_restart_button?: boolean;
+    show_start_again?: boolean;
+    on_start_again?: () => void;
 }
 
-const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, show_intelligent_options = false, on_restart_flow, show_restart_button = false }) => {
+const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again }) => {
     const [allow_chat, set_allow_chat] = useState(false);
+    const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
+
+    // Reset input field values when input_fields change - use index as key for uniqueness
+    useEffect(() => {
+        if (intelligent_input_fields.length > 0) {
+            const initial_values: Record<string, string> = {};
+            intelligent_input_fields.forEach((field, index) => {
+                // Use index-based key to ensure uniqueness even if field_types are same
+                initial_values[`field_${index}`] = '';
+            });
+            set_input_field_values(initial_values);
+        }
+    }, [intelligent_input_fields]);
+
+    const handle_input_change = (field_key: string, value: string) => {
+        set_input_field_values(prev => ({
+            ...prev,
+            [field_key]: value
+        }));
+    };
+
+    const handle_input_submit = () => {
+        // Check if all fields have values
+        const all_filled = intelligent_input_fields.every((_, index) => input_field_values[`field_${index}`]?.trim());
+        if (all_filled && on_intelligent_input_submit) {
+            // Build result object with field_type as key and user-entered value
+            const result: Record<string, string> = {};
+            intelligent_input_fields.forEach((field, index) => {
+                result[field.label] = input_field_values[`field_${index}`];
+            });
+            on_intelligent_input_submit(result);
+            // Reset values after submit
+            const reset_values: Record<string, string> = {};
+            intelligent_input_fields.forEach((_, index) => {
+                reset_values[`field_${index}`] = '';
+            });
+            set_input_field_values(reset_values);
+        }
+    };
+
+    const is_submit_disabled = !intelligent_input_fields.every((_, index) => input_field_values[`field_${index}`]?.trim());
 
     useEffect(() => {
         setTimeout(() => {
@@ -92,10 +140,10 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
         }
     }, [mcq_options.length, mcq_loading, chat_mode]);
 
-    // Auto-scroll when intelligent options appear or finish loading
+    // Auto-scroll when intelligent options or input fields appear or finish loading
     useEffect(() => {
         if (show_intelligent_options) {
-            if (intelligent_options.length > 0 || intelligent_options_loading) {
+            if (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_options_loading) {
                 setTimeout(() => {
                     if (messages_end_ref.current) {
                         messages_end_ref.current.scrollIntoView({
@@ -107,7 +155,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                 }, 200);
             }
         }
-    }, [intelligent_options.length, intelligent_options_loading, show_intelligent_options, messages_end_ref]);
+    }, [intelligent_options.length, intelligent_input_fields.length, intelligent_options_loading, show_intelligent_options, messages_end_ref]);
 
     return (
         <div className="messages-container">
@@ -165,7 +213,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                     )}
 
                     {/* Intelligent Options Display - Right Side (when input is disabled or MCQ mode) */}
-                    {show_intelligent_options && (intelligent_options.length > 0 || intelligent_options_loading) && !(chat_mode === 'mcq' && mcq_options.length > 0) && (
+                    {show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_options_loading) && !(chat_mode === 'mcq' && mcq_options.length > 0) && (
                         <div className="mcq-options-container mcq-right-side">
                             <div className="mcq-options-content">
                                 {intelligent_options_loading ? (
@@ -177,7 +225,36 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                         </div>
                                         <span className="mcq-loading-text">Loading options...</span>
                                     </div>
+                                ) : intelligent_input_fields.length > 0 ? (
+                                    /* Input Fields for user-input types (zipcode, phone, email, etc.) */
+                                    <div className="intelligent-input-fields">
+                                        {intelligent_input_fields.map((field, index) => (
+                                            <div key={`input-field-${index}`} className="intelligent-input-group">
+                                                <label className="intelligent-input-label">{field.label}</label>
+                                                <input
+                                                    type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
+                                                    className="intelligent-input-field"
+                                                    placeholder={field.placeholder}
+                                                    value={input_field_values[`field_${index}`] || ''}
+                                                    onChange={(e) => handle_input_change(`field_${index}`, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && !is_submit_disabled) {
+                                                            handle_input_submit();
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                        <button 
+                                            className="intelligent-input-submit"
+                                            onClick={handle_input_submit}
+                                            disabled={is_submit_disabled}
+                                        >
+                                            Submit
+                                        </button>
+                                    </div>
                                 ) : (
+                                    /* Clickable Buttons for selection types (consent, doctor_type, etc.) */
                                     <>
                                         <div className={`mcq-options-list ${intelligent_option_type === 'consent' ? 'mcq-options-row' : ''}`}>
                                             {intelligent_options.map((option, index) => (
@@ -196,18 +273,14 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                         </div>
                     )}
 
-                    {/* Restart Flow Button - appears when input is disabled and there are more than 3 messages */}
-                    {show_restart_button && on_restart_flow && (
-                        <div className="restart-flow-container">
+                    {/* Start Again Button - shows when input is disabled */}
+                    {show_start_again && !is_streaming && !loading && !intelligent_options_loading && (
+                        <div className="start-again-container">
                             <button 
-                                className="restart-flow-button"
-                                onClick={on_restart_flow}
+                                className="start-again-button"
+                                onClick={on_start_again}
                             >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                                    <path d="M3 3v5h5"/>
-                                </svg>
-                                Start Over
+                                Start Again
                             </button>
                         </div>
                     )}

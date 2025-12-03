@@ -13,6 +13,18 @@ export interface QuickReply {
     type: 'question' | 'clarification' | 'action';
 }
 
+export interface InputField {
+    field_type: 'zipcode' | 'personal_name' | 'phone' | 'email' | 'dob' | 'address' | 'member_id' | 'group_number';
+    label: string;
+    placeholder: string;
+}
+
+export interface IntelligentOptionsResult {
+    options: QuickReply[];
+    input_fields: InputField[];
+    option_type: string;
+}
+
 export class AIService {
 
     /**
@@ -115,9 +127,10 @@ export class AIService {
 
     /**
      * Generate intelligent options based on the last assistant message
-     * Analyzes context to return appropriate options (Yes/No for consent, zipcodes, doctor types, etc.)
+     * Analyzes context to return appropriate options (Yes/No for consent, doctor types, etc.)
+     * OR input fields for user-input types (zipcode, phone, email, etc.)
      */
-    static async generateIntelligentOptions(messages: any[] = [], lastAssistantMessage: string): Promise<{ options: QuickReply[], option_type: string }> {
+    static async generateIntelligentOptions(messages: any[] = [], lastAssistantMessage: string): Promise<IntelligentOptionsResult> {
         try {
             const payload = {
                 messages: Array.isArray(messages) ? messages : [],
@@ -128,14 +141,24 @@ export class AIService {
 
             console.log('📡 Intelligent Options API Response:', result.statusCode);
             
-            if (result.statusCode === 200 && result.data.options && result.data.options.length > 0) {
-                return {
-                    options: result.data.options.map((option: any) => ({
-                        text: option.text || option,
-                        type: 'action',
-                    })),
-                    option_type: result.data.option_type || 'generic',
-                };
+            if (result.statusCode === 200) {
+                const hasOptions = result.data.options && result.data.options.length > 0;
+                const hasInputFields = result.data.input_fields && result.data.input_fields.length > 0;
+                
+                if (hasOptions || hasInputFields) {
+                    return {
+                        options: hasOptions ? result.data.options.map((option: any) => ({
+                            text: option.text || option,
+                            type: 'action',
+                        })) : [],
+                        input_fields: hasInputFields ? result.data.input_fields.map((field: any) => ({
+                            field_type: field.field_type,
+                            label: field.label,
+                            placeholder: field.placeholder,
+                        })) : [],
+                        option_type: result.data.option_type || 'generic',
+                    };
+                }
             }
 
             return this.getFallbackIntelligentOptions();
@@ -148,7 +171,7 @@ export class AIService {
     /**
      * Fallback intelligent options when AI generation fails
      */
-    private static getFallbackIntelligentOptions(): { options: QuickReply[], option_type: string } {
+    private static getFallbackIntelligentOptions(): IntelligentOptionsResult {
         return {
             options: [
                 { text: 'Yes', type: 'action' },
@@ -156,6 +179,7 @@ export class AIService {
                 { text: 'Tell me more', type: 'question' },
                 { text: 'Skip', type: 'action' },
             ],
+            input_fields: [],
             option_type: 'generic',
         };
     }

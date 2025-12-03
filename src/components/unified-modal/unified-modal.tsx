@@ -91,11 +91,6 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         set_messages: setChatMessages
     } = useChat();
 
-    // Truncate messages - keep only first N messages
-    const truncateMessages = useCallback((keepCount: number) => {
-        setChatMessages((prevMessages) => prevMessages.slice(0, keepCount));
-    }, [setChatMessages]);
-
     // Convert chat messages to the format expected by ChatBody
     const messages = chatMessages.map((msg, index) => ({
         id: index + 1,
@@ -571,7 +566,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             onSetUsedQuickReplies={setUsedQuickReplies}
             onSetInputMessage={setInputMessage}
             onSendMessage={sendChatMessage}
-            onTruncateMessages={truncateMessages}
+            onSetMessages={setChatMessages}
             streaming_message={streaming_message}
             is_streaming={is_streaming}
         />
