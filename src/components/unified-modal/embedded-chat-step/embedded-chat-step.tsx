@@ -76,6 +76,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     // Intelligent options state (for when input is disabled or in mcq mode)
     const [intelligent_options, set_intelligent_options] = useState<{ text: string; type?: string }[]>([]);
     const [intelligent_input_fields, set_intelligent_input_fields] = useState<{ field_type: string; label: string; placeholder: string }[]>([]);
+    const [intelligent_action_link, set_intelligent_action_link] = useState<{ url: string; label: string; open_in_new_tab: boolean } | null>(null);
     const [intelligent_options_loading, set_intelligent_options_loading] = useState(false);
     const [intelligent_option_type, set_intelligent_option_type] = useState<string>('generic');
 
@@ -131,6 +132,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         console.log('✨ Generated intelligent options:', result);
                         set_intelligent_options(result.options);
                         set_intelligent_input_fields(result.input_fields || []);
+                        set_intelligent_action_link(result.action_link || null);
                         set_intelligent_option_type(result.option_type);
                     } catch (error) {
                         console.error('❌ Error generating intelligent options:', error);
@@ -142,6 +144,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                             { text: 'Skip', type: 'action' },
                         ]);
                         set_intelligent_input_fields([]);
+                        set_intelligent_action_link(null);
                         set_intelligent_option_type('generic');
                     } finally {
                         set_intelligent_options_loading(false);
@@ -155,6 +158,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
             intelligentOptionsGeneratedRef.current = false;
             set_intelligent_options([]);
             set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
         }
     }, [show_input, chat_mode, is_streaming, loading, messages.length, isChatActive, isLearnFlow, messages]);
 
@@ -163,6 +167,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         if (is_streaming) {
             set_intelligent_options([]);
             set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
             intelligentOptionsGeneratedRef.current = false;
         }
     }, [is_streaming]);
@@ -335,6 +340,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         // Clear current intelligent options
         set_intelligent_options([]);
         set_intelligent_input_fields([]);
+        set_intelligent_action_link(null);
         intelligentOptionsGeneratedRef.current = false;
         lastMessageCountForIntelligentOptions.current = 0;
         
@@ -355,6 +361,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     
                     set_intelligent_options(result.options);
                     set_intelligent_input_fields(result.input_fields || []);
+                    set_intelligent_action_link(result.action_link || null);
                     set_intelligent_option_type(result.option_type);
                     intelligentOptionsGeneratedRef.current = true;
                     lastMessageCountForIntelligentOptions.current = 3;
@@ -368,6 +375,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     { text: 'Skip', type: 'action' },
                 ]);
                 set_intelligent_input_fields([]);
+                set_intelligent_action_link(null);
                 set_intelligent_option_type('generic');
             } finally {
                 set_intelligent_options_loading(false);
@@ -390,7 +398,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                 }}>
                 <ChatHeader onClose={onClose} chat_mode={chat_mode} on_mode_change={set_chat_mode} show_input={show_input} on_toggle_input={set_show_input} />
                 <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-                    {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} intelligent_options={intelligent_options} intelligent_input_fields={intelligent_input_fields} intelligent_options_loading={intelligent_options_loading} intelligent_option_type={intelligent_option_type} on_intelligent_option_select={(option) => { set_intelligent_options([]); set_intelligent_input_fields([]); onSendMessage(option); }} on_intelligent_input_submit={(values) => { set_intelligent_options([]); set_intelligent_input_fields([]); const message = Object.values(values).join(', '); onSendMessage(message); }} show_intelligent_options={(!show_input || chat_mode === 'mcq') && !is_streaming} show_start_again={!show_input && !is_streaming && messages.length > 4} on_start_again={handle_start_again} /> : null}
+                    {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} intelligent_options={intelligent_options} intelligent_input_fields={intelligent_input_fields} intelligent_action_link={intelligent_action_link} intelligent_options_loading={intelligent_options_loading} intelligent_option_type={intelligent_option_type} on_intelligent_option_select={(option) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); onSendMessage(option); }} on_intelligent_input_submit={(values) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); const message = Object.values(values).join(', '); onSendMessage(message); }} show_intelligent_options={(!show_input || chat_mode === 'mcq') && !is_streaming} show_start_again={!show_input && !is_streaming && messages.length > 4} on_start_again={handle_start_again} /> : null}
                     {showLearnOverlay && (
                         <div className={`${styles.learn_overlay} ${isGoodRx ? styles.goodrx_theme : ''}`}>
                             <div className={styles.learn_overlay_header}>

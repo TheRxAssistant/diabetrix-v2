@@ -19,10 +19,17 @@ export interface InputField {
     placeholder: string;
 }
 
+export interface ActionLink {
+    url: string;
+    label: string;
+    open_in_new_tab: boolean;
+}
+
 export interface IntelligentOptionsResult {
     options: QuickReply[];
     input_fields: InputField[];
     option_type: string;
+    action_link?: ActionLink | null;
 }
 
 export class AIService {
@@ -144,8 +151,9 @@ export class AIService {
             if (result.statusCode === 200) {
                 const hasOptions = result.data.options && result.data.options.length > 0;
                 const hasInputFields = result.data.input_fields && result.data.input_fields.length > 0;
+                const hasActionLink = result.data.action_link && result.data.action_link.url;
                 
-                if (hasOptions || hasInputFields) {
+                if (hasOptions || hasInputFields || hasActionLink) {
                     return {
                         options: hasOptions ? result.data.options.map((option: any) => ({
                             text: option.text || option,
@@ -157,6 +165,11 @@ export class AIService {
                             placeholder: field.placeholder,
                         })) : [],
                         option_type: result.data.option_type || 'generic',
+                        action_link: hasActionLink ? {
+                            url: result.data.action_link.url,
+                            label: result.data.action_link.label,
+                            open_in_new_tab: result.data.action_link.open_in_new_tab,
+                        } : null,
                     };
                 }
             }
@@ -181,6 +194,7 @@ export class AIService {
             ],
             input_fields: [],
             option_type: 'generic',
+            action_link: null,
         };
     }
 

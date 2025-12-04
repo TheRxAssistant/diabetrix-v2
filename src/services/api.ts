@@ -248,6 +248,9 @@ export const CAPABILITIES_API_URLS = {
     GET_NEARBY_CARE: 'find-care/find-nearby-care',
     GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
     SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
+    // Appointment and Copay APIs
+    SYNC_APPOINTMENT: 'appointments/sync-appointment',
+    SYNC_COPAY_REQUEST: 'rx-savings/sync-copay-card',
 } as const;
 
 // Core Engine API endpoints

@@ -767,3 +767,48 @@
     transform: scale(0.98);
   }
 }
+
+// Intelligent Action Link Styles
+.intelligent-action-link-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.intelligent-action-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+  border: none;
+  border-radius: 0.875rem;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+  text-decoration: none;
+  text-align: center;
+  letter-spacing: -0.01em;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, #0066e6 0%, #0047b3 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35);
+    color: white;
+    text-decoration: none;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+  }
+}

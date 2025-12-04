@@ -23,6 +23,12 @@ interface InputField {
     placeholder: string;
 }
 
+interface ActionLink {
+    url: string;
+    label: string;
+    open_in_new_tab: boolean;
+}
+
 interface ChatBodyProps {
     messages: Message[];
     loading: boolean;
@@ -38,6 +44,7 @@ interface ChatBodyProps {
     // Intelligent options props
     intelligent_options?: QuickReply[];
     intelligent_input_fields?: any[];
+    intelligent_action_link?: ActionLink | null;
     intelligent_options_loading?: boolean;
     intelligent_option_type?: string;
     on_intelligent_option_select?: (option: string) => void;
@@ -47,7 +54,7 @@ interface ChatBodyProps {
     on_start_again?: () => void;
 }
 
-const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again }) => {
+const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_action_link = null, intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again }) => {
     const [allow_chat, set_allow_chat] = useState(false);
     const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
 
@@ -213,7 +220,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                     )}
 
                     {/* Intelligent Options Display - Right Side (when input is disabled or MCQ mode) */}
-                    {show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_options_loading) && !(chat_mode === 'mcq' && mcq_options.length > 0) && (
+                    {show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link || intelligent_options_loading) && !(chat_mode === 'mcq' && mcq_options.length > 0) && (
                         <div className="mcq-options-container mcq-right-side">
                             <div className="mcq-options-content">
                                 {intelligent_options_loading ? (
@@ -224,6 +231,25 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                             <span className="mcq-loading-dot"></span>
                                         </div>
                                         <span className="mcq-loading-text">Loading options...</span>
+                                    </div>
+                                ) : intelligent_action_link ? (
+                                    /* Action Link for booking appointments or copay requests */
+                                    <div className="intelligent-action-link-container">
+                                        <a
+                                            href={intelligent_action_link.url}
+                                            target={intelligent_action_link.open_in_new_tab ? '_blank' : '_self'}
+                                            rel="noopener noreferrer"
+                                            className="intelligent-action-link-button"
+                                        >
+                                            {intelligent_action_link.label}
+                                            {intelligent_action_link.open_in_new_tab && (
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}>
+                                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                </svg>
+                                            )}
+                                        </a>
                                     </div>
                                 ) : intelligent_input_fields.length > 0 ? (
                                     /* Input Fields for user-input types (zipcode, phone, email, etc.) */
