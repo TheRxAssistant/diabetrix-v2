@@ -3,6 +3,7 @@ import ChatMessage from './chat-message';
 import ChatLoader from './chat-loader';
 import './chat-body.scss';
 import ConnectingAnimation from '../../shared/connecting-animation/ConnectingAnimation';
+import NumericDialer from '../../shared/numeric-dialer/NumericDialer';
 
 interface Message {
     id: number;
@@ -52,9 +53,10 @@ interface ChatBodyProps {
     show_intelligent_options?: boolean;
     show_start_again?: boolean;
     on_start_again?: () => void;
+    show_input?: boolean;
 }
 
-const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_action_link = null, intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again }) => {
+const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_action_link = null, intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again, show_input = true }) => {
     const [allow_chat, set_allow_chat] = useState(false);
     const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
 
@@ -168,8 +170,15 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
         <div className="messages-container">
             {allow_chat ? (
                 <>
-                    {messages.map((message) => (
-                        <ChatMessage key={message.id} message={message} handle_button_click={handle_button_click} />
+                    {messages.map((message, index) => (
+                        <ChatMessage 
+                            key={message.id} 
+                            message={message} 
+                            handle_button_click={handle_button_click}
+                            chat_mode={chat_mode}
+                            show_input={show_input}
+                            is_first_message={index === 0 && messages.length === 1}
+                        />
                     ))}
 
                     {/* Streaming message */}
@@ -257,18 +266,28 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                         {intelligent_input_fields.map((field, index) => (
                                             <div key={`input-field-${index}`} className="intelligent-input-group">
                                                 <label className="intelligent-input-label">{field.label}</label>
-                                                <input
-                                                    type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
-                                                    className="intelligent-input-field"
-                                                    placeholder={field.placeholder}
-                                                    value={input_field_values[`field_${index}`] || ''}
-                                                    onChange={(e) => handle_input_change(`field_${index}`, e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && !is_submit_disabled) {
-                                                            handle_input_submit();
-                                                        }
-                                                    }}
-                                                />
+                                                {field.field_type === 'zipcode' && chat_mode === 'mcq' ? (
+                                                    /* Numeric Dialer for zipcode in MCQ mode */
+                                                    <NumericDialer
+                                                        value={input_field_values[`field_${index}`] || ''}
+                                                        onChange={(value) => handle_input_change(`field_${index}`, value)}
+                                                        maxLength={5}
+                                                        placeholder={field.placeholder}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
+                                                        className="intelligent-input-field"
+                                                        placeholder={field.placeholder}
+                                                        value={input_field_values[`field_${index}`] || ''}
+                                                        onChange={(e) => handle_input_change(`field_${index}`, e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && !is_submit_disabled) {
+                                                                handle_input_submit();
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
                                         ))}
                                         <button 

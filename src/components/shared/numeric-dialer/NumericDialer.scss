@@ -1,0 +1,133 @@
+@use "../../../styles/variables" as *;
+
+.numeric-dialer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.numeric-dialer-display {
+    width: 100%;
+}
+
+.numeric-dialer-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    color: #2c3e50;
+    letter-spacing: 0.1em;
+    min-height: $touch_target_min;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+
+    &::placeholder {
+        color: #9ca3af;
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: #007aff;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        background: #ffffff;
+    }
+}
+
+.numeric-dialer-keypad {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.numeric-dialer-row {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.numeric-dialer-key {
+    flex: 1;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    &:hover:not(:disabled) {
+        background: #007aff;
+        color: white;
+        border-color: #007aff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 122, 255, 0.2);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0, 122, 255, 0.15);
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.numeric-dialer-key-clear {
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.2);
+
+    &:hover:not(:disabled) {
+        background: #dc2626;
+        color: white;
+        border-color: #dc2626;
+    }
+}
+
+.numeric-dialer-key-backspace {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border-color: rgba(107, 114, 128, 0.2);
+
+    &:hover:not(:disabled) {
+        background: #6b7280;
+        color: white;
+        border-color: #6b7280;
+    }
+}
+
+@media (max-width: $mobile_breakpoint) {
+    .numeric-dialer-key {
+        min-height: 60px;
+        font-size: 1.25rem;
+    }
+
+    .numeric-dialer-input {
+        font-size: 1.25rem;
+    }
+}
+
