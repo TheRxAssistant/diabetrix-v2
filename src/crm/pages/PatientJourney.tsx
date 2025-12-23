@@ -46,6 +46,7 @@ interface ApiTimelineEntry {
     decision_summary?: string | null;
     timeline_description: string;
     timeline_title: string | null;
+    conversation_summary?: string | null;
 }
 
 export default function PatientJourney() {
@@ -182,6 +183,9 @@ export default function PatientJourney() {
         if (entry.decision_summary) {
             details.outcome = entry.decision_summary;
         }
+        if (entry.conversation_summary) {
+            details.conversation_summary = entry.conversation_summary;
+        }
         if (entry.tool_result) {
             if (entry.tool_result.duration) {
                 details.duration = entry.tool_result.duration;
@@ -317,6 +321,54 @@ export default function PatientJourney() {
         fetchJourneyData();
     }, [patientId]);
 
+    // Poll for new timeline entries every 25 seconds
+    useEffect(() => {
+        if (!patientId) return;
+
+        const pollTimeline = async () => {
+            try {
+                const timelineResponse = await postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, {
+                    user_id: patientId,
+                });
+
+                if (timelineResponse.statusCode === 200) {
+                    const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
+
+                    // Only append new entries to avoid re-render
+                    setJourneyEvents((prevEvents) => {
+                        const existingIds = new Set(prevEvents.map(e => e.id));
+                        const newEntries = timelineEntries.filter(entry => !existingIds.has(entry.timeline_id));
+
+                        // If no new entries, return previous to avoid re-render
+                        if (newEntries.length === 0) {
+                            return prevEvents;
+                        }
+
+                        // Map new entries to events and append
+                        const newEvents = newEntries.map((entry, index) => 
+                            mapTimelineEntryToJourneyEvent(entry, prevEvents.length + index)
+                        );
+
+                        // Update last engagement if applicable
+                        if (newEvents.length > 0) {
+                            const lastEvent = newEvents[newEvents.length - 1];
+                            if (lastEvent.channel && lastEvent.channel !== 'none') {
+                                setLastEngagement(lastEvent);
+                            }
+                        }
+
+                        return [...prevEvents, ...newEvents];
+                    });
+                }
+            } catch (err) {
+                console.error('Error polling timeline:', err);
+            }
+        };
+
+        const interval = setInterval(pollTimeline, 25000); // Poll every 25 seconds
+        return () => clearInterval(interval);
+    }, [patientId]);
+
     // Calculate current stage index from API journey stages
     const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 
         ? journeyStages.findIndex((s) => s.is_current)
@@ -372,167 +424,204 @@ export default function PatientJourney() {
     const renderEventDetails = (event: JourneyEvent) => {
         if (!event.details) return null;
 
+        // Render conversation summary if available (appears for all event types)
+        const renderConversationSummary = () => {
+            if (event.details?.conversation_summary) {
+                return (
+                    <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                            <FaComment className="text-[#0078D4]" />
+                            <span className="font-semibold text-gray-900">Conversation Summary</span>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
+                            {event.details.conversation_summary}
+                        </p>
+                    </div>
+                );
+            }
+            return null;
+        };
+
         if (event.type === 'chat' && event.details.messages) {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="font-semibold mb-2">Conversation:</div>
-                    {event.details.messages.map((msg: any, idx: number) => (
-                        <div key={idx} className={`mb-2 p-2 rounded ${msg.sender === 'PATIENT' ? 'bg-blue-50 border-l-4 border-[#0078D4]' : 'bg-white border-l-4 border-gray-300'}`}>
-                            <span className={`font-semibold ${msg.sender === 'PATIENT' ? 'text-[#0078D4]' : 'text-gray-600'}`}>{msg.sender}:</span>
-                            <span className="ml-2 break-words">{msg.message}</span>
-                        </div>
-                    ))}
-                </div>
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="font-semibold mb-2">Conversation:</div>
+                        {event.details.messages.map((msg: any, idx: number) => (
+                            <div key={idx} className={`mb-2 p-2 rounded ${msg.sender === 'PATIENT' ? 'bg-blue-50 border-l-4 border-[#0078D4]' : 'bg-white border-l-4 border-gray-300'}`}>
+                                <span className={`font-semibold ${msg.sender === 'PATIENT' ? 'text-[#0078D4]' : 'text-gray-600'}`}>{msg.sender}:</span>
+                                <span className="ml-2 break-words">{msg.message}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
         if (event.type === 'call' || (event.type === 'followup' && event.details.channel === 'Voice')) {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {event.details.duration && (
-                            <div className="min-w-0">
-                                <span className="font-semibold">Duration: </span>
-                                <span className="break-words">{event.details.duration}</span>
-                            </div>
-                        )}
-                        {event.details.outcome && (
-                            <div className="min-w-0">
-                                <span className="font-semibold">Outcome: </span>
-                                <Tag color="green">{event.details.outcome}</Tag>
-                            </div>
-                        )}
-                        {event.details.copay && (
-                            <div className="min-w-0">
-                                <span className="font-semibold">Copay: </span>
-                                <span className="break-words">{event.details.copay}</span>
-                            </div>
-                        )}
-                        {event.details.requiresPA && (
-                            <div className="col-span-3 mt-2">
-                                <Tag color="orange">Prior Authorization Required</Tag>
-                            </div>
-                        )}
-                        {event.details.topics && (
-                            <div className="col-span-3 mt-3">
-                                <span className="font-semibold">Topics Discussed: </span>
-                                <div className="mt-1 flex flex-wrap gap-2">
-                                    {event.details.topics.map((topic: string, idx: number) => (
-                                        <Tag key={idx}>{topic}</Tag>
-                                    ))}
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {event.details.duration && (
+                                <div className="min-w-0">
+                                    <span className="font-semibold">Duration: </span>
+                                    <span className="break-words">{event.details.duration}</span>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                            {event.details.outcome && (
+                                <div className="min-w-0">
+                                    <span className="font-semibold">Outcome: </span>
+                                    <Tag color="green">{event.details.outcome}</Tag>
+                                </div>
+                            )}
+                            {event.details.copay && (
+                                <div className="min-w-0">
+                                    <span className="font-semibold">Copay: </span>
+                                    <span className="break-words">{event.details.copay}</span>
+                                </div>
+                            )}
+                            {event.details.requiresPA && (
+                                <div className="col-span-3 mt-2">
+                                    <Tag color="orange">Prior Authorization Required</Tag>
+                                </div>
+                            )}
+                            {event.details.topics && (
+                                <div className="col-span-3 mt-3">
+                                    <span className="font-semibold">Topics Discussed: </span>
+                                    <div className="mt-1 flex flex-wrap gap-2">
+                                        {event.details.topics.map((topic: string, idx: number) => (
+                                            <Tag key={idx}>{topic}</Tag>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
         if (event.type === 'appointment') {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="min-w-0">
-                            <span className="font-semibold">Doctor: </span>
-                            <span className="break-words">{event.details.doctor}</span>
-                        </div>
-                        <div className="min-w-0">
-                            <span className="font-semibold">Date: </span>
-                            <span className="break-words">
-                                {event.details.date} at {event.details.time}
-                            </span>
-                        </div>
-                        {event.details.location && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
-                                <span className="font-semibold">Location: </span>
-                                <span className="break-words">{event.details.location}</span>
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="min-w-0">
+                                <span className="font-semibold">Doctor: </span>
+                                <span className="break-words">{event.details.doctor}</span>
                             </div>
-                        )}
+                            <div className="min-w-0">
+                                <span className="font-semibold">Date: </span>
+                                <span className="break-words">
+                                    {event.details.date} at {event.details.time}
+                                </span>
+                            </div>
+                            {event.details.location && (
+                                <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
+                                    <span className="font-semibold">Location: </span>
+                                    <span className="break-words">{event.details.location}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
         if (event.type === 'prescription') {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="min-w-0">
-                            <span className="font-semibold">Medication: </span>
-                            <span className="break-words">{event.details.medication}</span>
-                        </div>
-                        <div className="min-w-0">
-                            <span className="font-semibold">Frequency: </span>
-                            <span className="break-words">{event.details.frequency}</span>
-                        </div>
-                        {event.details.prescriber && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
-                                <span className="font-semibold">Prescriber: </span>
-                                <span className="break-words">{event.details.prescriber}</span>
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="min-w-0">
+                                <span className="font-semibold">Medication: </span>
+                                <span className="break-words">{event.details.medication}</span>
                             </div>
-                        )}
+                            <div className="min-w-0">
+                                <span className="font-semibold">Frequency: </span>
+                                <span className="break-words">{event.details.frequency}</span>
+                            </div>
+                            {event.details.prescriber && (
+                                <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
+                                    <span className="font-semibold">Prescriber: </span>
+                                    <span className="break-words">{event.details.prescriber}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
         if (event.type === 'fill') {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {event.details.pharmacy && (
-                            <div className="min-w-0">
-                                <span className="font-semibold">Pharmacy: </span>
-                                <span className="break-words">{event.details.pharmacy}</span>
-                            </div>
-                        )}
-                        {event.details.cost && (
-                            <div className="min-w-0">
-                                <span className="font-semibold">Cost: </span>
-                                <span className="break-words">{event.details.cost}</span>
-                            </div>
-                        )}
-                        {event.details.refills && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
-                                <span className="font-semibold">Refills Remaining: </span>
-                                <span className="break-words">{event.details.refills}</span>
-                            </div>
-                        )}
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {event.details.pharmacy && (
+                                <div className="min-w-0">
+                                    <span className="font-semibold">Pharmacy: </span>
+                                    <span className="break-words">{event.details.pharmacy}</span>
+                                </div>
+                            )}
+                            {event.details.cost && (
+                                <div className="min-w-0">
+                                    <span className="font-semibold">Cost: </span>
+                                    <span className="break-words">{event.details.cost}</span>
+                                </div>
+                            )}
+                            {event.details.refills && (
+                                <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
+                                    <span className="font-semibold">Refills Remaining: </span>
+                                    <span className="break-words">{event.details.refills}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
         if (event.type === 'followup') {
             return (
-                <div className="mt-3 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="min-w-0">
-                            <span className="font-semibold">Channel: </span>
-                            <Tag icon={event.details.channel === 'SMS' ? <FaComment /> : <FaPhone />}>{event.details.channel}</Tag>
-                        </div>
-                        <div className="min-w-0">
-                            <span className="font-semibold">Status: </span>
-                            <Tag color={event.details.status === 'sent' || event.details.status === 'completed' ? 'green' : 'default'}>{event.details.status}</Tag>
-                        </div>
-                        {event.details.message && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
-                                <span className="font-semibold">Message: </span>
-                                <span className="break-words">{event.details.message}</span>
+                <>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="min-w-0">
+                                <span className="font-semibold">Channel: </span>
+                                <Tag icon={event.details.channel === 'SMS' ? <FaComment /> : <FaPhone />}>{event.details.channel}</Tag>
                             </div>
-                        )}
-                        {event.details.duration && (
-                            <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
-                                <span className="font-semibold">Duration: </span>
-                                <span className="break-words">{event.details.duration}</span>
+                            <div className="min-w-0">
+                                <span className="font-semibold">Status: </span>
+                                <Tag color={event.details.status === 'sent' || event.details.status === 'completed' ? 'green' : 'default'}>{event.details.status}</Tag>
                             </div>
-                        )}
+                            {event.details.message && (
+                                <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
+                                    <span className="font-semibold">Message: </span>
+                                    <span className="break-words">{event.details.message}</span>
+                                </div>
+                            )}
+                            {event.details.duration && (
+                                <div className="col-span-1 sm:col-span-2 mt-2 min-w-0">
+                                    <span className="font-semibold">Duration: </span>
+                                    <span className="break-words">{event.details.duration}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    {renderConversationSummary()}
+                </>
             );
         }
 
-        return null;
+        // For other event types, just show conversation summary if available
+        return renderConversationSummary();
     };
 
     const getStageStatus = (stageKey: JourneyStage) => {
