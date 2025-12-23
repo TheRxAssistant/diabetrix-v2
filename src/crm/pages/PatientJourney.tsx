@@ -52,7 +52,6 @@ interface ApiTimelineEntry {
 export default function PatientJourney() {
     const params = useParams<{ id: string }>();
     const patientId = params.id || '1';
-    const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
     const [lastEngagementExpanded, setLastEngagementExpanded] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -85,7 +84,7 @@ export default function PatientJourney() {
     const mapStageNameToKey = (stageName: string): JourneyStage => {
         const mapping: Record<string, JourneyStage> = {
             'Ad Clicked': 'AD_CLICK',
-            'Engaged': 'ENGAGEMENT',
+            Engaged: 'ENGAGEMENT',
             'Benefits Check': 'QUALIFICATION',
             'Prescription Filled': 'FILLED',
         };
@@ -151,7 +150,7 @@ export default function PatientJourney() {
     const mapTimelineEntryToJourneyEvent = (entry: ApiTimelineEntry, index: number): JourneyEvent => {
         const createdDate = new Date(entry.created_at);
         const attributionTags = extractAttributionTags(entry);
-        
+
         // Determine stage based on tool name
         let stage: JourneyStage = 'ENGAGEMENT';
         const toolLower = entry.tool_name.toLowerCase();
@@ -169,7 +168,7 @@ export default function PatientJourney() {
         // Build campaign info if attribution tags exist
         let campaign: JourneyEvent['campaign'] = undefined;
         if (attributionTags.length > 0) {
-            const isMeta = attributionTags.some(tag => tag.includes('META'));
+            const isMeta = attributionTags.some((tag) => tag.includes('META'));
             campaign = {
                 platform: isMeta ? 'meta' : 'google',
                 adType: 'find_doctor',
@@ -205,7 +204,7 @@ export default function PatientJourney() {
             id: entry.timeline_id,
             stage,
             timestamp: createdDate.toISOString(),
-            description:  entry.timeline_title || entry.timeline_description || entry.tool_name.replace(/_/g, ' '),
+            description: entry.timeline_title || entry.timeline_description || entry.tool_name.replace(/_/g, ' '),
             type: eventType,
             channel,
             campaign,
@@ -262,7 +261,7 @@ export default function PatientJourney() {
                     const firstName = userData.first_name || '';
                     const lastName = userData.last_name || '';
                     const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
-                    
+
                     // Format location from address
                     const address = userData.address || {};
                     const locationParts = [];
@@ -270,11 +269,11 @@ export default function PatientJourney() {
                     if (address.state) locationParts.push(address.state);
                     if (address.zip_code) locationParts.push(address.zip_code);
                     const location = locationParts.length > 0 ? locationParts.join(', ') : 'Unknown';
-                    
+
                     // Format insurance from insurance_details
                     const insuranceDetails = userData.insurance_details || {};
                     const insurance = insuranceDetails.provider || 'Unknown';
-                    
+
                     // Calculate age from date_of_birth if available
                     let age: number | null = null;
                     if (userData.date_of_birth) {
@@ -345,7 +344,7 @@ export default function PatientJourney() {
                         }
 
                         // Map new entries to events and append
-                        const newEvents = newEntries.map((entry, index) => 
+                        const newEvents = newEntries.map((entry, index) =>
                             mapTimelineEntryToJourneyEvent(entry, prevEvents.length + index)
                         );
 
@@ -370,17 +369,15 @@ export default function PatientJourney() {
     }, [patientId]);
 
     // Calculate current stage index from API journey stages
-    const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 
-        ? journeyStages.findIndex((s) => s.is_current)
-        : journeyStages.filter((s) => s.is_completed).length - 1;
+    const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 ? journeyStages.findIndex((s) => s.is_current) : journeyStages.filter((s) => s.is_completed).length - 1;
 
     const getStageDate = (stageKey: JourneyStage) => {
         // Map stage key to stage name
         const stageNameMap: Record<JourneyStage, string> = {
-            'AD_CLICK': 'Ad Clicked',
-            'ENGAGEMENT': 'Engaged',
-            'QUALIFICATION': 'Benefits Check',
-            'FILLED': 'Prescription Filled',
+            AD_CLICK: 'Ad Clicked',
+            ENGAGEMENT: 'Engaged',
+            QUALIFICATION: 'Benefits Check',
+            FILLED: 'Prescription Filled',
         };
         const stageName = stageNameMap[stageKey];
         const apiStage = journeyStages.find((s) => s.stage_name === stageName);
@@ -409,16 +406,6 @@ export default function PatientJourney() {
                 {event.campaign.platform.toUpperCase()} • {adTypeLabels[event.campaign.adType] || event.campaign.adType}
             </Tag>
         );
-    };
-
-    const toggleEventDetails = (eventId: string) => {
-        const newExpanded = new Set(expandedEvents);
-        if (newExpanded.has(eventId)) {
-            newExpanded.delete(eventId);
-        } else {
-            newExpanded.add(eventId);
-        }
-        setExpandedEvents(newExpanded);
     };
 
     const renderEventDetails = (event: JourneyEvent) => {
@@ -865,7 +852,11 @@ export default function PatientJourney() {
                                             <div className="mb-2.5">
                                                 <span className="text-[11px] text-gray-600 block mb-1 font-semibold">Type: </span>
                                                 <div className="flex items-center gap-1.5 min-w-0">
-                                                    {getChannelInfo(displayLastEngagement.channel)?.icon && <span className="flex-shrink-0" style={{ color: getChannelInfo(displayLastEngagement.channel)?.color }}>{getChannelInfo(displayLastEngagement.channel)?.icon}</span>}
+                                                    {getChannelInfo(displayLastEngagement.channel)?.icon && (
+                                                        <span className="flex-shrink-0" style={{ color: getChannelInfo(displayLastEngagement.channel)?.color }}>
+                                                            {getChannelInfo(displayLastEngagement.channel)?.icon}
+                                                        </span>
+                                                    )}
                                                     <span className="text-sm text-gray-900 font-medium break-words">{getEventTypeLabel(displayLastEngagement)}</span>
                                                     {displayLastEngagement.channel && <Tag className="text-[10px] m-0 px-2 py-0.5 flex-shrink-0">{getChannelInfo(displayLastEngagement.channel)?.label}</Tag>}
                                                 </div>
@@ -984,7 +975,6 @@ export default function PatientJourney() {
                             </div>
                         ) : (
                             journeyEvents.map((event, index) => {
-                                const isExpanded = expandedEvents.has(event.id);
                                 const status = getStageStatus(event.stage);
                                 const isCompleted = status === 'completed' || index < journeyEvents.length - 1;
                                 const channelInfo = getChannelInfo(event.channel);
@@ -1004,7 +994,7 @@ export default function PatientJourney() {
                                             )}
 
                                             {/* Enhanced Event Card */}
-                                            <Card onClick={() => toggleEventDetails(event.id)} className={`rounded-xl transition-all cursor-pointer ml-1 ${isExpanded ? 'border-2 border-[#0078D4] shadow-lg' : `border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`}`} bodyStyle={{ padding: '16px 20px' }}>
+                                            <Card className={`rounded-xl transition-all ml-1 border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`} bodyStyle={{ padding: '16px 20px' }}>
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
@@ -1050,17 +1040,8 @@ export default function PatientJourney() {
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        {isExpanded && renderEventDetails(event)}
+                                                        {renderEventDetails(event)}
                                                     </div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleEventDetails(event.id);
-                                                        }}
-                                                        className="transition-transform"
-                                                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                                                        <FaChevronDown />
-                                                    </button>
                                                 </div>
                                             </Card>
                                         </div>
