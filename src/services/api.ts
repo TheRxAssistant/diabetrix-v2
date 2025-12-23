@@ -251,6 +251,7 @@ export const CAPABILITIES_API_URLS = {
     GET_USER_TIMELINE: 'crm/users/get-user-timeline',
     GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
     GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
+    GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
 } as const;
 
 // Core Engine API endpoints

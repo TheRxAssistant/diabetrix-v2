@@ -218,10 +218,11 @@ export default function PatientJourney() {
             setError(null);
 
             try {
-                // Fetch journey stages and timeline in parallel
-                const [journeyResponse, timelineResponse] = await Promise.all([
+                // Fetch journey stages, timeline, and user details in parallel
+                const [journeyResponse, timelineResponse, userDetailsResponse] = await Promise.all([
                     postAPI(CAPABILITIES_API_URLS.GET_USER_JOURNEY, { user_id: patientId }),
                     postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, { user_id: patientId }),
+                    postAPI(CAPABILITIES_API_URLS.GET_USER_DETAILS_BY_ID, { user_id: patientId }),
                 ]);
 
                 if (journeyResponse.statusCode !== 200) {
@@ -251,16 +252,60 @@ export default function PatientJourney() {
                     }
                 }
 
-                // Placeholder patient info
-                setPatient({
-                    id: patientId,
-                    name: patientId === '1' ? 'John Smith' : patientId === '4' ? 'Anonymous User' : 'Sarah Johnson',
-                    age: patientId === '4' ? null : patientId === '1' ? 58 : 62,
-                    location: patientId === '4' ? 'Unknown' : patientId === '1' ? 'New York, NY' : 'Chicago, IL',
-                    insurance: patientId === '4' ? 'Unknown' : patientId === '1' ? 'Commercial' : 'Medicare',
-                    phone: patientId === '4' ? null : patientId === '1' ? '+1 (555) 123-4567' : '+1 (555) 987-6543',
-                    email: patientId === '4' ? null : patientId === '1' ? 'john.smith@example.com' : 'sarah.johnson@example.com',
-                });
+                // Populate patient info from user details
+                if (userDetailsResponse.statusCode === 200 && userDetailsResponse.data) {
+                    const userData = userDetailsResponse.data;
+                    const firstName = userData.first_name || '';
+                    const lastName = userData.last_name || '';
+                    const fullName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+                    
+                    // Format location from address
+                    const address = userData.address || {};
+                    const locationParts = [];
+                    if (address.city) locationParts.push(address.city);
+                    if (address.state) locationParts.push(address.state);
+                    if (address.zip_code) locationParts.push(address.zip_code);
+                    const location = locationParts.length > 0 ? locationParts.join(', ') : 'Unknown';
+                    
+                    // Format insurance from insurance_details
+                    const insuranceDetails = userData.insurance_details || {};
+                    const insurance = insuranceDetails.provider || 'Unknown';
+                    
+                    // Calculate age from date_of_birth if available
+                    let age: number | null = null;
+                    if (userData.date_of_birth) {
+                        const birthDate = new Date(userData.date_of_birth);
+                        if (!isNaN(birthDate.getTime())) {
+                            const today = new Date();
+                            age = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                                age--;
+                            }
+                        }
+                    }
+
+                    setPatient({
+                        id: patientId,
+                        name: fullName,
+                        age,
+                        location,
+                        insurance,
+                        phone: userData.phone_number || userData.user_phone_number || null,
+                        email: userData.email || null,
+                    });
+                } else {
+                    // Fallback to placeholder if user details not found
+                    setPatient({
+                        id: patientId,
+                        name: 'Unknown User',
+                        age: null,
+                        location: 'Unknown',
+                        insurance: 'Unknown',
+                        phone: null,
+                        email: null,
+                    });
+                }
             } catch (err) {
                 console.error('Error fetching journey data:', err);
                 setError(err instanceof Error ? err.message : 'Failed to load journey data');
@@ -556,7 +601,7 @@ export default function PatientJourney() {
     };
 
     // Use the lastEngagement state if available, otherwise find from events
-    const displayLastEngagement = lastEngagement || journeyEvents.filter((e) => e.stage === 'ENGAGEMENT' && e.channel && e.channel !== 'none').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    const displayLastEngagement: JourneyEvent | null = lastEngagement || journeyEvents.filter((e) => e.stage === 'ENGAGEMENT' && e.channel && e.channel !== 'none').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
     const getLastEngagementContext = () => {
         if (!displayLastEngagement) return null;
@@ -709,7 +754,7 @@ export default function PatientJourney() {
                             {displayLastEngagement ? (
                                 <div className="flex-1 flex flex-col min-w-0">
                                     <div className="mb-0 flex-1 flex flex-col min-w-0">
-                                        <span className="text-gray-900 text-sm block mb-3 font-semibold leading-snug break-words">{displayLastEngagement.description}</span>
+                                        <span className="text-gray-900 text-sm block mb-3 font-semibold leading-snug break-words">{ displayLastEngagement.description}</span>
 
                                         <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex-1">
                                             <div className="mb-2.5">
