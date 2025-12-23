@@ -107,7 +107,6 @@ export const postAPI = async (
     const finalPayload = { ...payload };
 
     try {
-        console.log('🔵 postAPI called:', { url, finalUrl, payload: finalPayload });
         const response = await fetch(finalUrl, {
             method: 'POST',
             headers,
@@ -247,6 +246,11 @@ export const CAPABILITIES_API_URLS = {
     GET_NEARBY_CARE: 'find-care/find-nearby-care',
     GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
     SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
+    // CRM User APIs
+    GET_USER_JOURNEY: 'crm/users/get-user-journey',
+    GET_USER_TIMELINE: 'crm/users/get-user-timeline',
+    GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
+    GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
 } as const;
 
 // Core Engine API endpoints

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner } from 'react-icons/fa';
 import { Link, useParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import Avatar from '../components/ui/Avatar';
@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Tag from '../components/ui/Tag';
+import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
 
 type JourneyStage = 'AD_CLICK' | 'ENGAGEMENT' | 'QUALIFICATION' | 'FILLED';
 type Channel = 'chat' | 'text' | 'voice' | 'none';
@@ -27,26 +28,49 @@ interface JourneyEvent {
     details?: any;
 }
 
+interface ApiJourneyStage {
+    stage_name: string;
+    stage_date: string | null;
+    is_completed: boolean;
+    is_current: boolean;
+}
+
+interface ApiTimelineEntry {
+    timeline_id: string;
+    created_at: Date | string;
+    user_id: string;
+    conversation_id?: string | null;
+    tool_name: string;
+    tool_arguments?: any;
+    tool_result?: any;
+    decision_summary?: string | null;
+    timeline_description: string;
+}
+
 export default function PatientJourney() {
     const params = useParams<{ id: string }>();
     const patientId = params.id || '1';
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
     const [lastEngagementExpanded, setLastEngagementExpanded] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [journeyStages, setJourneyStages] = useState<ApiJourneyStage[]>([]);
+    const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>([]);
+    const [lastEngagement, setLastEngagement] = useState<JourneyEvent | null>(null);
+    const [patient, setPatient] = useState({
+        id: patientId,
+        name: 'Loading...',
+        age: null as number | null,
+        location: 'Loading...',
+        insurance: 'Loading...',
+        phone: null as string | null,
+        email: null as string | null,
+    });
 
     const primaryColor = '#0078D4';
     const secondaryColor = '#00B7C3';
     const tertiaryColor = '#83C995';
     const successColor = '#52c41a';
-
-    const patient = {
-        id: patientId,
-        name: patientId === '1' ? 'John Smith' : patientId === '4' ? 'Anonymous User' : 'Sarah Johnson',
-        age: patientId === '4' ? null : patientId === '1' ? 58 : 62,
-        location: patientId === '4' ? 'Unknown' : patientId === '1' ? 'New York, NY' : 'Chicago, IL',
-        insurance: patientId === '4' ? 'Unknown' : patientId === '1' ? 'Commercial' : 'Medicare',
-        phone: patientId === '4' ? null : patientId === '1' ? '+1 (555) 123-4567' : '+1 (555) 987-6543',
-        email: patientId === '4' ? null : patientId === '1' ? 'john.smith@example.com' : 'sarah.johnson@example.com',
-    };
 
     const stages: { key: JourneyStage; label: string; icon: React.ReactNode }[] = [
         { key: 'AD_CLICK', label: 'Ad Clicked', icon: <FaShoppingCart /> },
@@ -55,234 +79,220 @@ export default function PatientJourney() {
         { key: 'FILLED', label: 'Prescription Filled', icon: <FaPills /> },
     ];
 
-    const journeyEvents: JourneyEvent[] =
-        patientId === '1'
-            ? [
-                  {
-                      id: '1',
-                      stage: 'AD_CLICK',
-                      timestamp: '2025-01-15 10:16',
-                      description: 'Find doctor',
-                      type: 'ad',
-                      channel: 'none',
-                      campaign: {
-                          platform: 'meta',
-                          adType: 'find_doctor',
-                          campaignId: 'META-FD-2025-Q1',
-                          campaignName: 'Find Doctor Q1 2025',
-                      },
-                  },
-                  {
-                      id: '2',
-                      stage: 'ENGAGEMENT',
-                      timestamp: '2025-01-15 10:20',
-                      description: 'Discussed finding endocrinologist',
-                      type: 'chat',
-                      channel: 'chat',
-                      details: {
-                          messages: [
-                              { sender: 'PATIENT', message: 'I need to find an endocrinologist near me' },
-                              { sender: 'BOT', message: "I can help you find a doctor. What's your location?" },
-                              { sender: 'PATIENT', message: 'New York, NY' },
-                              {
-                                  sender: 'BOT',
-                                  message: 'I found 3 endocrinologists near you. Would you like me to help schedule an appointment?',
-                              },
-                          ],
-                      },
-                  },
-                  {
-                      id: '4',
-                      stage: 'ENGAGEMENT',
-                      timestamp: '2025-01-15 10:25',
-                      description: 'Schedule doctors appointment',
-                      type: 'appointment',
-                      channel: 'text',
-                      details: {
-                          doctor: 'Dr. Robert Chen',
-                          date: '2025-02-05',
-                          time: '10:00 AM',
-                          location: '123 Medical Center Dr, New York, NY',
-                      },
-                  },
-                  {
-                      id: '5',
-                      stage: 'ENGAGEMENT',
-                      timestamp: '2025-01-18 14:00',
-                      description: 'Voice check in',
-                      type: 'call',
-                      channel: 'voice',
-                      details: {
-                          duration: '5:23',
-                          outcome: 'Appointment confirmed',
-                      },
-                  },
-                  {
-                      id: '6',
-                      stage: 'ENGAGEMENT',
-                      timestamp: '2025-02-05 14:30',
-                      description: 'Prescription written by doctor',
-                      type: 'prescription',
-                      channel: 'none',
-                      details: {
-                          medication: 'Diabetrix 500mg',
-                          frequency: 'Once daily',
-                          prescriber: 'Dr. Robert Chen',
-                      },
-                  },
-                  {
-                      id: '7',
-                      stage: 'QUALIFICATION',
-                      timestamp: '2025-02-06 10:30',
-                      description: 'Benefits check',
-                      type: 'call',
-                      channel: 'voice',
-                      details: {
-                          duration: '3:42',
-                          outcome: 'Coverage confirmed',
-                          copay: '$25',
-                          requiresPA: true,
-                      },
-                  },
-                  {
-                      id: '8',
-                      stage: 'FILLED',
-                      timestamp: '2025-02-08 11:20',
-                      description: 'Prescription filled',
-                      type: 'fill',
-                      channel: 'none',
-                      details: {
-                          pharmacy: 'CVS Pharmacy #4872',
-                          cost: '$25',
-                          refills: 2,
-                      },
-                  },
-                  {
-                      id: '9',
-                      stage: 'FILLED',
-                      timestamp: '2025-02-09 09:00',
-                      description: 'Follow-up with how to use',
-                      type: 'followup',
-                      channel: 'text',
-                      details: {
-                          channel: 'SMS',
-                          message: "Here's how to take Diabetrix: Take once daily with food.",
-                          status: 'sent',
-                      },
-                  },
-                  {
-                      id: '10',
-                      stage: 'FILLED',
-                      timestamp: '2025-02-12 14:30',
-                      description: 'Voice check in',
-                      type: 'followup',
-                      channel: 'voice',
-                      details: {
-                          channel: 'Voice',
-                          duration: '8 minutes',
-                          topics: ['Administration instructions', 'Side effect management', 'When to contact doctor'],
-                          status: 'completed',
-                      },
-                  },
-              ]
-            : patientId === '4'
-              ? [
-                    {
-                        id: '1',
-                        stage: 'AD_CLICK',
-                        timestamp: '2025-03-20 14:21',
-                        description: 'Check Insurance Coverage',
-                        type: 'ad',
-                        channel: 'none',
-                        campaign: {
-                            platform: 'google',
-                            adType: 'market_access',
-                            campaignId: 'GOOGLE-MA-2025-Q1',
-                            campaignName: 'Market Access Q1 2025',
-                        },
-                    },
-                    {
-                        id: '2',
-                        stage: 'ENGAGEMENT',
-                        timestamp: '2025-03-20 14:23',
-                        description: 'Discussed insurance coverage for Diabetrix',
-                        type: 'chat',
-                        channel: 'chat',
-                        details: {
-                            messages: [
-                                { sender: 'PATIENT', message: 'Does my insurance cover Diabetrix?' },
-                                { sender: 'BOT', message: 'I can help check your coverage. What insurance do you have?' },
-                                { sender: 'PATIENT', message: 'I have Commercial insurance' },
-                                { sender: 'BOT', message: 'Great! I can verify your benefits. Do you have your member ID?' },
-                            ],
-                        },
-                    },
-                    {
-                        id: '3',
-                        stage: 'QUALIFICATION',
-                        timestamp: '2025-03-20 14:30',
-                        description: 'Provided insurance information - verification in progress',
-                        type: 'chat',
-                        channel: 'chat',
-                    },
-                ]
-              : [
-                    {
-                        id: '1',
-                        stage: 'AD_CLICK',
-                        timestamp: '2025-04-10 09:32',
-                        description: 'Learn More',
-                        type: 'ad',
-                        channel: 'none',
-                        campaign: {
-                            platform: 'meta',
-                            adType: 'education',
-                            campaignId: 'META-EDU-2025-Q2',
-                            campaignName: 'Education Q2 2025',
-                        },
-                    },
-                    {
-                        id: '2',
-                        stage: 'ENGAGEMENT',
-                        timestamp: '2025-04-10 09:35',
-                        description: 'Discussed Diabetrix side effects',
-                        type: 'chat',
-                        channel: 'chat',
-                    },
-                    {
-                        id: '3',
-                        stage: 'QUALIFICATION',
-                        timestamp: '2025-04-12 11:00',
-                        description: 'Benefits verified - Medicare coverage, $15 copay',
-                        type: 'call',
-                        channel: 'voice',
-                    },
-                    {
-                        id: '4',
-                        stage: 'FILLED',
-                        timestamp: '2025-04-15 10:30',
-                        description: 'Prescription filled at Walgreens #3921',
-                        type: 'fill',
-                        channel: 'none',
-                    },
-                ];
+    // Map API stage name to UI stage key
+    const mapStageNameToKey = (stageName: string): JourneyStage => {
+        const mapping: Record<string, JourneyStage> = {
+            'Ad Clicked': 'AD_CLICK',
+            'Engaged': 'ENGAGEMENT',
+            'Benefits Check': 'QUALIFICATION',
+            'Prescription Filled': 'FILLED',
+        };
+        return mapping[stageName] || 'ENGAGEMENT';
+    };
 
-    const currentStageIndex =
-        journeyEvents.length > 0
-            ? Math.max(
-                  0,
-                  stages.findIndex((s) => {
-                      const eventStages = journeyEvents.map((e) => e.stage);
-                      const lastStage = eventStages[eventStages.length - 1];
-                      return s.key === lastStage;
-                  }),
-              )
-            : 0;
+    // Map tool name to event type
+    const mapToolNameToEventType = (toolName: string): JourneyEvent['type'] => {
+        const toolLower = toolName.toLowerCase();
+        if (toolLower.includes('call') || toolLower === 'place_outgoing_call' || toolLower === 'post_call_analysis') {
+            return 'call';
+        }
+        if (toolLower.includes('sms') || toolLower === 'send_sms') {
+            return 'sms';
+        }
+        if (toolLower.includes('appointment') || toolLower.includes('schedule') || toolLower.includes('book')) {
+            return 'appointment';
+        }
+        if (toolLower.includes('prescription') || toolLower.includes('pharmacy') || toolLower.includes('fill')) {
+            return toolLower.includes('fill') ? 'fill' : 'prescription';
+        }
+        if (toolLower.includes('followup') || toolLower.includes('follow_up')) {
+            return 'followup';
+        }
+        if (toolLower.includes('authenticate') || toolLower.includes('ad') || toolLower.includes('referrer')) {
+            return 'ad';
+        }
+        return 'chat';
+    };
+
+    // Map tool name to channel
+    const mapToolNameToChannel = (toolName: string): Channel => {
+        const toolLower = toolName.toLowerCase();
+        if (toolLower.includes('call') || toolLower === 'place_outgoing_call' || toolLower === 'post_call_analysis') {
+            return 'voice';
+        }
+        if (toolLower.includes('sms') || toolLower === 'send_sms') {
+            return 'text';
+        }
+        if (toolLower.includes('chat') || toolLower.includes('conversation')) {
+            return 'chat';
+        }
+        return 'none';
+    };
+
+    // Extract attribution tags from timeline entry
+    const extractAttributionTags = (entry: ApiTimelineEntry): string[] => {
+        const tags: string[] = [];
+        const toolArgs = entry.tool_arguments || {};
+        const toolResult = entry.tool_result || {};
+
+        if (toolArgs.referrer || toolArgs.source) {
+            tags.push('Ad Click');
+            if (toolArgs.referrer === 'meta' || toolArgs.source === 'meta' || toolArgs.referrer_id?.toLowerCase().includes('meta')) {
+                tags.push('META - Find Doctor');
+            }
+        }
+
+        return tags;
+    };
+
+    // Map timeline entry to journey event
+    const mapTimelineEntryToJourneyEvent = (entry: ApiTimelineEntry, index: number): JourneyEvent => {
+        const createdDate = new Date(entry.created_at);
+        const attributionTags = extractAttributionTags(entry);
+        
+        // Determine stage based on tool name
+        let stage: JourneyStage = 'ENGAGEMENT';
+        const toolLower = entry.tool_name.toLowerCase();
+        if (toolLower.includes('ad') || toolLower.includes('referrer') || toolLower.includes('authenticate')) {
+            stage = 'AD_CLICK';
+        } else if (toolLower.includes('insurance') || toolLower.includes('benefits') || toolLower.includes('copay') || toolLower.includes('prior_auth')) {
+            stage = 'QUALIFICATION';
+        } else if (toolLower.includes('pharmacy') || toolLower.includes('prescription') || toolLower.includes('fill')) {
+            stage = 'FILLED';
+        }
+
+        const eventType = mapToolNameToEventType(entry.tool_name);
+        const channel = mapToolNameToChannel(entry.tool_name);
+
+        // Build campaign info if attribution tags exist
+        let campaign: JourneyEvent['campaign'] = undefined;
+        if (attributionTags.length > 0) {
+            const isMeta = attributionTags.some(tag => tag.includes('META'));
+            campaign = {
+                platform: isMeta ? 'meta' : 'google',
+                adType: 'find_doctor',
+                campaignId: isMeta ? 'META-FD-2025-Q1' : 'GOOGLE-MA-2025-Q1',
+                campaignName: isMeta ? 'Find Doctor Q1 2025' : 'Market Access Q1 2025',
+            };
+        }
+
+        // Build details from tool_result and decision_summary
+        const details: any = {};
+        if (entry.decision_summary) {
+            details.outcome = entry.decision_summary;
+        }
+        if (entry.tool_result) {
+            if (entry.tool_result.duration) {
+                details.duration = entry.tool_result.duration;
+            }
+            if (entry.tool_result.copay) {
+                details.copay = entry.tool_result.copay;
+            }
+            if (entry.tool_result.pharmacy) {
+                details.pharmacy = entry.tool_result.pharmacy;
+            }
+            if (entry.tool_result.cost) {
+                details.cost = entry.tool_result.cost;
+            }
+        }
+
+        return {
+            id: entry.timeline_id,
+            stage,
+            timestamp: createdDate.toISOString(),
+            description: entry.timeline_description || entry.tool_name.replace(/_/g, ' '),
+            type: eventType,
+            channel,
+            campaign,
+            details: Object.keys(details).length > 0 ? details : undefined,
+        };
+    };
+
+    // Fetch journey data
+    useEffect(() => {
+        const fetchJourneyData = async () => {
+            if (!patientId) return;
+
+            setLoading(true);
+            setError(null);
+
+            try {
+                // Fetch journey stages and timeline in parallel
+                const [journeyResponse, timelineResponse] = await Promise.all([
+                    postAPI(CAPABILITIES_API_URLS.GET_USER_JOURNEY, { user_id: patientId }),
+                    postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, { user_id: patientId }),
+                ]);
+
+                if (journeyResponse.statusCode !== 200) {
+                    throw new Error(journeyResponse.message || 'Failed to fetch journey data');
+                }
+
+                if (timelineResponse.statusCode !== 200) {
+                    throw new Error(timelineResponse.message || 'Failed to fetch timeline data');
+                }
+
+                // Set journey stages
+                const stagesData = journeyResponse.data?.journey_stages || [];
+                setJourneyStages(stagesData);
+
+                // Map timeline entries to journey events
+                const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
+                const mappedEvents = timelineEntries.map((entry, index) => mapTimelineEntryToJourneyEvent(entry, index));
+                setJourneyEvents(mappedEvents);
+
+                // Extract last engagement from timeline
+                const lastEntry = timelineEntries[timelineEntries.length - 1];
+                if (lastEntry) {
+                    const lastEvent = mapTimelineEntryToJourneyEvent(lastEntry, timelineEntries.length - 1);
+                    // Only set as last engagement if it has a channel
+                    if (lastEvent.channel && lastEvent.channel !== 'none') {
+                        setLastEngagement(lastEvent);
+                    }
+                }
+
+                // Placeholder patient info
+                setPatient({
+                    id: patientId,
+                    name: patientId === '1' ? 'John Smith' : patientId === '4' ? 'Anonymous User' : 'Sarah Johnson',
+                    age: patientId === '4' ? null : patientId === '1' ? 58 : 62,
+                    location: patientId === '4' ? 'Unknown' : patientId === '1' ? 'New York, NY' : 'Chicago, IL',
+                    insurance: patientId === '4' ? 'Unknown' : patientId === '1' ? 'Commercial' : 'Medicare',
+                    phone: patientId === '4' ? null : patientId === '1' ? '+1 (555) 123-4567' : '+1 (555) 987-6543',
+                    email: patientId === '4' ? null : patientId === '1' ? 'john.smith@example.com' : 'sarah.johnson@example.com',
+                });
+            } catch (err) {
+                console.error('Error fetching journey data:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load journey data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchJourneyData();
+    }, [patientId]);
+
+    // Calculate current stage index from API journey stages
+    const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 
+        ? journeyStages.findIndex((s) => s.is_current)
+        : journeyStages.filter((s) => s.is_completed).length - 1;
 
     const getStageDate = (stageKey: JourneyStage) => {
+        // Map stage key to stage name
+        const stageNameMap: Record<JourneyStage, string> = {
+            'AD_CLICK': 'Ad Clicked',
+            'ENGAGEMENT': 'Engaged',
+            'QUALIFICATION': 'Benefits Check',
+            'FILLED': 'Prescription Filled',
+        };
+        const stageName = stageNameMap[stageKey];
+        const apiStage = journeyStages.find((s) => s.stage_name === stageName);
+        if (apiStage && apiStage.stage_date) {
+            return new Date(apiStage.stage_date);
+        }
+        // Fallback to finding from events
         const firstEvent = journeyEvents.find((e) => e.stage === stageKey);
-        if (!firstEvent) return null;
-        return new Date(firstEvent.timestamp);
+        if (firstEvent) return new Date(firstEvent.timestamp);
+        return null;
     };
 
     const getCampaignBadge = (event: JourneyEvent) => {
@@ -544,15 +554,16 @@ export default function PatientJourney() {
         return channelConfig[channel] || null;
     };
 
-    const lastEngagement = journeyEvents.filter((e) => e.stage === 'ENGAGEMENT' && e.channel && e.channel !== 'none').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    // Use the lastEngagement state if available, otherwise find from events
+    const displayLastEngagement = lastEngagement || journeyEvents.filter((e) => e.stage === 'ENGAGEMENT' && e.channel && e.channel !== 'none').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
     const getLastEngagementContext = () => {
-        if (!lastEngagement) return null;
-        const lastEngagementIndex = journeyEvents.findIndex((e) => e.id === lastEngagement.id);
-        const relatedEvents = journeyEvents.slice(0, lastEngagementIndex + 1).filter((e) => e.id !== lastEngagement.id);
+        if (!displayLastEngagement) return null;
+        const lastEngagementIndex = journeyEvents.findIndex((e) => e.id === displayLastEngagement.id);
+        const relatedEvents = journeyEvents.slice(0, lastEngagementIndex + 1).filter((e) => e.id !== displayLastEngagement.id);
 
-        const relatedAppointment = journeyEvents.find((e) => e.type === 'appointment' && new Date(e.timestamp).getTime() <= new Date(lastEngagement.timestamp).getTime());
-        const relatedPrescription = journeyEvents.find((e) => (e.type === 'prescription' || e.type === 'fill') && new Date(e.timestamp).getTime() >= new Date(lastEngagement.timestamp).getTime());
+        const relatedAppointment = journeyEvents.find((e) => e.type === 'appointment' && new Date(e.timestamp).getTime() <= new Date(displayLastEngagement.timestamp).getTime());
+        const relatedPrescription = journeyEvents.find((e) => (e.type === 'prescription' || e.type === 'fill') && new Date(e.timestamp).getTime() >= new Date(displayLastEngagement.timestamp).getTime());
 
         return {
             previousEvent: relatedEvents[relatedEvents.length - 1],
@@ -578,6 +589,32 @@ export default function PatientJourney() {
         if (diffMinutes > 0) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
         return 'Just now';
     };
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+                    <div className="text-center">
+                        <FaSpinner className="animate-spin text-4xl text-[#0078D4] mx-auto mb-4" />
+                        <p className="text-gray-600">Loading patient journey...</p>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <DashboardLayout>
+                <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-red-600 mb-4">Error: {error}</p>
+                        <Button onClick={() => window.location.reload()}>Retry</Button>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout>
@@ -630,7 +667,7 @@ export default function PatientJourney() {
 
                                         return (
                                             <div key={stage.key} className="relative z-20 flex flex-col items-center flex-1 min-w-0">
-                                                <div className={`w-[70px] h-[70px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center text-3xl sm:text-2xl transition-all ${isCompleted ? `bg-[${successColor}] text-white shadow-lg` : isCurrent ? 'bg-white text-[#0078D4] border-4 border-[#0078D4] shadow-lg' : 'bg-gray-100 text-gray-400'}`} style={isCompleted ? { backgroundColor: successColor } : isCurrent ? { boxShadow: '0 0 0 5px rgba(0, 120, 212, 0.15), 0 4px 12px rgba(0,0,0,0.12)' } : {}}>
+                                                <div className={`w-[70px] h-[70px] sm:w-[60px] sm:h-[60px] rounded-full flex items-center justify-center text-3xl sm:text-2xl transition-all ${isCompleted ? `bg-[#52c41a] text-white shadow-lg` : isCurrent ? 'bg-white text-[#0078D4] border-4 border-[#0078D4] shadow-lg' : 'bg-gray-100 text-gray-400'}`} style={isCompleted ? { backgroundColor: '#52c41a' } : isCurrent ? { boxShadow: '0 0 0 5px rgba(0, 120, 212, 0.15), 0 4px 12px rgba(0,0,0,0.12)' } : {}}>
                                                     {isCompleted ? <FaCheckCircle className="text-4xl" /> : stage.icon}
                                                 </div>
                                                 <span className={`text-xs mt-2.5 text-center transition-all ${isCurrent ? 'text-gray-900 font-bold' : isCompleted ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>{stage.label}</span>
@@ -661,23 +698,23 @@ export default function PatientJourney() {
                                     </div>
                                     <span className="text-gray-900 text-sm font-semibold">Last Engagement</span>
                                 </div>
-                                {lastEngagement && (
+                                {displayLastEngagement && (
                                     <button onClick={() => setLastEngagementExpanded(!lastEngagementExpanded)} className="transition-transform" style={{ transform: lastEngagementExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                                         <FaChevronDown />
                                     </button>
                                 )}
                             </div>
 
-                            {lastEngagement ? (
+                            {displayLastEngagement ? (
                                 <div className="flex-1 flex flex-col min-w-0">
                                     <div className="mb-0 flex-1 flex flex-col min-w-0">
-                                        <span className="text-gray-900 text-sm block mb-3 font-semibold leading-snug break-words">{lastEngagement.description}</span>
+                                        <span className="text-gray-900 text-sm block mb-3 font-semibold leading-snug break-words">{displayLastEngagement.description}</span>
 
                                         <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex-1">
                                             <div className="mb-2.5">
                                                 <span className="text-[11px] text-gray-600 block mb-1 font-semibold">Date: </span>
                                                 <span className="text-sm text-gray-900 font-medium">
-                                                    {new Date(lastEngagement.timestamp).toLocaleDateString('en-US', {
+                                                    {new Date(displayLastEngagement.timestamp).toLocaleDateString('en-US', {
                                                         month: 'long',
                                                         day: 'numeric',
                                                         year: 'numeric',
@@ -685,7 +722,7 @@ export default function PatientJourney() {
                                                         minute: '2-digit',
                                                     })}
                                                 </span>
-                                                <span className="text-[11px] text-gray-400 block mt-0.5">{formatTimeAgo(lastEngagement.timestamp)}</span>
+                                                <span className="text-[11px] text-gray-400 block mt-0.5">{formatTimeAgo(displayLastEngagement.timestamp)}</span>
                                             </div>
 
                                             <hr className="my-2.5 border-gray-200" />
@@ -693,9 +730,9 @@ export default function PatientJourney() {
                                             <div className="mb-2.5">
                                                 <span className="text-[11px] text-gray-600 block mb-1 font-semibold">Type: </span>
                                                 <div className="flex items-center gap-1.5 min-w-0">
-                                                    {getChannelInfo(lastEngagement.channel)?.icon && <span className="flex-shrink-0" style={{ color: getChannelInfo(lastEngagement.channel)?.color }}>{getChannelInfo(lastEngagement.channel)?.icon}</span>}
-                                                    <span className="text-sm text-gray-900 font-medium break-words">{getEventTypeLabel(lastEngagement)}</span>
-                                                    {lastEngagement.channel && <Tag className="text-[10px] m-0 px-2 py-0.5 flex-shrink-0">{getChannelInfo(lastEngagement.channel)?.label}</Tag>}
+                                                    {getChannelInfo(displayLastEngagement.channel)?.icon && <span className="flex-shrink-0" style={{ color: getChannelInfo(displayLastEngagement.channel)?.color }}>{getChannelInfo(displayLastEngagement.channel)?.icon}</span>}
+                                                    <span className="text-sm text-gray-900 font-medium break-words">{getEventTypeLabel(displayLastEngagement)}</span>
+                                                    {displayLastEngagement.channel && <Tag className="text-[10px] m-0 px-2 py-0.5 flex-shrink-0">{getChannelInfo(displayLastEngagement.channel)?.label}</Tag>}
                                                 </div>
                                             </div>
 
@@ -703,9 +740,9 @@ export default function PatientJourney() {
 
                                             <div>
                                                 <span className="text-[11px] text-gray-600 block mb-1 font-semibold">Outcome: </span>
-                                                {lastEngagement.details?.outcome ? (
+                                                {displayLastEngagement.details?.outcome ? (
                                                     <Tag color="green" className="text-xs px-2.5 py-0.5 m-0">
-                                                        {lastEngagement.details.outcome}
+                                                        {displayLastEngagement.details.outcome}
                                                     </Tag>
                                                 ) : (
                                                     <span className="text-sm text-gray-600">No outcome recorded</span>
@@ -717,19 +754,19 @@ export default function PatientJourney() {
                                     {/* Expandable Details Section */}
                                     {lastEngagementExpanded && (
                                         <div className="flex flex-col gap-3 mt-3">
-                                            {lastEngagement.details && (
+                                            {displayLastEngagement.details && (
                                                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                                    {lastEngagement.details.duration && (
+                                                    {displayLastEngagement.details.duration && (
                                                         <div className="mb-3">
                                                             <span className="text-xs text-gray-600 block mb-1 font-semibold">Duration: </span>
-                                                            <span className="text-sm text-gray-900 font-medium">{lastEngagement.details.duration}</span>
+                                                            <span className="text-sm text-gray-900 font-medium">{displayLastEngagement.details.duration}</span>
                                                         </div>
                                                     )}
-                                                    {lastEngagement.details.topics && (
+                                                    {displayLastEngagement.details.topics && (
                                                         <div className="mb-3">
                                                             <span className="text-xs text-gray-600 block mb-1.5 font-semibold">Topics Discussed: </span>
                                                             <div className="flex flex-col gap-1.5">
-                                                                {lastEngagement.details.topics.map((topic: string, idx: number) => (
+                                                                {displayLastEngagement.details.topics.map((topic: string, idx: number) => (
                                                                     <div key={idx} className="px-2.5 py-1.5 bg-white rounded border border-gray-200">
                                                                         <span className="text-xs text-gray-900">{topic}</span>
                                                                     </div>
@@ -737,11 +774,11 @@ export default function PatientJourney() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {lastEngagement.details.messages && lastEngagement.details.messages.length > 0 && (
+                                                    {displayLastEngagement.details.messages && displayLastEngagement.details.messages.length > 0 && (
                                                         <div>
                                                             <span className="text-xs text-gray-600 block mb-1.5 font-semibold">Conversation Summary: </span>
                                                             <div className="p-2.5 bg-white rounded border border-gray-200">
-                                                                <span className="text-xs text-gray-900 leading-relaxed break-words">{lastEngagement.details.messages[lastEngagement.details.messages.length - 1]?.message}</span>
+                                                                <span className="text-xs text-gray-900 leading-relaxed break-words">{displayLastEngagement.details.messages[displayLastEngagement.details.messages.length - 1]?.message}</span>
                                                             </div>
                                                         </div>
                                                     )}
@@ -805,90 +842,97 @@ export default function PatientJourney() {
                         <div className="absolute left-7 top-0 bottom-0 w-1 bg-[#0078D4] rounded z-0" />
 
                         {/* Events */}
-                        {journeyEvents.map((event, index) => {
-                            const isExpanded = expandedEvents.has(event.id);
-                            const status = getStageStatus(event.stage);
-                            const isCompleted = status === 'completed' || index < journeyEvents.length - 1;
-                            const channelInfo = getChannelInfo(event.channel);
-                            return (
-                                <React.Fragment key={event.id}>
-                                    <div className="relative mb-5 pl-12 sm:pl-16">
-                                        {/* Enhanced Dot */}
-                                        <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
-                                            {getEventIcon(event)}
-                                        </div>
-
-                                        {/* Enhanced Channel Badge on Dot */}
-                                        {channelInfo && (
-                                            <div className="absolute left-9 top-1.5 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center z-20 shadow-md" style={{ backgroundColor: channelInfo.color }}>
-                                                <span className="text-white text-[10px]">{channelInfo.icon}</span>
+                        {journeyEvents.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                <FaClock className="text-4xl mx-auto mb-4 opacity-50" />
+                                <p>No timeline events found</p>
+                            </div>
+                        ) : (
+                            journeyEvents.map((event, index) => {
+                                const isExpanded = expandedEvents.has(event.id);
+                                const status = getStageStatus(event.stage);
+                                const isCompleted = status === 'completed' || index < journeyEvents.length - 1;
+                                const channelInfo = getChannelInfo(event.channel);
+                                return (
+                                    <React.Fragment key={event.id}>
+                                        <div className="relative mb-5 pl-12 sm:pl-16">
+                                            {/* Enhanced Dot */}
+                                            <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
+                                                {getEventIcon(event)}
                                             </div>
-                                        )}
 
-                                        {/* Enhanced Event Card */}
-                                        <Card onClick={() => toggleEventDetails(event.id)} className={`rounded-xl transition-all cursor-pointer ml-1 ${isExpanded ? 'border-2 border-[#0078D4] shadow-lg' : `border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`}`} bodyStyle={{ padding: '16px 20px' }}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-                                                        <span className="text-gray-900 text-sm font-semibold leading-snug break-words">{event.description}</span>
-                                                        {channelInfo && (
-                                                            <Tag icon={channelInfo.icon} className="m-0 border text-[11px] px-2 py-0.5 h-auto leading-[18px]" style={{ color: channelInfo.color, borderColor: `${channelInfo.color}30` }}>
-                                                                {channelInfo.label}
-                                                            </Tag>
-                                                        )}
-                                                        {event.campaign && (
-                                                            <Link to={`/crm/marketing/campaigns#${event.campaign.campaignId}`} onClick={(e) => e.stopPropagation()}>
-                                                                <Button type="link" size="small" icon={<FaInfoCircle />} className="p-0 h-auto text-[11px]">
-                                                                    View Attribution
-                                                                </Button>
-                                                            </Link>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2.5 flex-wrap">
-                                                        <Tag
-                                                            icon={getEventIcon(event)}
-                                                            className="text-xs px-3 py-1 h-auto rounded-md font-medium border-0"
-                                                            style={{
-                                                                backgroundColor: event.type === 'ad' ? (event.campaign?.platform === 'meta' ? '#4267B2' : '#4285F4') : event.type === 'followup' ? (event.details?.channel === 'SMS' ? secondaryColor : primaryColor) : primaryColor,
-                                                                color: 'white',
-                                                            }}>
-                                                            {getEventTypeLabel(event)}
-                                                        </Tag>
-                                                        {getCampaignBadge(event)}
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <FaCalendar className="text-xs text-gray-600 flex-shrink-0" />
-                                                            <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
-                                                                {new Date(event.timestamp).toLocaleDateString('en-US', {
-                                                                    month: 'long',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric',
-                                                                })}
-                                                            </span>
-                                                            <span className="text-xs text-gray-400 whitespace-nowrap">
-                                                                {new Date(event.timestamp).toLocaleTimeString('en-US', {
-                                                                    hour: 'numeric',
-                                                                    minute: '2-digit',
-                                                                })}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    {isExpanded && renderEventDetails(event)}
+                                            {/* Enhanced Channel Badge on Dot */}
+                                            {channelInfo && (
+                                                <div className="absolute left-9 top-1.5 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center z-20 shadow-md" style={{ backgroundColor: channelInfo.color }}>
+                                                    <span className="text-white text-[10px]">{channelInfo.icon}</span>
                                                 </div>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleEventDetails(event.id);
-                                                    }}
-                                                    className="transition-transform"
-                                                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                                                    <FaChevronDown />
-                                                </button>
-                                            </div>
-                                        </Card>
-                                    </div>
-                                </React.Fragment>
-                            );
-                        })}
+                                            )}
+
+                                            {/* Enhanced Event Card */}
+                                            <Card onClick={() => toggleEventDetails(event.id)} className={`rounded-xl transition-all cursor-pointer ml-1 ${isExpanded ? 'border-2 border-[#0078D4] shadow-lg' : `border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`}`} bodyStyle={{ padding: '16px 20px' }}>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
+                                                            <span className="text-gray-900 text-sm font-semibold leading-snug break-words">{event.description}</span>
+                                                            {channelInfo && (
+                                                                <Tag icon={channelInfo.icon} className="m-0 border text-[11px] px-2 py-0.5 h-auto leading-[18px]" style={{ color: channelInfo.color, borderColor: `${channelInfo.color}30` }}>
+                                                                    {channelInfo.label}
+                                                                </Tag>
+                                                            )}
+                                                            {event.campaign && (
+                                                                <Link to={`/crm/marketing/campaigns#${event.campaign.campaignId}`} onClick={(e) => e.stopPropagation()}>
+                                                                    <Button type="link" size="small" icon={<FaInfoCircle />} className="p-0 h-auto text-[11px]">
+                                                                        View Attribution
+                                                                    </Button>
+                                                                </Link>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                                            <Tag
+                                                                icon={getEventIcon(event)}
+                                                                className="text-xs px-3 py-1 h-auto rounded-md font-medium border-0"
+                                                                style={{
+                                                                    backgroundColor: event.type === 'ad' ? (event.campaign?.platform === 'meta' ? '#4267B2' : '#4285F4') : event.type === 'followup' ? (event.details?.channel === 'SMS' ? secondaryColor : primaryColor) : primaryColor,
+                                                                    color: 'white',
+                                                                }}>
+                                                                {getEventTypeLabel(event)}
+                                                            </Tag>
+                                                            {getCampaignBadge(event)}
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <FaCalendar className="text-xs text-gray-600 flex-shrink-0" />
+                                                                <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
+                                                                    {new Date(event.timestamp).toLocaleDateString('en-US', {
+                                                                        month: 'long',
+                                                                        day: 'numeric',
+                                                                        year: 'numeric',
+                                                                    })}
+                                                                </span>
+                                                                <span className="text-xs text-gray-400 whitespace-nowrap">
+                                                                    {new Date(event.timestamp).toLocaleTimeString('en-US', {
+                                                                        hour: 'numeric',
+                                                                        minute: '2-digit',
+                                                                    })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {isExpanded && renderEventDetails(event)}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleEventDetails(event.id);
+                                                        }}
+                                                        className="transition-transform"
+                                                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                                        <FaChevronDown />
+                                                    </button>
+                                                </div>
+                                            </Card>
+                                        </div>
+                                    </React.Fragment>
+                                );
+                            })
+                        )}
                     </div>
                 </Card>
             </div>

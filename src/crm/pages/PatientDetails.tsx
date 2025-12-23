@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUser, FaComment, FaFile, FaShieldAlt, FaPhone, FaEnvelope, FaMapMarkerAlt, FaBirthdayCake, FaIdCard } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaComment, FaFile, FaShieldAlt, FaPhone, FaEnvelope, FaMapMarkerAlt, FaBirthdayCake, FaIdCard, FaSpinner } from 'react-icons/fa';
 import DashboardLayout from '../components/DashboardLayout';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -9,41 +9,47 @@ import Tag from '../components/ui/Tag';
 import Table from '../components/ui/Table';
 import Avatar from '../components/ui/Avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
+import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
 
 interface Conversation {
-    id: string;
+    conversation_id: string;
     created_at: string;
     channel: 'chat' | 'text' | 'voice' | 'email' | 'sms';
     domain: string;
     title?: string;
     summary_text?: string;
-    conversation_id: string;
 }
 
 interface Request {
-    id: string;
+    request_id: string;
     created_at: string;
     request_type: string;
-    status: 'pending' | 'approved' | 'denied' | 'completed' | 'in_progress';
+    status: 'pending' | 'approved' | 'denied' | 'completed' | 'in_progress' | string;
     description: string;
-    request_id: string;
 }
 
 interface PatientDetails {
-    id: string;
+    user_id: string;
+    first_name: string;
+    last_name: string;
     name: string;
     age: number | null;
-    phone: string | null;
+    phone_number: string | null;
     email: string | null;
+    address: {
+        city: string;
+        state: string;
+        street: string;
+        zip_code: string;
+    };
     location: string;
-    dateOfBirth: string | null;
-    insurance: {
+    date_of_birth: string | null;
+    insurance_details: {
         provider: string;
-        policyNumber?: string;
-        groupNumber?: string;
-        memberId?: string;
-        effectiveDate?: string;
-        planName?: string;
+        policy_number?: string;
+        group_number?: string;
+        member_id?: string;
+        effective_date?: string;
     };
     status: 'Active' | 'Inactive';
     conversations: Conversation[];
@@ -95,76 +101,63 @@ const getStatusColor = (status: string): string => {
         completed: 'bg-blue-100 text-blue-800',
         in_progress: 'bg-orange-100 text-orange-800',
     };
-    return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
+    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
 };
 
 export default function PatientDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [patientData, setPatientData] = useState<PatientDetails | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const primaryColor = '#0078D4';
     const secondaryColor = '#00B7C3';
     const tertiaryColor = '#83C995';
 
-    // Mock data - in a real app, this would come from an API
-    const patientData: PatientDetails = useMemo(() => {
-        const patientId = id || '1';
-        const basePatient = {
-            id: patientId,
-            name: patientId === '1' ? 'John Smith' : patientId === '4' ? 'Anonymous User' : 'Sarah Johnson',
-            age: patientId === '4' ? null : patientId === '1' ? 58 : 62,
-            phone: patientId === '4' ? null : patientId === '1' ? '+1 (555) 123-4567' : '+1 (555) 987-6543',
-            email: patientId === '4' ? null : patientId === '1' ? 'john.smith@example.com' : 'sarah.johnson@example.com',
-            location: patientId === '4' ? 'Unknown' : patientId === '1' ? 'New York, NY' : 'Chicago, IL',
-            dateOfBirth: patientId === '4' ? null : patientId === '1' ? '1965-03-15' : '1961-08-22',
-            insurance: {
-                provider: patientId === '4' ? 'Unknown' : patientId === '1' ? 'Commercial' : 'Medicare',
-                policyNumber: patientId === '4' ? undefined : 'POL-123456',
-                groupNumber: patientId === '4' ? undefined : 'GRP-789',
-                memberId: patientId === '4' ? undefined : 'MEM-456789',
-                effectiveDate: patientId === '4' ? undefined : '2023-01-01',
-                planName: patientId === '4' ? undefined : 'Premium Health Plan',
-            },
-            status: 'Active' as const,
-            conversations: [
-                {
-                    id: '1',
-                    created_at: '2025-01-15T10:20:00Z',
-                    channel: 'chat' as const,
-                    domain: 'diabetrix',
-                    title: 'Finding endocrinologist',
-                    summary_text: 'Patient discussed finding an endocrinologist near them',
-                    conversation_id: 'conv-12345678',
-                },
-                {
-                    id: '2',
-                    created_at: '2025-01-18T14:00:00Z',
-                    channel: 'voice' as const,
-                    domain: 'diabetrix',
-                    title: 'Voice check in',
-                    summary_text: 'Appointment confirmation call',
-                    conversation_id: 'conv-12345679',
-                },
-            ],
-            requests: [
-                {
-                    id: '1',
-                    created_at: '2025-01-15T10:25:00Z',
-                    request_type: 'Appointment',
-                    status: 'approved' as const,
-                    description: 'Schedule appointment with Dr. Robert Chen',
-                    request_id: 'req-12345678',
-                },
-                {
-                    id: '2',
-                    created_at: '2025-02-06T10:30:00Z',
-                    request_type: 'Insurance Cost',
-                    status: 'completed' as const,
-                    description: 'Benefits check for Diabetrix 500mg',
-                    request_id: 'req-12345679',
-                },
-            ],
+    useEffect(() => {
+        const fetchPatientDetails = async () => {
+            if (!id) return;
+            setLoading(true);
+            try {
+                const response = await postAPI(CAPABILITIES_API_URLS.GET_CORE_ENGINE_USER_DETAILS, { user_id: id });
+                if (response.statusCode === 200) {
+                    const data = response.data;
+                    const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Anonymous User';
+                    
+                    // Calculate age
+                    let age = null;
+                    if (data.date_of_birth) {
+                        const birthDate = new Date(data.date_of_birth);
+                        const today = new Date();
+                        age = today.getFullYear() - birthDate.getFullYear();
+                        const m = today.getMonth() - birthDate.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                            age--;
+                        }
+                    }
+
+                    setPatientData({
+                        ...data,
+                        name: fullName,
+                        age,
+                        location: data.address?.city ? `${data.address.city}, ${data.address.state || ''}` : 'Unknown',
+                        status: 'Active',
+                        conversations: data.conversations || [],
+                        requests: data.requests || [],
+                    });
+                } else {
+                    throw new Error(response.message || 'Failed to fetch patient details');
+                }
+            } catch (err) {
+                console.error('Error fetching patient details:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load patient details');
+            } finally {
+                setLoading(false);
+            }
         };
-        return basePatient;
+
+        fetchPatientDetails();
     }, [id]);
 
     const conversationColumns = [
@@ -202,7 +195,7 @@ export default function PatientDetails() {
             title: 'ID',
             dataIndex: 'conversation_id',
             key: 'conversation_id',
-            render: (convId: string) => <div className="text-xs font-mono text-gray-500">{convId.slice(0, 8)}...</div>,
+            render: (convId: string) => <div className="text-xs font-mono text-gray-500">{convId?.slice(0, 8)}...</div>,
         },
         {
             title: 'Actions',
@@ -246,11 +239,33 @@ export default function PatientDetails() {
             key: 'request_id',
             render: (reqId: string) => (
                 <button onClick={() => window.open(`${window.location.origin}/crm/patients/${id}`, '_blank', 'noopener,noreferrer')} className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
-                    {reqId.slice(0, 8)}...
+                    {reqId?.slice(0, 8)}...
                 </button>
             ),
         },
     ];
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="p-6 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+                    <FaSpinner className="animate-spin text-4xl text-[#0078D4] mb-4" />
+                    <p className="text-gray-600">Loading patient details...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (error || !patientData) {
+        return (
+            <DashboardLayout>
+                <div className="p-6 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+                    <p className="text-red-600 mb-4">Error: {error || 'Patient not found'}</p>
+                    <Button onClick={() => navigate('/crm/patients')}>Back to Patients</Button>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout>
@@ -270,7 +285,7 @@ export default function PatientDetails() {
                                 <div className="flex items-center gap-2 mt-1.5 text-sm">
                                     <span className="text-gray-600 font-medium break-words">{patientData.location}</span>
                                     <span className="text-gray-300 flex-shrink-0">•</span>
-                                    <span className="text-gray-600 font-medium break-words">{patientData.insurance.provider}</span>
+                                    <span className="text-gray-600 font-medium break-words">{patientData.insurance_details.provider}</span>
                                 </div>
                             </div>
                         </div>
@@ -290,7 +305,7 @@ export default function PatientDetails() {
                                     <FaPhone className="text-xs" />
                                     Phone
                                 </p>
-                                <p className="text-sm text-gray-900">{patientData.phone || 'N/A'}</p>
+                                <p className="text-sm text-gray-900">{patientData.phone_number || 'N/A'}</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
@@ -311,28 +326,28 @@ export default function PatientDetails() {
                                     <FaBirthdayCake className="text-xs" />
                                     Date of Birth
                                 </p>
-                                <p className="text-sm text-gray-900">{patientData.dateOfBirth ? formatDate(patientData.dateOfBirth) : 'N/A'}</p>
+                                <p className="text-sm text-gray-900">{patientData.date_of_birth ? formatDate(patientData.date_of_birth) : 'N/A'}</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
                                     <FaShieldAlt className="text-xs" />
                                     Insurance Provider
                                 </p>
-                                <p className="text-sm text-gray-900">{patientData.insurance.provider || 'N/A'}</p>
+                                <p className="text-sm text-gray-900">{patientData.insurance_details.provider || 'N/A'}</p>
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
                                     <FaIdCard className="text-xs" />
                                     Patient ID
                                 </p>
-                                <p className="text-xs font-mono text-gray-900">{patientData.id}</p>
+                                <p className="text-xs font-mono text-gray-900">{patientData.user_id}</p>
                             </div>
                         </div>
                     </div>
                 </Card>
 
                 {/* Insurance Details Card */}
-                {patientData.insurance && patientData.insurance.provider !== 'Unknown' && (
+                {patientData.insurance_details && patientData.insurance_details.provider !== 'Unknown' && (
                     <Card className="rounded-2xl shadow-lg border border-gray-200 mb-6">
                         <div className="px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center gap-2">
@@ -344,36 +359,30 @@ export default function PatientDetails() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium text-gray-500">Provider</p>
-                                    <p className="text-sm text-gray-900">{patientData.insurance.provider || 'N/A'}</p>
+                                    <p className="text-sm text-gray-900">{patientData.insurance_details.provider || 'N/A'}</p>
                                 </div>
-                                {patientData.insurance.policyNumber && (
+                                {patientData.insurance_details.policy_number && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium text-gray-500">Policy Number</p>
-                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance.policyNumber}</p>
+                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance_details.policy_number}</p>
                                     </div>
                                 )}
-                                {patientData.insurance.groupNumber && (
+                                {patientData.insurance_details.group_number && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium text-gray-500">Group Number</p>
-                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance.groupNumber}</p>
+                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance_details.group_number}</p>
                                     </div>
                                 )}
-                                {patientData.insurance.memberId && (
+                                {patientData.insurance_details.member_id && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium text-gray-500">Member ID</p>
-                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance.memberId}</p>
+                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance_details.member_id}</p>
                                     </div>
                                 )}
-                                {patientData.insurance.effectiveDate && (
+                                {patientData.insurance_details.effective_date && (
                                     <div className="space-y-2">
                                         <p className="text-sm font-medium text-gray-500">Effective Date</p>
-                                        <p className="text-sm text-gray-900">{formatDate(patientData.insurance.effectiveDate)}</p>
-                                    </div>
-                                )}
-                                {patientData.insurance.planName && (
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium text-gray-500">Plan Name</p>
-                                        <p className="text-sm font-mono text-gray-900">{patientData.insurance.planName}</p>
+                                        <p className="text-sm text-gray-900">{formatDate(patientData.insurance_details.effective_date)}</p>
                                     </div>
                                 )}
                             </div>
@@ -404,7 +413,7 @@ export default function PatientDetails() {
                             </div>
                             <div className="p-6">
                                 {patientData.conversations && patientData.conversations.length > 0 ? (
-                                    <Table dataSource={patientData.conversations} columns={conversationColumns} rowKey="id" pagination={{ pageSize: 10 }} />
+                                    <Table dataSource={patientData.conversations} columns={conversationColumns} rowKey="conversation_id" pagination={{ pageSize: 10 }} />
                                 ) : (
                                     <div className="text-center py-8">
                                         <FaComment className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -425,7 +434,7 @@ export default function PatientDetails() {
                             </div>
                             <div className="p-6">
                                 {patientData.requests && patientData.requests.length > 0 ? (
-                                    <Table dataSource={patientData.requests} columns={requestColumns} rowKey="id" pagination={{ pageSize: 10 }} />
+                                    <Table dataSource={patientData.requests} columns={requestColumns} rowKey="request_id" pagination={{ pageSize: 10 }} />
                                 ) : (
                                     <div className="text-center py-8">
                                         <FaFile className="h-12 w-12 mx-auto text-gray-400 mb-4" />

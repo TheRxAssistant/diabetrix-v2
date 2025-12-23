@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaUser, FaComment, FaPhone, FaSearch, FaFilter, FaChevronDown, FaDownload, FaInfoCircle, FaRocket } from 'react-icons/fa';
+import { FaUser, FaComment, FaPhone, FaSearch, FaFilter, FaChevronDown, FaDownload, FaInfoCircle, FaRocket, FaSpinner } from 'react-icons/fa';
 import DashboardLayout from '../components/DashboardLayout';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Tag from '../components/ui/Tag';
 import Statistic from '../components/ui/Statistic';
+import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
 
 interface Patient {
     id: string;
@@ -24,132 +25,92 @@ interface Patient {
     insuranceStatus: string;
 }
 
+interface CoreEngineUser {
+    user_id: string;
+    phone_number: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    date_of_birth: string;
+    address: {
+        city: string;
+        state: string;
+    };
+    insurance_details: {
+        provider: string;
+    };
+    created_at: string;
+}
+
 export default function AllPatients() {
     const [searchText, setSearchText] = useState('');
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const primaryColor = '#0078D4';
     const secondaryColor = '#00B7C3';
     const tertiaryColor = '#83C995';
 
-    const patients: Patient[] = [
-        {
-            id: '1',
-            name: 'John Smith',
-            age: 58,
-            status: 'Active',
-            lastContact: '10/15/2023',
-            contactMethod: 'Chat',
-            stage: 'Onboarding',
-            interactions: 12,
-            adherence: 85,
-            identified: true,
-            location: 'New York, NY',
-            insuranceStatus: 'Commercial',
-        },
-        {
-            id: '2',
-            name: 'Sarah Johnson',
-            age: 62,
-            status: 'Active',
-            lastContact: '10/14/2023',
-            contactMethod: 'Call',
-            stage: 'Treatment',
-            interactions: 8,
-            adherence: 92,
-            identified: true,
-            location: 'Chicago, IL',
-            insuranceStatus: 'Medicare',
-        },
-        {
-            id: '3',
-            name: 'Michael Brown',
-            age: 55,
-            status: 'Inactive',
-            lastContact: '10/10/2023',
-            contactMethod: 'SMS',
-            stage: 'Follow-up',
-            interactions: 15,
-            adherence: 68,
-            identified: true,
-            location: 'Los Angeles, CA',
-            insuranceStatus: 'Commercial',
-        },
-        {
-            id: '4',
-            name: 'Anonymous User',
-            age: null,
-            status: 'Active',
-            lastContact: '10/16/2023',
-            contactMethod: 'Chat',
-            stage: 'Inquiry',
-            interactions: 2,
-            adherence: null,
-            identified: false,
-            location: 'Est. New York, NY',
-            insuranceStatus: 'Est. Commercial',
-        },
-        {
-            id: '5',
-            name: 'Anonymous User',
-            age: null,
-            status: 'Active',
-            lastContact: '10/15/2023',
-            contactMethod: 'Chat',
-            stage: 'Inquiry',
-            interactions: 1,
-            adherence: null,
-            identified: false,
-            location: 'Est. Chicago, IL',
-            insuranceStatus: 'Est. Medicare',
-        },
-        {
-            id: '6',
-            name: 'Emily Wilson',
-            age: 42,
-            status: 'Active',
-            lastContact: '10/13/2023',
-            contactMethod: 'Call',
-            stage: 'Treatment',
-            interactions: 6,
-            adherence: 90,
-            identified: true,
-            location: 'Boston, MA',
-            insuranceStatus: 'Commercial',
-        },
-        {
-            id: '7',
-            name: 'Robert Davis',
-            age: 67,
-            status: 'Active',
-            lastContact: '10/12/2023',
-            contactMethod: 'SMS',
-            stage: 'Follow-up',
-            interactions: 9,
-            adherence: 95,
-            identified: true,
-            location: 'Miami, FL',
-            insuranceStatus: 'Medicare',
-        },
-        {
-            id: '8',
-            name: 'Anonymous User',
-            age: null,
-            status: 'Inactive',
-            lastContact: '10/09/2023',
-            contactMethod: 'Chat',
-            stage: 'Inquiry',
-            interactions: 1,
-            adherence: null,
-            identified: false,
-            location: 'Est. Dallas, TX',
-            insuranceStatus: 'Est. Medicaid',
-        },
-    ];
+    useEffect(() => {
+        const fetchPatients = async () => {
+            setLoading(true);
+            try {
+                const response = await postAPI(CAPABILITIES_API_URLS.GET_CORE_ENGINE_USERS, {});
+                if (response.statusCode === 200) {
+                    const apiUsers: CoreEngineUser[] = response.data?.users || [];
+                    
+                    const mappedPatients: Patient[] = apiUsers.map(user => {
+                        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+                        const isIdentified = fullName.length > 0 && fullName !== 'Anonymous User';
+                        
+                        // Calculate age if date_of_birth exists
+                        let age = null;
+                        if (user.date_of_birth) {
+                            const birthDate = new Date(user.date_of_birth);
+                            const today = new Date();
+                            age = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                age--;
+                            }
+                        }
+
+                        return {
+                            id: user.user_id,
+                            name: isIdentified ? fullName : 'Anonymous User',
+                            age: age,
+                            status: 'Active', // Default to active
+                            lastContact: new Date(user.created_at).toLocaleDateString(),
+                            contactMethod: 'Chat', // Default
+                            stage: 'Inquiry', // Default
+                            interactions: 1, // Default
+                            adherence: null,
+                            identified: isIdentified,
+                            location: user.address?.city ? `${user.address.city}, ${user.address.state || ''}` : 'Unknown',
+                            insuranceStatus: user.insurance_details?.provider || 'Unknown',
+                        };
+                    });
+                    
+                    setPatients(mappedPatients);
+                } else {
+                    throw new Error(response.message || 'Failed to fetch patients');
+                }
+            } catch (err) {
+                console.error('Error fetching patients:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load patients');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPatients();
+    }, []);
 
     const filteredPatients = useMemo(() => {
         if (!searchText) return patients;
-        return patients.filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase()));
-    }, [searchText]);
+        return patients.filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase()) || p.id.toLowerCase().includes(searchText.toLowerCase()));
+    }, [searchText, patients]);
 
     const columns = [
         {
@@ -297,51 +258,65 @@ export default function AllPatients() {
     return (
         <DashboardLayout>
             <div className="p-6">
-                <div className="mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                        <Card className="rounded-lg">
-                            <Statistic title="Total Patients" value={patients.length} valueStyle={{ color: primaryColor }} />
-                            <div className="mt-2 text-sm text-gray-600">
-                                {patients.filter((p) => p.identified).length} identified, {patients.filter((p) => !p.identified).length} anonymous
-                            </div>
-                        </Card>
-                        <Card className="rounded-lg">
-                            <Statistic title="Active Patients" value={patients.filter((p) => p.status === 'Active').length} valueStyle={{ color: secondaryColor }} />
-                            <div className="mt-2 text-sm text-gray-600">{Math.round((patients.filter((p) => p.status === 'Active').length / patients.length) * 100)}% of total</div>
-                        </Card>
-                        <Card className="rounded-lg">
-                            <Statistic title="Avg. Adherence" value={Math.round(patients.filter((p) => p.adherence !== null).reduce((acc, p) => acc + (p.adherence || 0), 0) / patients.filter((p) => p.adherence !== null).length)} suffix="%" valueStyle={{ color: tertiaryColor }} />
-                            <div className="mt-2 text-sm text-gray-600">Among identified patients</div>
-                        </Card>
-                        <Card className="rounded-lg">
-                            <Statistic title="Avg. Interactions" value={Math.round((patients.reduce((acc, p) => acc + p.interactions, 0) / patients.length) * 10) / 10} valueStyle={{ color: '#722ED1' }} />
-                            <div className="mt-2 text-sm text-gray-600">Per patient</div>
-                        </Card>
-                        <Card className="rounded-lg">
-                            <Statistic title="Anonymous to Identified Conversion" value={32} suffix="%" valueStyle={{ color: '#722ED1' }} />
-                            <div className="mt-2 text-sm text-gray-600">Last 30 days</div>
-                        </Card>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center min-h-[400px]">
+                        <FaSpinner className="animate-spin text-4xl text-[#0078D4] mb-4" />
+                        <p className="text-gray-600">Loading patients...</p>
                     </div>
-                </div>
-
-                <Card
-                    title="All Patients"
-                    extra={
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                <input type="text" placeholder="Search patients" value={searchText} onChange={(e) => setSearchText(e.target.value)} className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-[250px] focus:outline-none focus:ring-2 focus:ring-[#0078D4]" />
+                ) : error ? (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+                        <p className="text-red-600 mb-4">Error: {error}</p>
+                        <Button onClick={() => window.location.reload()}>Retry</Button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                                <Card className="rounded-lg">
+                                    <Statistic title="Total Patients" value={patients.length} valueStyle={{ color: primaryColor }} />
+                                    <div className="mt-2 text-sm text-gray-600">
+                                        {patients.filter((p) => p.identified).length} identified, {patients.filter((p) => !p.identified).length} anonymous
+                                    </div>
+                                </Card>
+                                <Card className="rounded-lg">
+                                    <Statistic title="Active Patients" value={patients.filter((p) => p.status === 'Active').length} valueStyle={{ color: secondaryColor }} />
+                                    <div className="mt-2 text-sm text-gray-600">{patients.length > 0 ? Math.round((patients.filter((p) => p.status === 'Active').length / patients.length) * 100) : 0}% of total</div>
+                                </Card>
+                                <Card className="rounded-lg">
+                                    <Statistic title="Avg. Adherence" value={patients.filter((p) => p.adherence !== null).length > 0 ? Math.round(patients.filter((p) => p.adherence !== null).reduce((acc, p) => acc + (p.adherence || 0), 0) / patients.filter((p) => p.adherence !== null).length) : 0} suffix="%" valueStyle={{ color: tertiaryColor }} />
+                                    <div className="mt-2 text-sm text-gray-600">Among identified patients</div>
+                                </Card>
+                                <Card className="rounded-lg">
+                                    <Statistic title="Avg. Interactions" value={patients.length > 0 ? Math.round((patients.reduce((acc, p) => acc + p.interactions, 0) / patients.length) * 10) / 10 : 0} valueStyle={{ color: '#722ED1' }} />
+                                    <div className="mt-2 text-sm text-gray-600">Per patient</div>
+                                </Card>
+                                <Card className="rounded-lg">
+                                    <Statistic title="Anonymous to Identified Conversion" value={32} suffix="%" valueStyle={{ color: '#722ED1' }} />
+                                    <div className="mt-2 text-sm text-gray-600">Last 30 days</div>
+                                </Card>
                             </div>
-                            <Button icon={<FaFilter />} className="flex items-center gap-2">
-                                Filter
-                                <FaChevronDown />
-                            </Button>
-                            <Button icon={<FaDownload />}>Export</Button>
                         </div>
-                    }
-                    className="rounded-lg shadow-sm">
-                    <Table dataSource={filteredPatients} columns={columns} rowKey="id" pagination={{ pageSize: 10 }} />
-                </Card>
+
+                        <Card
+                            title="All Patients"
+                            extra={
+                                <div className="flex items-center gap-2">
+                                    <div className="relative">
+                                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                        <input type="text" placeholder="Search patients" value={searchText} onChange={(e) => setSearchText(e.target.value)} className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-[250px] focus:outline-none focus:ring-2 focus:ring-[#0078D4]" />
+                                    </div>
+                                    <Button icon={<FaFilter />} className="flex items-center gap-2">
+                                        Filter
+                                        <FaChevronDown />
+                                    </Button>
+                                    <Button icon={<FaDownload />}>Export</Button>
+                                </div>
+                            }
+                            className="rounded-lg shadow-sm">
+                            <Table dataSource={filteredPatients} columns={columns} rowKey="id" pagination={{ pageSize: 10 }} />
+                        </Card>
+                    </>
+                )}
             </div>
         </DashboardLayout>
     );
