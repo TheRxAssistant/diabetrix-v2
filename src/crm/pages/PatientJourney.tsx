@@ -45,6 +45,7 @@ interface ApiTimelineEntry {
     tool_result?: any;
     decision_summary?: string | null;
     timeline_description: string;
+    timeline_title: string | null;
 }
 
 export default function PatientJourney() {
@@ -200,7 +201,7 @@ export default function PatientJourney() {
             id: entry.timeline_id,
             stage,
             timestamp: createdDate.toISOString(),
-            description: entry.timeline_description || entry.tool_name.replace(/_/g, ' '),
+            description:  entry.timeline_title || entry.timeline_description || entry.tool_name.replace(/_/g, ' '),
             type: eventType,
             channel,
             campaign,
