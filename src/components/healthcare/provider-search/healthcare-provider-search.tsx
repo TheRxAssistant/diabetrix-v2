@@ -358,6 +358,29 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         return distances[Math.floor(Math.random() * distances.length)];
     };
 
+    // Convert provider to new API format (only for doctors/providers, not facilities)
+    const convertProviderToApiFormat = (provider: Provider): Provider => {
+        return {
+            ...provider,
+            provider_id: provider.provider_id,
+            provider_name: provider.name || provider.provider_name,
+            provider_specialty: provider.description || provider.provider_specialty,
+            provider_address: provider.address || provider.provider_address,
+            provider_phone: provider.phone || provider.provider_phone,
+            provider_email: provider.email || provider.provider_email,
+            provider_website: provider.website || provider.provider_website,
+            provider_image: provider.image || provider.provider_image,
+            provider_rating: provider.rating !== null && provider.rating !== undefined ? provider.rating : provider.provider_rating,
+            provider_review_count: provider.review_count !== undefined ? (typeof provider.review_count === 'string' ? parseInt(provider.review_count) || 0 : provider.review_count) : provider.provider_review_count,
+            provider_full_address_obj: provider.provider_full_address_obj || (provider.latitude && provider.longitude ? {
+                lat: provider.latitude,
+                long: provider.longitude,
+            } : undefined),
+            languages: provider.languages || (provider.provider_languages ? (typeof provider.provider_languages === 'string' ? provider.provider_languages.split(', ') : []) : []),
+            insurance_accepted: provider.insurance_accepted || [],
+        } as Provider;
+    };
+
     // Render API provider
     const renderApiProvider = (provider: Provider) => {
         // Support both new API format and legacy format
@@ -423,7 +446,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     <button
                         className="flex-1 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-2 px-4 rounded-lg text-sm font-medium hover:shadow-lg transition-all duration-200"
                         onClick={() => {
-                            setSelectedBookingProvider(provider);
+                            setSelectedBookingProvider(convertProviderToApiFormat(provider));
                             setShowBookingModal(true);
                         }}>
                         Book Now
