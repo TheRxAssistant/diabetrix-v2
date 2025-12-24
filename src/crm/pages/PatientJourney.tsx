@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Tag from '../components/ui/Tag';
+import VisitTimelineNode from '../components/VisitTimelineNode';
 import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
 
 type JourneyStage = 'AD_CLICK' | 'ENGAGEMENT' | 'QUALIFICATION' | 'FILLED';
@@ -25,6 +26,7 @@ interface JourneyEvent {
         campaignId: string;
         campaignName: string;
     };
+    visitDetails?: any;
     details?: any;
 }
 
@@ -38,7 +40,9 @@ interface ApiJourneyStage {
 interface ApiTimelineEntry {
     timeline_id: string;
     created_at: Date | string;
-    user_id: string;
+    user_id?: string | null;
+    anonymous_id?: string | null;
+    visit_id?: string | null;
     conversation_id?: string | null;
     tool_name: string;
     tool_arguments?: any;
@@ -47,6 +51,23 @@ interface ApiTimelineEntry {
     timeline_description: string;
     timeline_title: string | null;
     conversation_summary?: string | null;
+    visit?: {
+        visit_id: string;
+        created_at: Date | string;
+        user_id?: string | null;
+        anonymous_id: string;
+        utm_source?: string | null;
+        utm_medium?: string | null;
+        utm_campaign?: string | null;
+        utm_term?: string | null;
+        utm_content?: string | null;
+        landing_page: string;
+        referrer?: string | null;
+        domain: string;
+        device_type?: string | null;
+        user_agent?: string | null;
+        ip_address?: string | null;
+    } | null;
 }
 
 export default function PatientJourney() {
@@ -58,6 +79,9 @@ export default function PatientJourney() {
     const [journeyStages, setJourneyStages] = useState<ApiJourneyStage[]>([]);
     const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>([]);
     const [lastEngagement, setLastEngagement] = useState<JourneyEvent | null>(null);
+    const [eventsData, setEventsData] = useState<any[]>([]);
+    const [visitsMap, setVisitsMap] = useState<Map<string, any>>(new Map());
+    const [combinedTimeline, setCombinedTimeline] = useState<any[]>([]);
     const [patient, setPatient] = useState({
         id: patientId,
         name: 'Loading...',
@@ -130,6 +154,24 @@ export default function PatientJourney() {
         return 'none';
     };
 
+    // Function to get visit/ad details for a timeline entry
+    const getVisitDetailsForTimelineEntry = (timelineEntry: ApiTimelineEntry) => {
+        // If timeline entry has visit_id, get visit details
+        if (timelineEntry.visit_id) {
+            return visitsMap.get(timelineEntry.visit_id);
+        }
+        
+        // Otherwise, find the visit that contains events around this timeline entry's time
+        const timelineTime = new Date(timelineEntry.created_at).getTime();
+        const visit = Array.from(visitsMap.values()).find((v: any) => {
+            const visitTime = new Date(v.created_at).getTime();
+            // Check if timeline entry is within 1 hour of visit creation
+            return Math.abs(timelineTime - visitTime) < 3600000;
+        });
+        
+        return visit;
+    };
+
     // Extract attribution tags from timeline entry
     const extractAttributionTags = (entry: ApiTimelineEntry): string[] => {
         const tags: string[] = [];
@@ -165,9 +207,23 @@ export default function PatientJourney() {
         const eventType = mapToolNameToEventType(entry.tool_name);
         const channel = mapToolNameToChannel(entry.tool_name);
 
-        // Build campaign info if attribution tags exist
+        // Get visit details for ad attribution
+        const visitDetails = getVisitDetailsForTimelineEntry(entry);
+
+        // Build campaign info from visit if available, otherwise from attribution tags
         let campaign: JourneyEvent['campaign'] = undefined;
-        if (attributionTags.length > 0) {
+        if (visitDetails && (visitDetails.utm_source || visitDetails.utm_campaign)) {
+            const isMeta = visitDetails.utm_source?.toLowerCase().includes('meta') || 
+                          visitDetails.utm_source?.toLowerCase().includes('facebook');
+            const isGoogle = visitDetails.utm_source?.toLowerCase().includes('google');
+            
+            campaign = {
+                platform: isMeta ? 'meta' : isGoogle ? 'google' : 'other',
+                adType: (visitDetails.utm_content || 'find_doctor') as 'find_doctor' | 'market_access' | 'awareness' | 'education',
+                campaignId: visitDetails.utm_campaign || 'unknown',
+                campaignName: visitDetails.utm_campaign || 'Unknown Campaign',
+            };
+        } else if (attributionTags.length > 0) {
             const isMeta = attributionTags.some((tag) => tag.includes('META'));
             campaign = {
                 platform: isMeta ? 'meta' : 'google',
@@ -208,6 +264,7 @@ export default function PatientJourney() {
             type: eventType,
             channel,
             campaign,
+            visitDetails,
             details: Object.keys(details).length > 0 ? details : undefined,
         };
     };
@@ -236,14 +293,85 @@ export default function PatientJourney() {
                     throw new Error(timelineResponse.message || 'Failed to fetch timeline data');
                 }
 
+                // Process visits map from timeline entries (visit data is now included in timeline response)
+                const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
+                const visitsMap = new Map<string, any>();
+                timelineEntries.forEach((entry: any) => {
+                    if (entry.visit && entry.visit_id) {
+                        visitsMap.set(entry.visit_id, entry.visit);
+                    }
+                });
+                setVisitsMap(visitsMap);
+
                 // Set journey stages
                 const stagesData = journeyResponse.data?.journey_stages || [];
                 setJourneyStages(stagesData);
 
                 // Map timeline entries to journey events
-                const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
                 const mappedEvents = timelineEntries.map((entry, index) => mapTimelineEntryToJourneyEvent(entry, index));
                 setJourneyEvents(mappedEvents);
+
+                // Build combined timeline using ONLY timeline entries
+                // We interleave timeline entries with visit nodes based on visit_id if present
+                const combinedItems: any[] = [];
+                const processedVisitIds = new Set<string>();
+
+                timelineEntries.forEach((entry, index) => {
+                    const event = mappedEvents[index];
+                    
+                    // If this entry belongs to a visit we haven't shown yet, add the visit node first
+                    if (entry.visit_id && !processedVisitIds.has(entry.visit_id)) {
+                        const visitData = visitsMap.get(entry.visit_id);
+                        if (visitData) {
+                            // Find all timeline entries for this visit
+                            const visitEvents = timelineEntries
+                                .filter(e => e.visit_id === entry.visit_id)
+                                .map((e, i) => mapTimelineEntryToJourneyEvent(e, i));
+
+                            combinedItems.push({
+                                type: 'visit',
+                                id: entry.visit_id,
+                                timestamp: visitData.created_at,
+                                data: {
+                                    visit: visitData,
+                                    events: visitEvents.map(ev => ({
+                                        timeline_id: ev.id,
+                                        created_at: ev.timestamp,
+                                        event_type: ev.type,
+                                        event_name: ev.description,
+                                        event_payload: ev.details,
+                                    })),
+                                },
+                            });
+                            processedVisitIds.add(entry.visit_id);
+                        } else {
+                            // No visit data, just add as regular timeline entry
+                            combinedItems.push({
+                                type: 'timeline',
+                                id: event.id,
+                                timestamp: event.timestamp,
+                                data: event,
+                            });
+                        }
+                    } else if (!entry.visit_id) {
+                        // Regular timeline entry without visit
+                        combinedItems.push({
+                            type: 'timeline',
+                            id: event.id,
+                            timestamp: event.timestamp,
+                            data: event,
+                        });
+                    }
+                });
+                
+                // Sort all items chronologically
+                combinedItems.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    return timeA - timeB;
+                });
+                
+                setCombinedTimeline(combinedItems);
 
                 // Extract last engagement from timeline
                 const lastEntry = timelineEntries[timelineEntries.length - 1];
@@ -333,22 +461,28 @@ export default function PatientJourney() {
                 if (timelineResponse.statusCode === 200) {
                     const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
 
+                    // Process visits map from timeline entries
+                    const visitsMap = new Map<string, any>();
+                    timelineEntries.forEach((entry: any) => {
+                        if (entry.visit && entry.visit_id) {
+                            visitsMap.set(entry.visit_id, entry.visit);
+                        }
+                    });
+                    setVisitsMap(visitsMap);
+
                     // Only append new entries to avoid re-render
                     setJourneyEvents((prevEvents) => {
                         const existingIds = new Set(prevEvents.map(e => e.id));
                         const newEntries = timelineEntries.filter(entry => !existingIds.has(entry.timeline_id));
 
-                        // If no new entries, return previous to avoid re-render
                         if (newEntries.length === 0) {
                             return prevEvents;
                         }
 
-                        // Map new entries to events and append
                         const newEvents = newEntries.map((entry, index) =>
                             mapTimelineEntryToJourneyEvent(entry, prevEvents.length + index)
                         );
 
-                        // Update last engagement if applicable
                         if (newEvents.length > 0) {
                             const lastEvent = newEvents[newEvents.length - 1];
                             if (lastEvent.channel && lastEvent.channel !== 'none') {
@@ -356,7 +490,66 @@ export default function PatientJourney() {
                             }
                         }
 
-                        return [...prevEvents, ...newEvents];
+                        const updatedEvents = [...prevEvents, ...newEvents];
+                        
+                        // Rebuild combined timeline using updatedEvents
+                        const combinedItems: any[] = [];
+                        const processedVisitIds = new Set<string>();
+
+                        timelineEntries.forEach((entry, index) => {
+                            const event = updatedEvents.find(e => e.id === entry.timeline_id);
+                            if (!event) return;
+
+                            if (entry.visit_id && !processedVisitIds.has(entry.visit_id)) {
+                                const visitData = visitsMap.get(entry.visit_id);
+                                if (visitData) {
+                                    const visitEvents = timelineEntries
+                                        .filter(e => e.visit_id === entry.visit_id)
+                                        .map((e, i) => mapTimelineEntryToJourneyEvent(e, i));
+
+                                    combinedItems.push({
+                                        type: 'visit',
+                                        id: entry.visit_id,
+                                        timestamp: visitData.created_at,
+                                        data: {
+                                            visit: visitData,
+                                            events: visitEvents.map(ev => ({
+                                                timeline_id: ev.id,
+                                                created_at: ev.timestamp,
+                                                event_type: ev.type,
+                                                event_name: ev.description,
+                                                event_payload: ev.details,
+                                            })),
+                                        },
+                                    });
+                                    processedVisitIds.add(entry.visit_id);
+                                } else {
+                                    combinedItems.push({
+                                        type: 'timeline',
+                                        id: event.id,
+                                        timestamp: event.timestamp,
+                                        data: event,
+                                    });
+                                }
+                            } else if (!entry.visit_id) {
+                                combinedItems.push({
+                                    type: 'timeline',
+                                    id: event.id,
+                                    timestamp: event.timestamp,
+                                    data: event,
+                                });
+                            }
+                        });
+                        
+                        combinedItems.sort((a, b) => {
+                            const timeA = new Date(a.timestamp).getTime();
+                            const timeB = new Date(b.timestamp).getTime();
+                            return timeA - timeB;
+                        });
+                        
+                        setCombinedTimeline(combinedItems);
+                        
+                        return updatedEvents;
                     });
                 }
             } catch (err) {
@@ -364,7 +557,7 @@ export default function PatientJourney() {
             }
         };
 
-        const interval = setInterval(pollTimeline, 25000); // Poll every 25 seconds
+        const interval = setInterval(pollTimeline, 10000); // Poll every 10 seconds
         return () => clearInterval(interval);
     }, [patientId]);
 
@@ -967,20 +1160,25 @@ export default function PatientJourney() {
                         {/* Enhanced Vertical line */}
                         <div className="absolute left-7 top-0 bottom-0 w-1 bg-[#0078D4] rounded z-0" />
 
-                        {/* Events */}
-                        {journeyEvents.length === 0 ? (
+                        {/* Combined Timeline: Timeline Entries + Events + Visits */}
+                        {combinedTimeline.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
                                 <FaClock className="text-4xl mx-auto mb-4 opacity-50" />
                                 <p>No timeline events found</p>
                             </div>
                         ) : (
-                            journeyEvents.map((event, index) => {
-                                const status = getStageStatus(event.stage);
-                                const isCompleted = status === 'completed' || index < journeyEvents.length - 1;
-                                const channelInfo = getChannelInfo(event.channel);
-                                return (
-                                    <React.Fragment key={event.id}>
-                                        <div className="relative mb-5 pl-12 sm:pl-16">
+                            combinedTimeline.map((item, index) => {
+                                const isLast = index === combinedTimeline.length - 1;
+                                
+                                // Render Timeline Entry
+                                if (item.type === 'timeline') {
+                                    const event = item.data as JourneyEvent;
+                                    const status = getStageStatus(event.stage);
+                                    const isCompleted = status === 'completed' || !isLast;
+                                    const channelInfo = getChannelInfo(event.channel);
+                                    
+                                    return (
+                                        <div key={`timeline-${item.id}`} className="relative mb-5 pl-12 sm:pl-16">
                                             {/* Enhanced Dot */}
                                             <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
                                                 {getEventIcon(event)}
@@ -1012,6 +1210,41 @@ export default function PatientJourney() {
                                                                 </Link>
                                                             )}
                                                         </div>
+
+                                                        {/* Ad/UTM Details */}
+                                                        {event.visitDetails && (
+                                                            <div className="mb-2.5 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                                                <div className="text-xs font-semibold text-blue-900 mb-1">Ad Attribution</div>
+                                                                <div className="flex flex-wrap gap-2 text-xs">
+                                                                    {event.visitDetails.utm_source && (
+                                                                        <span className="text-gray-700">
+                                                                            <strong>Source:</strong> {event.visitDetails.utm_source}
+                                                                        </span>
+                                                                    )}
+                                                                    {event.visitDetails.utm_medium && (
+                                                                        <span className="text-gray-700">
+                                                                            <strong>Medium:</strong> {event.visitDetails.utm_medium}
+                                                                        </span>
+                                                                    )}
+                                                                    {event.visitDetails.utm_campaign && (
+                                                                        <span className="text-gray-700">
+                                                                            <strong>Campaign:</strong> {event.visitDetails.utm_campaign}
+                                                                        </span>
+                                                                    )}
+                                                                    {event.visitDetails.utm_term && (
+                                                                        <span className="text-gray-700">
+                                                                            <strong>Term:</strong> {event.visitDetails.utm_term}
+                                                                        </span>
+                                                                    )}
+                                                                    {event.visitDetails.utm_content && (
+                                                                        <span className="text-gray-700">
+                                                                            <strong>Content:</strong> {event.visitDetails.utm_content}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div className="flex items-center gap-2.5 flex-wrap">
                                                             <Tag
                                                                 icon={getEventIcon(event)}
@@ -1045,8 +1278,22 @@ export default function PatientJourney() {
                                                 </div>
                                             </Card>
                                         </div>
-                                    </React.Fragment>
-                                );
+                                    );
+                                }
+                                
+                                // Render Visit Node
+                                if (item.type === 'visit') {
+                                    const { visit, events } = item.data;
+                                    return (
+                                        <VisitTimelineNode 
+                                            key={`visit-${item.id}`}
+                                            visit={visit}
+                                            events={events}
+                                        />
+                                    );
+                                }
+                                
+                                return null;
                             })
                         )}
                     </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import avatarImage from '../../../assets/images/avatar.png';
+import { trackingService } from '../../../services/tracking/tracking-service';
 // Using inline styles instead of module import to avoid lint errors
 
 interface BookAppointmentModalProps {
@@ -29,6 +30,20 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
             setTimeout(async () => {
                 setIsSubmitting(false);
                 setIsSuccess(true);
+
+                // Track appointment booking milestone
+                const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
+                await trackingService.syncTimeline({
+                    event_name: 'appointment_booked',
+                    title: 'Appointment Booked',
+                    description: `Appointment requested with ${providerName}`,
+                    event_payload: {
+                        provider_name: providerName,
+                        provider_id: provider?.provider_id || provider?.facility_id,
+                        reason_for_visit: reason,
+                        availability: availability,
+                    },
+                });
 
                 // Close modal after showing success message for 2 seconds
                 setTimeout(async () => {

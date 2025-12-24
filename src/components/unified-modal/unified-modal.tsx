@@ -30,8 +30,11 @@ import { usePharmacyState } from './hooks/usePharmacyState';
 // Utilities
 import { formatPhoneNumber, formatOtp, isValidPhoneNumber } from './utils/phone-utils';
 import { SERVICE_TYPES } from './utils/constants';
+import { CAPABILITIES_API_URLS } from '../../services/api';
 // Services
 import { sendOtp, verifyOtp, checkAuthSession } from './services/auth-service';
+import { trackingService } from '../../services/tracking/tracking-service';
+import { useAuthStore } from '../../store/authStore';
 
 
 interface UnifiedModalProps {
@@ -69,6 +72,10 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             pharmacyCheckDone, setPharmacyCheckDone, checkingPharmacies, setCheckingPharmacies,
             currentCheckIndex, setCurrentCheckIndex, currentSubStep, setCurrentSubStep,
             notifiedMap, setNotifiedMap, startPharmacyCheck } = pharmacyState;
+
+    // Parse URL parameters early so they're available throughout the component
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAuthRequired = urlParams.get('is_auth_required') === 'true';
 
     // Local state not in hooks
     const [showAnimation, setShowAnimation] = useState(false);
@@ -165,6 +172,17 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             console.error('❌ Error generating quick replies:', error);
             return ['Tell me more', 'What else?', 'Any concerns?', 'How can I help?'];
         }
+    }, []);
+
+    // Initialize tracking on component mount
+    useEffect(() => {
+        const initializeTracking = async () => {
+            const authStore = useAuthStore.getState();
+            const user = authStore.user;
+            const user_id = user?.userData?.user_id;
+            await trackingService.initializeTracking(user_id);
+        };
+        initializeTracking();
     }, []);
 
     // Effect to send pending messages when chat becomes active and conversation is ready
@@ -310,7 +328,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         setIsLoading(true);
 
         try {
-            const result = await postAPI(INDEX_MEMBER_API_URLS.SEND_OTP, {
+            const result = await postAPI(CAPABILITIES_API_URLS.SEND_OTP, {
                 phone_number: phoneNumber,
             });
 
@@ -344,7 +362,24 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             if (result.success) {
                 setUserData(result.data);
                 setIsAuthenticatedSession(true);
-                setStep('success' as any);
+                
+                // Track user login/signup milestone
+                const userData = result.data;
+                if (userData?.user_id || userData?.user?.user_id) {
+                    const user_id = userData?.user_id || userData?.user?.user_id;
+                    await trackingService.initializeTracking(user_id);
+                    await trackingService.syncTimeline({
+                        event_name: 'user_logged_in',
+                        title: 'User Logged In',
+                        description: `User ${userData?.first_name || ''} ${userData?.last_name || ''} logged in`,
+                        event_payload: {
+                            phone_number: phoneNumber,
+                        },
+                    });
+                } else {
+                    // Initialize tracking even without user_id
+                    await trackingService.initializeTracking();
+                }
                 
                 // Send welcome message
                 if (phoneNumber) {
@@ -355,6 +390,28 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                         console.error('Failed to send welcome message:', error);
                     }
                 }
+                
+                // If auth was required via URL param and we have a selected service, go directly to that service
+                if (isAuthRequired && selectedService) {
+                    if (selectedService === 'doctor') {
+                        setStep('healthcare_search');
+                    } else if (selectedService === 'insurance') {
+                        setStep('insurance_assistance');
+                    } else if (selectedService === 'pharmacy') {
+                        setStep('pharmacy_select');
+                    } else if (selectedService === 'chat') {
+                        openEmbeddedChatAndSend();
+                    } else if (selectedService === 'learn') {
+                        setShowLearnOverlay(true);
+                        setStep('embedded_chat');
+                        setIsChatActive(false);
+                    } else {
+                        setStep('success' as any);
+                    }
+                } else {
+                    // Default behavior: go to success step
+                    setStep('success' as any);
+                }
             } else {
                 setError(result.error || 'Invalid OTP. Please try again.');
             }
@@ -364,7 +421,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         } finally {
             setIsLoading(false);
         }
-    }, [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep]);
+    }, [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
 
     const handleServiceSelect = (serviceType: string) => {
         // Check if we're on the new route and redirect to external URLs
@@ -433,6 +490,13 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         const service = serviceContents[selectedService] || serviceContents.doctor;
         
         const handleGetStarted = () => {
+            // Check if authentication is required via URL parameter
+            if (isAuthRequired && !isAuthenticatedSession) {
+                // Navigate to phone verification step
+                setStep('phone');
+                return;
+            }
+            
             // Skip verification step - go directly to selected service
             if (selectedService === 'doctor') {
                 setStep('healthcare_search');
@@ -666,8 +730,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     const isNewRoute = currentPath === '/new';
     const isExternalRoute = currentPath === '/external';
 
-    // Parse URL parameters for external route
-    const urlParams = new URLSearchParams(window.location.search);
+    // Parse URL parameters for external route (serviceParam already parsed above)
     const serviceParam = urlParams.get('service');
 
     // Map service parameter to selected service for external route

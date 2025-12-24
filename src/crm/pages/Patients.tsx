@@ -11,7 +11,8 @@ import Statistic from '../components/ui/Statistic';
 import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
 
 interface Patient {
-    id: string;
+    user_id: string;
+    phone_number: string;
     name: string;
     age: number | null;
     status: 'Active' | 'Inactive';
@@ -77,7 +78,8 @@ export default function AllPatients() {
                         }
 
                         return {
-                            id: user.user_id,
+                            user_id: user.user_id,
+                            phone_number: user.phone_number,
                             name: isIdentified ? fullName : 'Anonymous User',
                             age: age,
                             status: 'Active', // Default to active
@@ -109,7 +111,7 @@ export default function AllPatients() {
 
     const filteredPatients = useMemo(() => {
         if (!searchText) return patients;
-        return patients.filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase()) || p.id.toLowerCase().includes(searchText.toLowerCase()));
+        return patients.filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase()) || p.user_id.toLowerCase().includes(searchText.toLowerCase()));
     }, [searchText, patients]);
 
     const columns = [
@@ -118,7 +120,8 @@ export default function AllPatients() {
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: Patient) => (
-                <Link to={`/crm/patients/${record.id}`} style={{ color: primaryColor }}>
+                <>
+                <Link to={`/crm/patients/${record.user_id}`} style={{ color: primaryColor }}>
                     <span className="flex items-center gap-2">
                         {text}
                         {!record.identified && (
@@ -128,6 +131,11 @@ export default function AllPatients() {
                         )}
                     </span>
                 </Link>
+                        {/* show phone number */}
+                        <span className="text-gray-400" title="Phone Number">
+                            {record.phone_number}
+                        </span>
+                </>
             ),
         },
         {
@@ -240,12 +248,12 @@ export default function AllPatients() {
             key: 'action',
             render: (_: any, record: Patient) => (
                 <div className="flex gap-2">
-                    <Link to={`/crm/patients/${record.id}/journey`}>
+                    <Link to={`/crm/patients/${record.user_id}/journey`}>
                         <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
                             Journey
                         </Button>
                     </Link>
-                    <Link to={`/crm/patients/${record.id}`}>
+                    <Link to={`/crm/patients/${record.user_id}`}>
                         <Button type="link" className="p-0 text-[#0078D4]">
                             Details
                         </Button>

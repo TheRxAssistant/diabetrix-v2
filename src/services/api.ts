@@ -220,11 +220,7 @@ export const streamAPI = async (
 
 // Index Member API endpoints (auth, AI)
 export const INDEX_MEMBER_API_URLS = {
-    // Auth
-    SEND_OTP: 'auth/send-otp',
-    VERIFY_OTP: 'auth/verify-otp',
-    VERIFY_USER_BY_VERIFIED: 'auth/verify-user-by-verified',
-    
+
     // AI
     AI_GENERATE_OBJECT: 'ai/generate-object',
     AI_GENERATE_TEXT: 'ai/generate-text',
@@ -237,7 +233,10 @@ export const RX_HUB_API_URLS = {
 
 // Capabilities API endpoints
 export const CAPABILITIES_API_URLS = {
+    // Auth
     SEND_OTP: 'authenticate/send-otp',
+    VERIFY_OTP: 'authenticate/verify-otp',
+    VERIFY_USER_BY_VERIFIED: 'authenticate/verify-user-by-verified',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
     // Find Care APIs
     GET_CARE_CATEGORY: 'find-care/get-care-categories',
@@ -246,6 +245,9 @@ export const CAPABILITIES_API_URLS = {
     GET_NEARBY_CARE: 'find-care/find-nearby-care',
     GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
     SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
+    // Tracking APIs
+    CREATE_VISIT: 'tracking/create-visit',
+    SYNC_TIMELINE: 'tracking/sync-timeline',
     // CRM User APIs
     GET_USER_JOURNEY: 'crm/users/get-user-journey',
     GET_USER_TIMELINE: 'crm/users/get-user-timeline',
