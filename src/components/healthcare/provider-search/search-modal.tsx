@@ -177,15 +177,15 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         setScannedInsuranceData(cardData);
         setShowInsuranceCardModal(false);
         // Auto-select insurance provider based on scanned data
-        const matchingProvider = insuranceProviders.find((p) => p.payor.toLowerCase().includes(cardData.providerName.toLowerCase()) || cardData.providerName.toLowerCase().includes(p.payor.toLowerCase()));
+        const matchingProvider = insuranceProviders.find((p) => p.payor.toLowerCase().includes(cardData.provider.toLowerCase()) || cardData.provider.toLowerCase().includes(p.payor.toLowerCase()));
         if (matchingProvider) {
             setSelectedInsurance(matchingProvider);
         } else {
             // Create a new provider entry from scanned data
             setSelectedInsurance({
-                id: parseInt(cardData.providerId) || 999,
-                payor: cardData.providerName,
-                plan: cardData.planType || 'Unknown',
+                id: parseInt(cardData.provider) || 999,
+                payor: cardData.provider,
+                plan: cardData.plan_name || 'Unknown',
             });
         }
     };
@@ -202,8 +202,8 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                 };
             } else if (scannedInsuranceData) {
                 insuranceOption = {
-                    plan_name: scannedInsuranceData.planType || 'Unknown',
-                    payer_name: scannedInsuranceData.providerName,
+                    plan_name: scannedInsuranceData.plan_name || 'Unknown',
+                    payer_name: scannedInsuranceData.provider,
                 };
             }
 

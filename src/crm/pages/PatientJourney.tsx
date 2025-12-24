@@ -342,9 +342,7 @@ export default function PatientJourney() {
                 if (lastEntry) {
                     const lastEvent = mapTimelineEntryToJourneyEvent(lastEntry, timelineEntries.length - 1);
                     // Only set as last engagement if it has a channel
-                    if (lastEvent.channel && lastEvent.channel !== 'none') {
                         setLastEngagement(lastEvent);
-                    }
                 }
 
                 // Populate patient info from user details
