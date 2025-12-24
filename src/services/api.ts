@@ -282,6 +282,8 @@ export const CAPABILITIES_API_URLS = {
     // SMS
     SEND_SMS: 'sms/send-message',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
+    // Insurance
+    INSURANCE_CARD_IMAGE: 'insurance-card-image',
     // Find Care APIs
     GET_CARE_CATEGORY: 'find-care/get-care-categories',
     GET_CARE_CATEGORY_V2: 'find-care/get-care-categories-v2',
@@ -289,6 +291,15 @@ export const CAPABILITIES_API_URLS = {
     GET_NEARBY_CARE: 'find-care/find-nearby-care',
     GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
     SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
+    // Appointment APIs
+    GET_APPOINTMENTS: 'appointments/get-appointments',
+    GET_APPOINTMENT_DETAILS: 'appointments/get-appointment-details',
+    SYNC_APPOINTMENT: 'appointments/sync-appointment',
+    // Rx Savings APIs
+    REQUEST_COPAY_CARD: 'rx-savings/sync-copay-card',
+    REQUEST_INSURANCE_COST: 'rx-savings/sync-insurance-cost',
+    GET_COPAY_REQUEST_DETAILS: 'rx-savings/get-copay-request-details',
+    GET_INSURANCE_COST_REQUEST_DETAILS: 'rx-savings/get-insurance-cost-request-details',
     // Tracking APIs
     CREATE_VISIT: 'tracking/create-visit',
     SYNC_TIMELINE: 'tracking/sync-timeline',

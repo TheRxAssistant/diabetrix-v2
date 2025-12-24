@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import styles from './insurance-assistance.module.scss';
 import { sendCopayRequest, sendInsuranceRequestWithCopay, sendCopayCardDetails, sendEligibilityCheckFollowUp } from '../../../services/smsService';
+import { useRxRequests } from '../../../services/rx/hooks-rx';
 import { DiscountOption } from '../../../types/discounts';
 import DrugPharmaciesTab from '../../pharmacy/drug-pharmacies-tab/DrugPharmaciesTab';
 import { ArrowLeft } from 'lucide-react';
@@ -26,6 +27,9 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     const [copayInitiatedScan, setCopayInitiatedScan] = useState(false);
     const [showCashPharmacies, setShowCashPharmacies] = useState(false);
     const drugName = (userData?.drug_name as string) || 'Diabetrix';
+    
+    // Use RX requests hook for API calls
+    const { requestCopayCard, requestInsuranceCost, copay_loading, insurance_loading } = useRxRequests();
 
     // Hardcoded pharmacy discount options for Jardiance in 98006
     const discount_options: DiscountOption[] = [
@@ -130,10 +134,22 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     const handleInsuranceCheck = async () => {
         setInsuranceStatus('requested');
         try {
-            await sendInsuranceRequestWithCopay(drugName);
-            console.log('Insurance coverage SMS sent successfully');
+            // Call API to request insurance cost
+            const result = await requestInsuranceCost(drugName);
+            if (result) {
+                console.log('Insurance cost request submitted successfully');
+                // Send SMS notification as secondary
+                try {
+                    await sendInsuranceRequestWithCopay(drugName);
+                    console.log('Insurance coverage SMS sent successfully');
+                } catch (error) {
+                    console.error('Failed to send insurance coverage SMS:', error);
+                }
+            } else {
+                console.error('Failed to request insurance cost');
+            }
         } catch (error) {
-            console.error('Failed to send insurance coverage SMS:', error);
+            console.error('Failed to request insurance cost:', error);
         }
     };
 
@@ -157,20 +173,31 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     const handleCopayCheck = async () => {
         setCopayStatus('requested');
 
-        // Send SMS notification for copay assistance request
         try {
-            await sendCopayRequest(drugName);
-            // Send copay card details after 1 second
-            setTimeout(async () => {
+            // Call API to request copay card
+            const result = await requestCopayCard(drugName);
+            if (result) {
+                console.log('Copay card request submitted successfully');
+                // Send SMS notification as secondary
                 try {
-                    await sendCopayCardDetails(drugName);
+                    await sendCopayRequest(drugName);
+                    // Send copay card details after 1 second
+                    setTimeout(async () => {
+                        try {
+                            await sendCopayCardDetails(drugName);
+                        } catch (error) {
+                            console.error('Failed to send copay card details SMS:', error);
+                        }
+                    }, 1000);
+                    console.log('Copay assistance SMS sent successfully');
                 } catch (error) {
-                    console.error('Failed to send copay card details SMS:', error);
+                    console.error('Failed to send copay assistance SMS:', error);
                 }
-            }, 1000);
-            console.log('Copay assistance SMS sent successfully');
+            } else {
+                console.error('Failed to request copay card');
+            }
         } catch (error) {
-            console.error('Failed to send copay assistance SMS:', error);
+            console.error('Failed to request copay card:', error);
         }
     };
 

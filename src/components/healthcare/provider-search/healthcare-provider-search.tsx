@@ -695,8 +695,6 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     provider={selectedBookingProvider}
                     onClose={() => setShowBookingModal(false)}
                     onRequestAppointment={async (provider, reason, availability) => {
-                        const message = `We have received an appointment request for ${provider.provider_name} for ${reason}. We will get back to you as soon as possible.`;
-                        await sendSMS(message);
                         setShowBookingModal(false);
                     }}
                 />

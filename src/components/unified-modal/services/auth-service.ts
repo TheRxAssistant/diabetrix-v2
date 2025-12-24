@@ -285,6 +285,53 @@ export const syncUser = async (userData: any, phoneNumber: string): Promise<Auth
 };
 
 /**
+ * Upload insurance card images and extract information
+ */
+export const upload_insurance_card = async (frontImage: File, backImage?: File): Promise<{ provider: string; member_id: string; policy_number: string; group_number: string } | null> => {
+  try {
+    // Convert front image to base64
+    const frontBase64 = await fileToBase64(frontImage);
+
+    let backBase64: string | undefined;
+    if (backImage) {
+      backBase64 = await fileToBase64(backImage);
+    }
+
+    const { statusCode, data, message } = await postAPI(CAPABILITIES_API_URLS.INSURANCE_CARD_IMAGE, {
+      front_image_base64: frontBase64,
+      back_image_base64: backBase64,
+    });
+
+    if (statusCode === 200) {
+      return data;
+    } else {
+      console.error('Failed to process insurance card:', message || 'Unknown error');
+      return null;
+    }
+  } catch (error: any) {
+    console.error('Failed to upload insurance card:', error);
+    return null;
+  }
+};
+
+/**
+ * Helper function to convert file to base64
+ */
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64String = reader.result as string;
+      // Remove the data:image/jpeg;base64, prefix
+      const base64 = base64String.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+};
+
+/**
  * Check if user has authenticated session
  */
 export const checkAuthSession = (): { authenticated: boolean; data?: any } => {
