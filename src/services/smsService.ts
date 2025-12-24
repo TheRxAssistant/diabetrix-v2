@@ -1,5 +1,5 @@
 import { useAuthStore } from '../store/authStore';
-import { postAPI, RX_HUB_API_URLS } from './api';
+import { CAPABILITIES_API_URLS, postAPI } from './api';
 
 /**
  * SMS Service for sending text messages
@@ -34,7 +34,7 @@ class SMSService {
             const rawTarget = options.phoneNumber || state.user?.phoneNumber || fallback;
             const toNumber = (rawTarget || fallback).toString().replace(/\D/g, '') || fallback;
 
-            const result = await postAPI(RX_HUB_API_URLS.SEND_SMS, {
+            const result = await postAPI(CAPABILITIES_API_URLS.SEND_SMS, {
                 to_number: toNumber,
                 message,
                 sms_provider: 'twilio',

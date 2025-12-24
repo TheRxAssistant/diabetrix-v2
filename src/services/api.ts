@@ -23,10 +23,13 @@ const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'RX_HUB' | 'CAPABILITIES' | 'CORE_
  * Supports both endpoint keys and full URLs
  */
 export const postAPI = async (
-    url: string | keyof typeof INDEX_MEMBER_API_URLS | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS | keyof typeof RX_HUB_API_URLS,
+    url: string | keyof typeof INDEX_MEMBER_API_URLS | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS,
     payload: any = {},
     abortSignal?: AbortSignal
 ): Promise<{ statusCode: number; message: string; data: any }> => {
+    // Import auth store to get tokens
+    const { useAuthStore } = await import('../store/authStore');
+    const authStore = useAuthStore.getState();
     let finalUrl: string;
     
     // Check if it's a full URL (starts with http)
@@ -47,16 +50,7 @@ export const postAPI = async (
             apiPath = url as string;
             baseUrl = getBaseUrl('INDEX_MEMBER');
         }
-        // Check if it's a key in RX_HUB_API_URLS
-        else if (url in RX_HUB_API_URLS) {
-            apiPath = RX_HUB_API_URLS[url as keyof typeof RX_HUB_API_URLS];
-            baseUrl = getBaseUrl('RX_HUB');
-        }
-        // Check if it's a value in RX_HUB_API_URLS
-        else if (Object.values(RX_HUB_API_URLS).includes(url as any)) {
-            apiPath = url as string;
-            baseUrl = getBaseUrl('RX_HUB');
-        }
+   
         // Check if it's a key in CAPABILITIES_API_URLS
         else if (url in CAPABILITIES_API_URLS) {
             apiPath = CAPABILITIES_API_URLS[url as keyof typeof CAPABILITIES_API_URLS];
@@ -95,6 +89,18 @@ export const postAPI = async (
         'Content-Type': 'application/json',
     };
 
+    // Get tokens from auth store
+    const authToken = authStore.getAuthToken();
+    const accessToken = authStore.getAccessToken();
+
+    // Add auth tokens to headers if available
+    if (authToken) {
+        headers['auth-token'] = authToken;
+    }
+    if (accessToken) {
+        headers['access-token'] = accessToken;
+    }
+
     // Add domain header if available (for core engine and capabilities APIs)
     const domain = 'diabetrix'; // Default domain for diabetrix-v2
     if (url in CORE_ENGINE_API_URLS || Object.values(CORE_ENGINE_API_URLS).includes(url as any)) {
@@ -123,6 +129,14 @@ export const postAPI = async (
                 // If response is not JSON, use default message
             }
             
+            // Handle 403 status code by clearing auth session
+            if (response.status === 403) {
+                // Clear tokens from session storage
+                sessionStorage.removeItem('diabetrix_auth_tokens');
+                sessionStorage.removeItem('diabetrix_auth_session');
+                authStore.clear();
+            }
+            
             return {
                 statusCode: response.status,
                 message: errorMessage,
@@ -133,19 +147,41 @@ export const postAPI = async (
         const responseData = await response.json();
         
         // Handle different response formats
+        let statusCode: number;
+        let message: string;
+        let data: any;
+        
         if (responseData.statusCode !== undefined) {
-            return {
-                statusCode: responseData.statusCode,
-                message: responseData.message || 'Success',
-                data: responseData.data || responseData,
-            };
+            statusCode = responseData.statusCode;
+            message = responseData.message || 'Success';
+            data = responseData.data || responseData;
+        } else {
+            // If response doesn't have statusCode, assume success
+            statusCode = 200;
+            message = 'Success';
+            data = responseData;
         }
 
-        // If response doesn't have statusCode, assume success
+        // Handle 403 status code by clearing auth session
+        if (statusCode === 403) {
+            // Clear tokens from session storage
+            sessionStorage.removeItem('diabetrix_auth_tokens');
+            sessionStorage.removeItem('diabetrix_auth_session');
+            authStore.clear();
+        }
+
+        // Update tokens from response if present
+        if (data?.auth_token) {
+            authStore.updateAuthToken(data.auth_token);
+        }
+        if (data?.access_token) {
+            authStore.updateAccessToken(data.access_token);
+        }
+
         return {
-            statusCode: 200,
-            message: 'Success',
-            data: responseData,
+            statusCode,
+            message,
+            data,
         };
     } catch (error) {
         console.error('Error in postAPI:', error);
@@ -165,6 +201,10 @@ export const streamAPI = async (
     payload: any = {},
     onChunk: (chunk: string) => void
 ): Promise<void> => {
+    // Import auth store to get tokens
+    const { useAuthStore } = await import('../store/authStore');
+    const authStore = useAuthStore.getState();
+    
     const apiPath = CORE_ENGINE_API_URLS[url];
     const baseUrl = getBaseUrl('CORE_ENGINE');
     
@@ -177,6 +217,12 @@ export const streamAPI = async (
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
+
+    // Get access token from auth store
+    const accessToken = authStore.getAccessToken();
+    if (accessToken) {
+        headers['access-token'] = accessToken;
+    }
 
     // Add domain header for core engine APIs
     const domain = 'diabetrix'; // Default domain for diabetrix-v2
@@ -226,17 +272,15 @@ export const INDEX_MEMBER_API_URLS = {
     AI_GENERATE_TEXT: 'ai/generate-text',
 } as const;
 
-// RX Hub API endpoints (SMS)
-export const RX_HUB_API_URLS = {
-    SEND_SMS: 'notifications/send-sms',
-} as const;
-
 // Capabilities API endpoints
 export const CAPABILITIES_API_URLS = {
     // Auth
     SEND_OTP: 'authenticate/send-otp',
     VERIFY_OTP: 'authenticate/verify-otp',
     VERIFY_USER_BY_VERIFIED: 'authenticate/verify-user-by-verified',
+    GENERATE_INTERNAL_ACCESS_TOKEN: 'authenticate/generate-access-token',
+    // SMS
+    SEND_SMS: 'sms/send-message',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
     // Find Care APIs
     GET_CARE_CATEGORY: 'find-care/get-care-categories',

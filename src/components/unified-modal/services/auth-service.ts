@@ -1,10 +1,12 @@
-import { setPhoneNumber as setAuthPhoneNumber, setUser as setAuthUser, clear as clearAuth } from '../../../store/authStore';
-import { postAPI, INDEX_MEMBER_API_URLS, CAPABILITIES_API_URLS } from '../../../services/api';
+import { setPhoneNumber as setAuthPhoneNumber, setUser as setAuthUser, clear as clearAuth, updateAuthToken, updateAccessToken } from '../../../store/authStore';
+import { postAPI, INDEX_MEMBER_API_URLS, CAPABILITIES_API_URLS, CORE_ENGINE_API_URLS } from '../../../services/api';
 
 export interface AuthResponse {
   success: boolean;
   data?: any;
   error?: string;
+  statusCode?: number;
+  additionalInputs?: string[];
 }
 
 /**
@@ -40,36 +42,198 @@ export const verifyOtp = async (phoneNumber: string, otp: string): Promise<AuthR
   try {
     const verifyResult = await postAPI(CAPABILITIES_API_URLS.VERIFY_OTP, {
       phone_number: phoneNumber,
-      otp_code: otp,
+      otp: otp,
     });
 
     if (verifyResult.statusCode === 200) {
-      let user_id: string | undefined;
-      let userData: any = {};
-      
-      // Check if user already exists (from verify-otp response)
-      if (verifyResult.data?.user_exists && verifyResult.data?.user) {
-        user_id = verifyResult.data.user.user_id;
-        userData = verifyResult.data.user.user_data || {};
-      } else {
-        // Fetch user details after successful OTP verification
-        const userDetailsResult = await postAPI(CAPABILITIES_API_URLS.VERIFY_USER_BY_VERIFIED, {
-          phone_number: phoneNumber,
-        });
+      // Extract tokens from verify-otp response
+      if (verifyResult.data?.access_token && verifyResult.data?.user_exists) {
+        // User already exists - store access_token and clear auth_token
+        updateAccessToken(verifyResult.data.access_token);
+        updateAuthToken('');
         
-        if (userDetailsResult.statusCode === 200 && userDetailsResult.data?.user_data) {
-          userData = userDetailsResult.data.user_data;
-          // Note: user_id might not be available until user is created in core-engine
-          // We'll store it when available
-        }
+        const user_id = verifyResult.data.user.user_id;
+        const userData = verifyResult.data.user.user_data || {};
+        
+        // Prepare user object
+        const userObject = {
+          phoneNumber: phoneNumber,
+          isAuthenticated: true,
+          userData: {
+            ...userData,
+            user_id,
+          },
+        };
+        
+        // Store in Zustand
+        setAuthPhoneNumber(phoneNumber);
+        setAuthUser(userObject);
+        
+        // Store in sessionStorage
+        sessionStorage.setItem('diabetrix_auth_session', JSON.stringify({
+          phoneNumber,
+          user: {
+            ...userData,
+            user_id,
+          },
+          timestamp: Date.now(),
+        }));
+        
+        // Store user details in localStorage for tracking service
+        localStorage.setItem('diabetrix_user_details', JSON.stringify({
+          user_id: user_id,
+          user_data: userData,
+          phone_number: phoneNumber,
+          timestamp: Date.now(),
+        }));
+        
+        return { 
+          success: true, 
+          data: { ...userData, user_id },
+          statusCode: 200
+        };
+      } else if (verifyResult.data?.auth_token) {
+        // New user - store auth_token
+        updateAuthToken(verifyResult.data.auth_token);
+        
+        // Fetch user details after successful OTP verification
+        const userDetailsResult = await verifyUserByVerified(phoneNumber);
+        
+        // Return the result from verify-user-by-verified for proper flow handling
+        return {
+          success: userDetailsResult.statusCode === 200,
+          data: userDetailsResult.data,
+          statusCode: userDetailsResult.statusCode,
+          additionalInputs: userDetailsResult.additionalInputs,
+          error: userDetailsResult.statusCode !== 200 ? userDetailsResult.error : undefined,
+        };
       }
       
-      // Prepare user object with user_id if available
+      return { 
+        success: false, 
+        error: 'Invalid response from server.',
+        statusCode: verifyResult.statusCode
+      };
+    } else {
+      return { 
+        success: false, 
+        error: verifyResult.message || 'Invalid OTP. Please try again.',
+        statusCode: verifyResult.statusCode
+      };
+    }
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    return { 
+      success: false, 
+      error: 'Network error. Please check your connection and try again.',
+      statusCode: 500
+    };
+  }
+};
+
+/**
+ * Verify user by verified API (with optional DOB/SSN)
+ */
+export const verifyUserByVerified = async (
+  phoneNumber: string,
+  dateOfBirth?: string,
+  ssn?: string
+): Promise<AuthResponse> => {
+  try {
+    const result = await postAPI(CAPABILITIES_API_URLS.VERIFY_USER_BY_VERIFIED, {
+      phone_number: phoneNumber,
+      ...(dateOfBirth && { date_of_birth: dateOfBirth }),
+      ...(ssn && { ssn: ssn }),
+    });
+
+    if (result.statusCode === 200) {
+      // Update auth_token if returned in response
+      if (result.data?.auth_token) {
+        updateAuthToken(result.data.auth_token);
+      }
+      
+      return {
+        success: true,
+        data: result.data,
+        statusCode: 200,
+      };
+    } else {
+      return {
+        success: false,
+        data: result.data,
+        statusCode: result.statusCode,
+        additionalInputs: result.data?.additionalInputs,
+        error: result.message || 'Verification failed.',
+      };
+    }
+  } catch (error) {
+    console.error('Error verifying user by verified:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      statusCode: 500,
+    };
+  }
+};
+
+/**
+ * Generate access token after profile confirmation
+ */
+export const generateAccessToken = async (userData: any): Promise<AuthResponse> => {
+  try {
+    const result = await postAPI(CAPABILITIES_API_URLS.GENERATE_INTERNAL_ACCESS_TOKEN, {
+      user_data: userData,
+    });
+
+    if (result.statusCode === 200) {
+      // Update access_token and clear auth_token
+      if (result.data?.access_token) {
+        updateAccessToken(result.data.access_token);
+        updateAuthToken('');
+      }
+      
+      return {
+        success: true,
+        data: result.data,
+        statusCode: 200,
+      };
+    } else {
+      return {
+        success: false,
+        error: result.message || 'Failed to generate access token.',
+        statusCode: result.statusCode,
+      };
+    }
+  } catch (error) {
+    console.error('Error generating access token:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      statusCode: 500,
+    };
+  }
+};
+
+/**
+ * Sync user data to core engine
+ */
+export const syncUser = async (userData: any, phoneNumber: string): Promise<AuthResponse> => {
+  try {
+    const result = await postAPI(CORE_ENGINE_API_URLS.SYNC_USER, {
+      user_data: userData,
+      user_phone: phoneNumber,
+    });
+
+    if (result.statusCode === 200) {
+      const syncedUserData = result.data?.user?.user_data || {};
+      const user_id = result.data?.user?.user_id;
+      
+      // Prepare user object
       const userObject = {
         phoneNumber: phoneNumber,
         isAuthenticated: true,
         userData: {
-          ...userData,
+          ...syncedUserData,
           ...(user_id ? { user_id } : {}),
         },
       };
@@ -82,34 +246,40 @@ export const verifyOtp = async (phoneNumber: string, otp: string): Promise<AuthR
       sessionStorage.setItem('diabetrix_auth_session', JSON.stringify({
         phoneNumber,
         user: {
-          ...userData,
+          ...syncedUserData,
           ...(user_id ? { user_id } : {}),
         },
         timestamp: Date.now(),
       }));
       
-      // Store user details in localStorage for tracking service (if user_id is available)
+      // Store user details in localStorage for tracking service
       if (user_id) {
         localStorage.setItem('diabetrix_user_details', JSON.stringify({
           user_id: user_id,
-          user_data: userData,
+          user_data: syncedUserData,
           phone_number: phoneNumber,
           timestamp: Date.now(),
         }));
       }
       
-      return { success: true, data: { ...userData, ...(user_id ? { user_id } : {}) } };
+      return {
+        success: true,
+        data: result.data,
+        statusCode: 200,
+      };
     } else {
-      return { 
-        success: false, 
-        error: verifyResult.message || 'Invalid OTP. Please try again.' 
+      return {
+        success: false,
+        error: result.message || 'Failed to sync user data.',
+        statusCode: result.statusCode,
       };
     }
   } catch (error) {
-    console.error('Error verifying OTP:', error);
-    return { 
-      success: false, 
-      error: 'Network error. Please check your connection and try again.' 
+    console.error('Error syncing user:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+      statusCode: 500,
     };
   }
 };
@@ -165,9 +335,10 @@ export const checkAuthSession = (): { authenticated: boolean; data?: any } => {
  */
 export const clearAuthSession = (): void => {
   sessionStorage.removeItem('diabetrix_auth_session');
+  sessionStorage.removeItem('diabetrix_auth_tokens');
   localStorage.removeItem('diabetrix_user_details');
   setAuthPhoneNumber('');
-  // Clear user using the clear function from authStore
+  // Clear user and tokens using the clear function from authStore
   clearAuth();
 };
 

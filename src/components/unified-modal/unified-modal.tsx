@@ -15,6 +15,8 @@ import { serviceContents } from './service-contents';
 import { IntroStep } from './intro-step/intro-step';
 import { PhoneStep } from './phone-step/phone-step';
 import { OtpStep } from './otp-step/otp-step';
+import { AdditionalInfoStep } from './additional-info-step/additional-info-step';
+import { ConfirmProfileStep } from './confirm-profile-step/confirm-profile-step';
 import { SuccessStep } from './success-step/success-step';
 import { ProfilePage } from './profile-page/profile-page';
 import { ServiceDetailStep } from './service-detail-step/service-detail-step';
@@ -32,7 +34,7 @@ import { formatPhoneNumber, formatOtp, isValidPhoneNumber } from './utils/phone-
 import { SERVICE_TYPES } from './utils/constants';
 import { CAPABILITIES_API_URLS } from '../../services/api';
 // Services
-import { sendOtp, verifyOtp, checkAuthSession } from './services/auth-service';
+import { sendOtp, verifyOtp, verifyUserByVerified, generateAccessToken, syncUser, checkAuthSession } from './services/auth-service';
 import { trackingService } from '../../services/tracking/tracking-service';
 import { useAuthStore } from '../../store/authStore';
 
@@ -60,7 +62,8 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     const { step, setStep, selectedService, setSelectedService, phoneNumber, setPhoneNumber, 
             otp, setOtp, error, setError, resetError, isLoading, setIsLoading,
             userData, setUserData, isAuthenticatedSession, setIsAuthenticatedSession,
-            pendingChatMessage, setPendingChatMessage } = modalState;
+            pendingChatMessage, setPendingChatMessage, requiredFields, setRequiredFields,
+            shouldEditProfile, setShouldEditProfile } = modalState;
 
     const { chatResetKey, setChatResetKey, isChatActive, setIsChatActive, pendingMessages, 
             setPendingMessages, inputMessage: input_message, setInputMessage, isLearnFlow, setIsLearnFlow,
@@ -359,7 +362,8 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         try {
             const result = await verifyOtp(phoneNumber, otp);
             
-            if (result.success) {
+            if (result.success && result.statusCode === 200 && result.data?.user_id) {
+                // User already exists - complete authentication
                 setUserData(result.data);
                 setIsAuthenticatedSession(true);
                 
@@ -412,6 +416,33 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                     // Default behavior: go to success step
                     setStep('success' as any);
                 }
+            } else if (result.statusCode === 435) {
+                // Additional info required
+                setRequiredFields(result.additionalInputs || []);
+                setStep('additional_info' as any);
+            } else if (result.statusCode === 200 && result.data?.user_data) {
+                // Success - user data retrieved, proceed to confirm profile
+                setUserData(result.data.user_data);
+                // Handle multiple addresses
+                if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
+                    const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
+                    if (selectedAddress) {
+                        result.data.user_data.address = selectedAddress;
+                    } else {
+                        result.data.user_data.address = result.data.user_data.address[0];
+                    }
+                }
+                setStep('confirm_profile' as any);
+            } else if (result.statusCode === 437 || result.statusCode === 407) {
+                // User not found or access denied - allow manual entry
+                setUserData({ phone_number: phoneNumber });
+                setShouldEditProfile(true);
+                setStep('confirm_profile' as any);
+            } else if (result.statusCode === 403) {
+                // Mismatch in additional inputs - allow manual entry
+                setUserData({ phone_number: phoneNumber });
+                setShouldEditProfile(true);
+                setStep('confirm_profile' as any);
             } else {
                 setError(result.error || 'Invalid OTP. Please try again.');
             }
@@ -421,7 +452,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         } finally {
             setIsLoading(false);
         }
-    }, [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
+    }, [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep, setRequiredFields, setShouldEditProfile, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
 
     const handleServiceSelect = (serviceType: string) => {
         // Check if we're on the new route and redirect to external URLs
@@ -553,6 +584,158 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             onOtpChange={handleOtpChange}
             onSubmit={handleVerifyOtp}
             onBack={() => setStep('phone')}
+        />
+    );
+
+    const handleAdditionalInfoSubmit = useCallback(async (dateOfBirth: string, ssn: string) => {
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const result = await verifyUserByVerified(phoneNumber, dateOfBirth, ssn);
+
+            if (result.statusCode === 200) {
+                // Success - user data retrieved
+                setUserData(result.data.user_data);
+                // Handle multiple addresses
+                if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
+                    const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
+                    if (selectedAddress) {
+                        result.data.user_data.address = selectedAddress;
+                    } else {
+                        result.data.user_data.address = result.data.user_data.address[0];
+                    }
+                }
+                setStep('confirm_profile' as any);
+            } else if (result.statusCode === 403) {
+                // Mismatch in additional inputs
+                setShouldEditProfile(true);
+                setStep('confirm_profile' as any);
+            } else if (result.statusCode === 435) {
+                // Still need more info
+                setRequiredFields(result.additionalInputs || []);
+                setError(`Please provide all required information: ${(result.additionalInputs || []).join(', ')}`);
+            } else if (result.statusCode === 407) {
+                // Maximum attempts reached or access denied
+                setShouldEditProfile(true);
+                setStep('confirm_profile' as any);
+            } else if (result.statusCode === 437) {
+                // User not found
+                setUserData({ phone_number: phoneNumber });
+                setShouldEditProfile(true);
+                setStep('confirm_profile' as any);
+            } else {
+                setError(result.error || 'Verification failed. Please try again.');
+            }
+        } catch (error) {
+            setError('Verification failed. Please try again.');
+            console.error('Error submitting additional info:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [phoneNumber, setError, setIsLoading, setStep, setUserData, setRequiredFields, setShouldEditProfile]);
+
+    const renderAdditionalInfoStep = () => (
+        <AdditionalInfoStep
+            onSubmit={handleAdditionalInfoSubmit}
+            onBack={() => setStep('otp')}
+            isLoading={isLoading}
+            requiredFields={requiredFields}
+        />
+    );
+
+    const handleProfileConfirm = useCallback(async (confirmedData: any) => {
+        setIsLoading(true);
+        setError('');
+
+        try {
+            // Step 1: Generate access token
+            const tokenResult = await generateAccessToken({
+                ...confirmedData,
+                phone_number: phoneNumber,
+            });
+
+            if (tokenResult.statusCode !== 200) {
+                setError(tokenResult.error || 'Failed to generate access token.');
+                return;
+            }
+
+            // Step 2: Sync user with access token
+            const syncResult = await syncUser(confirmedData, phoneNumber);
+
+            if (syncResult.statusCode === 200) {
+                setIsAuthenticatedSession(true);
+                
+                // Track user login/signup milestone
+                const syncedUserData = syncResult.data?.user?.user_data || confirmedData;
+                const user_id = syncResult.data?.user?.user_id;
+                
+                if (user_id) {
+                    await trackingService.initializeTracking(user_id);
+                    await trackingService.syncTimeline({
+                        event_name: 'user_logged_in',
+                        title: 'User Logged In',
+                        description: `User ${syncedUserData.first_name || ''} ${syncedUserData.last_name || ''} logged in`,
+                        event_payload: {
+                            phone_number: phoneNumber,
+                        },
+                    });
+                } else {
+                    await trackingService.initializeTracking();
+                }
+                
+                // Send welcome message
+                if (phoneNumber) {
+                    try {
+                        sendWelcomeMessage(phoneNumber);
+                        console.log('Welcome message sent successfully');
+                    } catch (error) {
+                        console.error('Failed to send welcome message:', error);
+                    }
+                }
+                
+                // Navigate based on auth requirement
+                if (isAuthRequired && selectedService) {
+                    if (selectedService === 'doctor') {
+                        setStep('healthcare_search');
+                    } else if (selectedService === 'insurance') {
+                        setStep('insurance_assistance');
+                    } else if (selectedService === 'pharmacy') {
+                        setStep('pharmacy_select');
+                    } else if (selectedService === 'chat') {
+                        openEmbeddedChatAndSend();
+                    } else if (selectedService === 'learn') {
+                        setShowLearnOverlay(true);
+                        setStep('embedded_chat');
+                        setIsChatActive(false);
+                    } else {
+                        setStep('success' as any);
+                    }
+                } else {
+                    setStep('success' as any);
+                }
+            } else {
+                setError(syncResult.error || 'Failed to sync user data.');
+            }
+        } catch (error) {
+            setError('Failed to complete login. Please try again.');
+            console.error('Profile confirmation error:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [phoneNumber, setError, setIsLoading, setStep, setIsAuthenticatedSession, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
+
+    const renderConfirmProfileStep = () => (
+        <ConfirmProfileStep
+            userData={userData}
+            onConfirm={handleProfileConfirm}
+            onBack={() => {
+                setStep('otp');
+                setUserData(null);
+                setShouldEditProfile(false);
+            }}
+            isLoading={isLoading}
+            editMode={shouldEditProfile}
         />
     );
 
@@ -899,6 +1082,8 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                         {step === 'service_detail' && renderServiceDetailStep()}
                         {step === 'phone' && renderPhoneStep()}
                         {step === 'otp' && renderOtpStep()}
+                        {step === 'additional_info' && renderAdditionalInfoStep()}
+                        {step === 'confirm_profile' && renderConfirmProfileStep()}
                         {step === 'success' && renderSuccessStep()}
                         {step === 'healthcare_search' && renderHealthcareSearchStep()}
                         {step === 'insurance_assistance' && renderInsuranceAssistanceStep()}

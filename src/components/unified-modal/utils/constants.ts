@@ -16,6 +16,8 @@ export const STEP_TYPES = {
   SERVICE_DETAIL: 'service_detail',
   PHONE: 'phone',
   OTP: 'otp',
+  ADDITIONAL_INFO: 'additional_info',
+  CONFIRM_PROFILE: 'confirm_profile',
   SUCCESS: 'success',
   HEALTHCARE_SEARCH: 'healthcare_search',
   INSURANCE_ASSISTANCE: 'insurance_assistance',
