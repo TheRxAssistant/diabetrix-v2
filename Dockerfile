@@ -1,23 +1,14 @@
-FROM node:lts-bookworm-slim AS builder
-
-WORKDIR /app
-
-RUN npm install -g pnpm
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
-COPY . .
-RUN pnpm run build
-
 FROM node:lts-bookworm-slim
 
 WORKDIR /app
 
+RUN npm install -g pnpm
 RUN npm install -g serve
 
-COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+RUN pnpm install
 
-EXPOSE 80
+COPY . .
 
-CMD ["serve", "-s", "dist", "-l", "80"]
+RUN pnpm run build
+CMD ["serve", "-p", "80", "dist"]
