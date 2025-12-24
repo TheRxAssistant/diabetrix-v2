@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import avatarImage from '../../../assets/images/avatar.png';
 import { trackingService } from '../../../services/tracking/tracking-service';
 import { useAppointments } from '../../../services/healthcare/hooks-appointments';
+import { useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 // Using inline styles instead of module import to avoid lint errors
 
 interface BookAppointmentModalProps {
@@ -16,7 +17,29 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [enrichedProvider, setEnrichedProvider] = useState<any>(provider);
     const { create_appointment, is_loading } = useAppointments();
+    const { enrichProviderWithCareDetails } = useProviderSearch();
+
+    // Fetch care details when modal opens for a provider with provider_id
+    useEffect(() => {
+        const fetchCareDetails = async () => {
+            if (!provider?.provider_id) {
+                setEnrichedProvider(provider);
+                return;
+            }
+
+            try {
+                const enriched = await enrichProviderWithCareDetails(provider);
+                setEnrichedProvider(enriched);
+            } catch (error) {
+                console.error('Error fetching care details:', error);
+                setEnrichedProvider(provider);
+            }
+        };
+
+        fetchCareDetails();
+    }, []);
 
     const handleSubmit = async () => {
         if (!reason.trim()) {
@@ -55,7 +78,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
                 appointment_details.facility_phone = provider?.facility_phone || provider?.phone || '';
             } else {
                 appointment_details.doctor_name = providerName;
-                appointment_details.doctor_phone = provider?.provider_phone || provider?.phone || '';
+                // Use phone from enriched provider (from care details API) if available, otherwise fall back to original provider phone
+                appointment_details.doctor_phone = enrichedProvider?.provider_phone || enrichedProvider?.phone || provider?.provider_phone || provider?.phone || '';
                 appointment_details.provider_id = provider?.provider_id || provider?.id;
             }
 
