@@ -107,7 +107,6 @@ export const postAPI = async (
     const finalPayload = { ...payload };
 
     try {
-        console.log('🔵 postAPI called:', { url, finalUrl, payload: finalPayload });
         const response = await fetch(finalUrl, {
             method: 'POST',
             headers,
@@ -251,6 +250,12 @@ export const CAPABILITIES_API_URLS = {
     // Appointment and Copay APIs
     SYNC_APPOINTMENT: 'appointments/sync-appointment',
     SYNC_COPAY_REQUEST: 'rx-savings/sync-copay-card',
+    // CRM User APIs
+    GET_USER_JOURNEY: 'crm/users/get-user-journey',
+    GET_USER_TIMELINE: 'crm/users/get-user-timeline',
+    GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
+    GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
+    GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
 } as const;
 
 // Core Engine API endpoints
