@@ -50,7 +50,7 @@ export const postAPI = async (
             apiPath = url as string;
             baseUrl = getBaseUrl('INDEX_MEMBER');
         }
-   
+
         // Check if it's a key in CAPABILITIES_API_URLS
         else if (url in CAPABILITIES_API_URLS) {
             apiPath = CAPABILITIES_API_URLS[url as keyof typeof CAPABILITIES_API_URLS];
@@ -136,7 +136,7 @@ export const postAPI = async (
                 sessionStorage.removeItem('diabetrix_auth_session');
                 authStore.clear();
             }
-            
+
             return {
                 statusCode: response.status,
                 message: errorMessage,
@@ -150,7 +150,7 @@ export const postAPI = async (
         let statusCode: number;
         let message: string;
         let data: any;
-        
+
         if (responseData.statusCode !== undefined) {
             statusCode = responseData.statusCode;
             message = responseData.message || 'Success';
@@ -204,7 +204,7 @@ export const streamAPI = async (
     // Import auth store to get tokens
     const { useAuthStore } = await import('../store/authStore');
     const authStore = useAuthStore.getState();
-    
+
     const apiPath = CORE_ENGINE_API_URLS[url];
     const baseUrl = getBaseUrl('CORE_ENGINE');
     
@@ -282,6 +282,7 @@ export const CAPABILITIES_API_URLS = {
     // SMS
     SEND_SMS: 'sms/send-message',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
+    GENERATE_INTELLIGENT_OPTIONS: 'drugs/generate-intelligent-options',
     // Insurance
     INSURANCE_CARD_IMAGE: 'insurance-card-image',
     // Find Care APIs
@@ -303,6 +304,8 @@ export const CAPABILITIES_API_URLS = {
     // Tracking APIs
     CREATE_VISIT: 'tracking/create-visit',
     SYNC_TIMELINE: 'tracking/sync-timeline',
+    // Appointment and Copay APIs
+    SYNC_COPAY_REQUEST: 'rx-savings/sync-copay-card',
     // CRM User APIs
     GET_USER_JOURNEY: 'crm/users/get-user-journey',
     GET_USER_TIMELINE: 'crm/users/get-user-timeline',

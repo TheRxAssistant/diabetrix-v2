@@ -31,6 +31,7 @@ interface EmbeddedChatStepProps {
     onSetUsedQuickReplies: (replies: string[] | ((prev: string[]) => string[])) => void;
     onSetInputMessage: (message: string) => void;
     onSendMessage: (message: string) => void;
+    onSetMessages?: (messages: any[] | ((prev: any[]) => any[])) => void;
     streaming_message?: string;
     is_streaming?: boolean;
 }
@@ -61,6 +62,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     onSetUsedQuickReplies,
     onSetInputMessage,
     onSendMessage,
+    onSetMessages,
     streaming_message = '',
     is_streaming = false,
 }) => {
@@ -71,10 +73,106 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     const [mcq_options, set_mcq_options] = useState<{ text: string; type?: string }[]>([]);
     const [mcq_loading, set_mcq_loading] = useState(false);
 
+    // Intelligent options state (for when input is disabled or in mcq mode)
+    const [intelligent_options, set_intelligent_options] = useState<{ text: string; type?: string }[]>([]);
+    const [intelligent_input_fields, set_intelligent_input_fields] = useState<{ field_type: string; label: string; placeholder: string }[]>([]);
+    const [intelligent_action_link, set_intelligent_action_link] = useState<{ url: string; label: string; open_in_new_tab: boolean } | null>(null);
+    const [intelligent_options_loading, set_intelligent_options_loading] = useState(false);
+    const [intelligent_option_type, set_intelligent_option_type] = useState<string>('generic');
+
     // Ref to track if we've generated quick replies for disabled input state
     const quickRepliesGeneratedForDisabledInput = useRef<boolean>(false);
+    // Ref to track if we've generated intelligent options
+    const intelligentOptionsGeneratedRef = useRef<boolean>(false);
+    // Ref to track the last message count when intelligent options were generated
+    const lastMessageCountForIntelligentOptions = useRef<number>(0);
 
-    // Generate quick replies when input is disabled
+    // Generate intelligent options when input is disabled or in MCQ mode
+    useEffect(() => {
+        const shouldGenerateOptions = (!show_input || chat_mode === 'mcq') && 
+                                       !is_streaming && 
+                                       !loading && 
+                                       messages.length > 0 &&
+                                       isChatActive;
+
+        if (shouldGenerateOptions) {
+            // Check if we need to regenerate (new message arrived or first time)
+            const currentMessageCount = messages.length;
+            const needsRegeneration = !intelligentOptionsGeneratedRef.current || 
+                                       lastMessageCountForIntelligentOptions.current !== currentMessageCount;
+
+            if (needsRegeneration) {
+                intelligentOptionsGeneratedRef.current = true;
+                lastMessageCountForIntelligentOptions.current = currentMessageCount;
+
+                const generateIntelligentOptions = async () => {
+                    try {
+                        set_intelligent_options_loading(true);
+                        console.log('🔄 Generating intelligent options', {
+                            show_input,
+                            chat_mode,
+                            messagesLength: messages.length,
+                        });
+
+                        // Get the last assistant message
+                        const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
+                        const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+                        
+                        if (!lastAssistantMessage) {
+                            console.log('⚠️ No assistant message found');
+                            set_intelligent_options_loading(false);
+                            return;
+                        }
+
+                        const result = await AIService.generateIntelligentOptions(
+                            currentMessages,
+                            lastAssistantMessage.content || lastAssistantMessage.message
+                        );
+                        
+                        console.log('✨ Generated intelligent options:', result);
+                        set_intelligent_options(result.options);
+                        set_intelligent_input_fields(result.input_fields || []);
+                        set_intelligent_action_link(result.action_link || null);
+                        set_intelligent_option_type(result.option_type);
+                    } catch (error) {
+                        console.error('❌ Error generating intelligent options:', error);
+                        // Set fallback options
+                        set_intelligent_options([
+                            { text: 'Yes', type: 'action' },
+                            { text: 'No', type: 'action' },
+                            { text: 'Tell me more', type: 'question' },
+                            { text: 'Skip', type: 'action' },
+                        ]);
+                        set_intelligent_input_fields([]);
+                        set_intelligent_action_link(null);
+                        set_intelligent_option_type('generic');
+                    } finally {
+                        set_intelligent_options_loading(false);
+                    }
+                };
+
+                generateIntelligentOptions();
+            }
+        } else if (show_input && chat_mode === 'input') {
+            // Reset when input becomes visible again in input mode
+            intelligentOptionsGeneratedRef.current = false;
+            set_intelligent_options([]);
+            set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
+        }
+    }, [show_input, chat_mode, is_streaming, loading, messages.length, isChatActive, isLearnFlow, messages]);
+
+    // Clear intelligent options when streaming starts
+    useEffect(() => {
+        if (is_streaming) {
+            set_intelligent_options([]);
+            set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
+            intelligentOptionsGeneratedRef.current = false;
+        }
+    }, [is_streaming]);
+
+    // Generate quick replies when input is disabled (legacy - keeping for fallback)
     useEffect(() => {
         if (!show_input && chat_mode === 'input') {
             // Reset the flag when input becomes disabled
@@ -231,6 +329,60 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         onSetInputMessage(''); // Clear input field after selection
         onSendMessage(option);
     };
+
+    // Handle Start Again - keep first 3 messages and regenerate intelligent options
+    const handle_start_again = useCallback(async () => {
+        if (!onSetMessages) return;
+        
+        // Keep only first 3 messages
+        onSetMessages((prev: any[]) => prev.slice(0, 3));
+        
+        // Clear current intelligent options
+        set_intelligent_options([]);
+        set_intelligent_input_fields([]);
+        set_intelligent_action_link(null);
+        intelligentOptionsGeneratedRef.current = false;
+        lastMessageCountForIntelligentOptions.current = 0;
+        
+        // Regenerate intelligent options after state update
+        setTimeout(async () => {
+            try {
+                set_intelligent_options_loading(true);
+                
+                // Get the current messages (should be first 3 after slice)
+                const currentMessages = messages.slice(0, 3);
+                const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+                
+                if (lastAssistantMessage) {
+                    const result = await AIService.generateIntelligentOptions(
+                        currentMessages,
+                        lastAssistantMessage.content || lastAssistantMessage.message
+                    );
+                    
+                    set_intelligent_options(result.options);
+                    set_intelligent_input_fields(result.input_fields || []);
+                    set_intelligent_action_link(result.action_link || null);
+                    set_intelligent_option_type(result.option_type);
+                    intelligentOptionsGeneratedRef.current = true;
+                    lastMessageCountForIntelligentOptions.current = 3;
+                }
+            } catch (error) {
+                console.error('Error regenerating intelligent options:', error);
+                set_intelligent_options([
+                    { text: 'Yes', type: 'action' },
+                    { text: 'No', type: 'action' },
+                    { text: 'Tell me more', type: 'question' },
+                    { text: 'Skip', type: 'action' },
+                ]);
+                set_intelligent_input_fields([]);
+                set_intelligent_action_link(null);
+                set_intelligent_option_type('generic');
+            } finally {
+                set_intelligent_options_loading(false);
+            }
+        }, 100);
+    }, [messages, onSetMessages]);
+
     return (
         <div className={styles.healthcare_search_step}>
             <div
@@ -246,7 +398,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                 }}>
                 <ChatHeader onClose={onClose} chat_mode={chat_mode} on_mode_change={set_chat_mode} show_input={show_input} on_toggle_input={set_show_input} />
                 <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-                    {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} /> : null}
+                    {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} intelligent_options={intelligent_options} intelligent_input_fields={intelligent_input_fields} intelligent_action_link={intelligent_action_link} intelligent_options_loading={intelligent_options_loading} intelligent_option_type={intelligent_option_type} on_intelligent_option_select={(option) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); onSendMessage(option); }} on_intelligent_input_submit={(values) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); const message = Object.values(values).join(', '); onSendMessage(message); }} show_intelligent_options={(!show_input || chat_mode === 'mcq') && !is_streaming} show_start_again={!show_input && !is_streaming && messages.length > 4} on_start_again={handle_start_again} show_input={show_input} /> : null}
                     {showLearnOverlay && (
                         <div className={`${styles.learn_overlay} ${isGoodRx ? styles.goodrx_theme : ''}`}>
                             <div className={styles.learn_overlay_header}>
@@ -314,8 +466,8 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         width: '100%',
                         boxSizing: 'border-box',
                     }}>
-                    {/* Quick Replies - Show in input mode, or always show when input is hidden, but hide completely in MCQ mode and during streaming */}
-                    {chat_mode !== 'mcq' && !is_streaming && showQuickReplies && currentQuickReplies.length > 0 && ((chat_mode === 'input') || !show_input) ? (
+                    {/* Quick Replies - Only show when input is enabled (not disabled), not in MCQ mode, and not streaming */}
+                    {show_input && chat_mode !== 'mcq' && !is_streaming && showQuickReplies && currentQuickReplies.length > 0 ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (

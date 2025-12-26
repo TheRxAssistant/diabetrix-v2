@@ -538,7 +538,8 @@
 }
 
 .mcq-options-content {
-  max-width: 80%;
+  max-width: 90%;
+  min-width: 200px;
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   border-radius: 0.25rem 1.25rem 1.25rem 1.25rem;
   box-shadow:
@@ -561,6 +562,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+
+  // Horizontal layout for Yes/No consent options
+  &.mcq-options-row {
+    flex-direction: row;
+    gap: 0.75rem;
+    
+    .mcq-option-button {
+      flex: 1;
+      min-width: 60px;
+      text-align: center;
+    }
+  }
 }
 
 .mcq-option-button {
@@ -630,4 +643,224 @@
   font-size: 0.875rem;
   color: #65737e;
   font-weight: 500;
+}
+
+// Intelligent Input Fields Styles
+.intelligent-input-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.intelligent-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.intelligent-input-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2c3e50;
+  letter-spacing: -0.01em;
+}
+
+.intelligent-input-field {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  color: #2c3e50;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    background: #ffffff;
+  }
+
+  &:hover:not(:focus) {
+    border-color: rgba(0, 122, 255, 0.3);
+  }
+}
+
+.intelligent-input-submit {
+  margin-top: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+  border: none;
+  border-radius: 0.75rem;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0066e6 0%, #0047b3 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
+  }
+
+  &:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    opacity: 0.7;
+    box-shadow: none;
+  }
+}
+
+// Start Again Button Styles
+.start-again-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.start-again-button {
+  padding: 0.625rem 1.25rem;
+  background: transparent;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &::before {
+    content: "↺";
+    font-size: 1rem;
+  }
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+// Intelligent Action Link Styles
+.intelligent-action-link-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.intelligent-action-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+  border: none;
+  border-radius: 0.875rem;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+  text-decoration: none;
+  text-align: center;
+  letter-spacing: -0.01em;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, #0066e6 0%, #0047b3 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35);
+    color: white;
+    text-decoration: none;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+  }
+}
+
+// Yes/No Buttons Styles (for first AI message)
+.yes-no-buttons-container {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.yes-no-button {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  font-size: $font_size_base;
+  min-height: $touch_target_min;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.yes-button {
+  background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+  color: white;
+  border-color: #007aff;
+
+  &:hover {
+    background: linear-gradient(135deg, #0066e6 0%, #0047b3 100%);
+    border-color: #0066e6;
+  }
+}
+
+.no-button {
+  background: #ffffff;
+  color: #2c3e50;
+  border-color: rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background: #f8fafc;
+    border-color: rgba(0, 0, 0, 0.15);
+  }
 }

@@ -15,9 +15,12 @@ interface Message_Props {
 interface Chat_Message_Props {
     message: Message_Props;
     handle_button_click: (button_text: string) => void;
+    chat_mode?: 'input' | 'mcq';
+    show_input?: boolean;
+    is_first_message?: boolean;
 }
 
-const ChatMessage: React.FC<Chat_Message_Props> = ({ message, handle_button_click }) => {
+const ChatMessage: React.FC<Chat_Message_Props> = ({ message, handle_button_click, chat_mode = 'input', show_input = true, is_first_message = false }) => {
     const [isNew, setIsNew] = useState(true);
     const [selected_options, set_selected_options] = useState<string[]>([]);
 
@@ -51,20 +54,39 @@ const ChatMessage: React.FC<Chat_Message_Props> = ({ message, handle_button_clic
         <div className={`message ${message.role === 'user' ? 'user-message' : 'system-message'} ${isNew ? 'new-message' : ''}`}>
             <div className="message-content">
                 {message.role === 'assistant' ? (
-                    <MDEditor.Markdown
-                        source={message.content}
-                        components={{
-                            a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                            h1: (props) => <h1 {...props} style={{ fontSize: 20, marginBottom: '0.5rem' }} />,
-                            h2: (props) => <h2 {...props} style={{ fontSize: 18, marginBottom: '0.5rem' }} />,
-                            h3: (props) => <h3 {...props} style={{ fontSize: 16, marginBottom: '0.5rem' }} />,
-                            p: (props) => <p {...props} />,
-                            ul: (props) => <ul {...props} style={{ paddingLeft: '1.2rem' }} />,
-                            ol: (props) => <ol {...props} style={{ paddingLeft: '1.2rem' }} />,
-                            li: (props) => <li {...props} style={{ marginBottom: '0.25rem', listStyleType: 'disc' }} />,
-                        }}
-                        className="md-content"
-                    />
+                    <>
+                        <MDEditor.Markdown
+                            source={message.content}
+                            components={{
+                                a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                                h1: (props) => <h1 {...props} style={{ fontSize: 20, marginBottom: '0.5rem' }} />,
+                                h2: (props) => <h2 {...props} style={{ fontSize: 18, marginBottom: '0.5rem' }} />,
+                                h3: (props) => <h3 {...props} style={{ fontSize: 16, marginBottom: '0.5rem' }} />,
+                                p: (props) => <p {...props} />,
+                                ul: (props) => <ul {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                ol: (props) => <ol {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                li: (props) => <li {...props} style={{ marginBottom: '0.25rem', listStyleType: 'disc' }} />,
+                            }}
+                            className="md-content"
+                        />
+                        {/* Yes/No buttons for first AI message when input is enabled and not MCQ mode */}
+                        {is_first_message && chat_mode === 'input' && show_input && (
+                            <div className="yes-no-buttons-container">
+                                <button
+                                    className="yes-no-button yes-button"
+                                    onClick={() => handle_button_click('Yes')}
+                                >
+                                    Yes
+                                </button>
+                                <button
+                                    className="yes-no-button no-button"
+                                    onClick={() => handle_button_click('No')}
+                                >
+                                    No
+                                </button>
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div dangerouslySetInnerHTML={{ __html: message.content }} />
                 )}

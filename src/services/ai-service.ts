@@ -13,6 +13,25 @@ export interface QuickReply {
     type: 'question' | 'clarification' | 'action';
 }
 
+export interface InputField {
+    field_type: 'zipcode' | 'personal_name' | 'phone' | 'email' | 'dob' | 'address' | 'member_id' | 'group_number';
+    label: string;
+    placeholder: string;
+}
+
+export interface ActionLink {
+    url: string;
+    label: string;
+    open_in_new_tab: boolean;
+}
+
+export interface IntelligentOptionsResult {
+    options: QuickReply[];
+    input_fields: InputField[];
+    option_type: string;
+    action_link?: ActionLink | null;
+}
+
 export class AIService {
 
     /**
@@ -111,6 +130,72 @@ export class AIService {
             { text: "What's next?", type: 'action' },
             { text: 'Any side effects?', type: 'question' },
         ];
+    }
+
+    /**
+     * Generate intelligent options based on the last assistant message
+     * Analyzes context to return appropriate options (Yes/No for consent, doctor types, etc.)
+     * OR input fields for user-input types (zipcode, phone, email, etc.)
+     */
+    static async generateIntelligentOptions(messages: any[] = [], lastAssistantMessage: string): Promise<IntelligentOptionsResult> {
+        try {
+            const payload = {
+                messages: Array.isArray(messages) ? messages : [],
+                last_assistant_message: lastAssistantMessage,
+            };
+
+            const result = await postAPI(CAPABILITIES_API_URLS.GENERATE_INTELLIGENT_OPTIONS, payload);
+
+            console.log('📡 Intelligent Options API Response:', result.statusCode);
+            
+            if (result.statusCode === 200) {
+                const hasOptions = result.data.options && result.data.options.length > 0;
+                const hasInputFields = result.data.input_fields && result.data.input_fields.length > 0;
+                const hasActionLink = result.data.action_link && result.data.action_link.url;
+                
+                if (hasOptions || hasInputFields || hasActionLink) {
+                    return {
+                        options: hasOptions ? result.data.options.map((option: any) => ({
+                            text: option.text || option,
+                            type: 'action',
+                        })) : [],
+                        input_fields: hasInputFields ? result.data.input_fields.map((field: any) => ({
+                            field_type: field.field_type,
+                            label: field.label,
+                            placeholder: field.placeholder,
+                        })) : [],
+                        option_type: result.data.option_type || 'generic',
+                        action_link: hasActionLink ? {
+                            url: result.data.action_link.url,
+                            label: result.data.action_link.label,
+                            open_in_new_tab: result.data.action_link.open_in_new_tab,
+                        } : null,
+                    };
+                }
+            }
+
+            return this.getFallbackIntelligentOptions();
+        } catch (error) {
+            console.error('Error generating intelligent options:', error);
+            return this.getFallbackIntelligentOptions();
+        }
+    }
+
+    /**
+     * Fallback intelligent options when AI generation fails
+     */
+    private static getFallbackIntelligentOptions(): IntelligentOptionsResult {
+        return {
+            options: [
+                { text: 'Yes', type: 'action' },
+                { text: 'No', type: 'action' },
+                { text: 'Tell me more', type: 'question' },
+                { text: 'Skip', type: 'action' },
+            ],
+            input_fields: [],
+            option_type: 'generic',
+            action_link: null,
+        };
     }
 
     /**
