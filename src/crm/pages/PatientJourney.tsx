@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner } from 'react-icons/fa';
+import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaChevronUp, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner } from 'react-icons/fa';
 import { Link, useParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import Avatar from '../components/ui/Avatar';
@@ -25,6 +25,7 @@ interface JourneyEvent {
         campaignId: string;
         campaignName: string;
     };
+    visitDetails?: any;
     details?: any;
 }
 
@@ -38,7 +39,9 @@ interface ApiJourneyStage {
 interface ApiTimelineEntry {
     timeline_id: string;
     created_at: Date | string;
-    user_id: string;
+    user_id?: string | null;
+    anonymous_id?: string | null;
+    visit_id?: string | null;
     conversation_id?: string | null;
     tool_name: string;
     tool_arguments?: any;
@@ -47,6 +50,23 @@ interface ApiTimelineEntry {
     timeline_description: string;
     timeline_title: string | null;
     conversation_summary?: string | null;
+    visit?: {
+        visit_id: string;
+        created_at: Date | string;
+        user_id?: string | null;
+        anonymous_id: string;
+        utm_source?: string | null;
+        utm_medium?: string | null;
+        utm_campaign?: string | null;
+        utm_term?: string | null;
+        utm_content?: string | null;
+        landing_page: string;
+        referrer?: string | null;
+        domain: string;
+        device_type?: string | null;
+        user_agent?: string | null;
+        ip_address?: string | null;
+    } | null;
 }
 
 export default function PatientJourney() {
@@ -58,6 +78,12 @@ export default function PatientJourney() {
     const [journeyStages, setJourneyStages] = useState<ApiJourneyStage[]>([]);
     const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>([]);
     const [lastEngagement, setLastEngagement] = useState<JourneyEvent | null>(null);
+    const [eventsData, setEventsData] = useState<any[]>([]);
+    const [visitsMap, setVisitsMap] = useState<Map<string, any>>(new Map());
+    const [combinedTimeline, setCombinedTimeline] = useState<any[]>([]);
+    const [expandedTimelineEntries, setExpandedTimelineEntries] = useState<Set<string>>(new Set());
+    const [expandedVisits, setExpandedVisits] = useState<Set<string>>(new Set());
+    const [allTimelineEntries, setAllTimelineEntries] = useState<ApiTimelineEntry[]>([]);
     const [patient, setPatient] = useState({
         id: patientId,
         name: 'Loading...',
@@ -130,6 +156,24 @@ export default function PatientJourney() {
         return 'none';
     };
 
+    // Function to get visit/ad details for a timeline entry
+    const getVisitDetailsForTimelineEntry = (timelineEntry: ApiTimelineEntry) => {
+        // If timeline entry has visit_id, get visit details
+        if (timelineEntry.visit_id) {
+            return visitsMap.get(timelineEntry.visit_id);
+        }
+        
+        // Otherwise, find the visit that contains events around this timeline entry's time
+        const timelineTime = new Date(timelineEntry.created_at).getTime();
+        const visit = Array.from(visitsMap.values()).find((v: any) => {
+            const visitTime = new Date(v.created_at).getTime();
+            // Check if timeline entry is within 1 hour of visit creation
+            return Math.abs(timelineTime - visitTime) < 3600000;
+        });
+        
+        return visit;
+    };
+
     // Extract attribution tags from timeline entry
     const extractAttributionTags = (entry: ApiTimelineEntry): string[] => {
         const tags: string[] = [];
@@ -165,9 +209,23 @@ export default function PatientJourney() {
         const eventType = mapToolNameToEventType(entry.tool_name);
         const channel = mapToolNameToChannel(entry.tool_name);
 
-        // Build campaign info if attribution tags exist
+        // Get visit details for ad attribution
+        const visitDetails = getVisitDetailsForTimelineEntry(entry);
+
+        // Build campaign info from visit if available, otherwise from attribution tags
         let campaign: JourneyEvent['campaign'] = undefined;
-        if (attributionTags.length > 0) {
+        if (visitDetails && (visitDetails.utm_source || visitDetails.utm_campaign)) {
+            const isMeta = visitDetails.utm_source?.toLowerCase().includes('meta') || 
+                          visitDetails.utm_source?.toLowerCase().includes('facebook');
+            const isGoogle = visitDetails.utm_source?.toLowerCase().includes('google');
+            
+            campaign = {
+                platform: isMeta ? 'meta' : isGoogle ? 'google' : 'other',
+                adType: (visitDetails.utm_content || 'find_doctor') as 'find_doctor' | 'market_access' | 'awareness' | 'education',
+                campaignId: visitDetails.utm_campaign || 'unknown',
+                campaignName: visitDetails.utm_campaign || 'Unknown Campaign',
+            };
+        } else if (attributionTags.length > 0) {
             const isMeta = attributionTags.some((tag) => tag.includes('META'));
             campaign = {
                 platform: isMeta ? 'meta' : 'google',
@@ -208,6 +266,7 @@ export default function PatientJourney() {
             type: eventType,
             channel,
             campaign,
+            visitDetails,
             details: Object.keys(details).length > 0 ? details : undefined,
         };
     };
@@ -236,23 +295,54 @@ export default function PatientJourney() {
                     throw new Error(timelineResponse.message || 'Failed to fetch timeline data');
                 }
 
+                // Process visits map from timeline entries (visit data is now included in timeline response)
+                const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
+                setAllTimelineEntries(timelineEntries);
+                const visitsMap = new Map<string, any>();
+                timelineEntries.forEach((entry: any) => {
+                    if (entry.visit && entry.visit_id) {
+                        visitsMap.set(entry.visit_id, entry.visit);
+                    }
+                });
+                setVisitsMap(visitsMap);
+
                 // Set journey stages
                 const stagesData = journeyResponse.data?.journey_stages || [];
                 setJourneyStages(stagesData);
 
                 // Map timeline entries to journey events
-                const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
                 const mappedEvents = timelineEntries.map((entry, index) => mapTimelineEntryToJourneyEvent(entry, index));
                 setJourneyEvents(mappedEvents);
+
+                // Build timeline using ONLY timeline entries
+                // Track which visit_ids have been shown to show visit attributes only for first occurrence
+                const combinedItems: any[] = [];
+                const processedVisitIds = new Set<string>();
+
+                timelineEntries.forEach((entry, index) => {
+                    const isFirstVisitOccurrence = entry.visit_id && !processedVisitIds.has(entry.visit_id);
+                    
+                    if (isFirstVisitOccurrence && entry.visit_id) {
+                        processedVisitIds.add(entry.visit_id);
+                    }
+                    
+                    combinedItems.push({
+                        type: 'timeline',
+                        id: entry.timeline_id,
+                        timestamp: entry.created_at,
+                        data: entry,
+                        isFirstVisitOccurrence,
+                    });
+                });
+                
+                setCombinedTimeline(combinedItems);
 
                 // Extract last engagement from timeline
                 const lastEntry = timelineEntries[timelineEntries.length - 1];
                 if (lastEntry) {
                     const lastEvent = mapTimelineEntryToJourneyEvent(lastEntry, timelineEntries.length - 1);
                     // Only set as last engagement if it has a channel
-                    if (lastEvent.channel && lastEvent.channel !== 'none') {
                         setLastEngagement(lastEvent);
-                    }
                 }
 
                 // Populate patient info from user details
@@ -333,22 +423,29 @@ export default function PatientJourney() {
                 if (timelineResponse.statusCode === 200) {
                     const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
 
+                    // Process visits map from timeline entries
+                    const visitsMap = new Map<string, any>();
+                    timelineEntries.forEach((entry: any) => {
+                        if (entry.visit && entry.visit_id) {
+                            visitsMap.set(entry.visit_id, entry.visit);
+                        }
+                    });
+                    setVisitsMap(visitsMap);
+                    setAllTimelineEntries(timelineEntries);
+
                     // Only append new entries to avoid re-render
                     setJourneyEvents((prevEvents) => {
                         const existingIds = new Set(prevEvents.map(e => e.id));
                         const newEntries = timelineEntries.filter(entry => !existingIds.has(entry.timeline_id));
 
-                        // If no new entries, return previous to avoid re-render
                         if (newEntries.length === 0) {
                             return prevEvents;
                         }
 
-                        // Map new entries to events and append
                         const newEvents = newEntries.map((entry, index) =>
                             mapTimelineEntryToJourneyEvent(entry, prevEvents.length + index)
                         );
 
-                        // Update last engagement if applicable
                         if (newEvents.length > 0) {
                             const lastEvent = newEvents[newEvents.length - 1];
                             if (lastEvent.channel && lastEvent.channel !== 'none') {
@@ -356,7 +453,31 @@ export default function PatientJourney() {
                             }
                         }
 
-                        return [...prevEvents, ...newEvents];
+                        const updatedEvents = [...prevEvents, ...newEvents];
+                        
+                        // Rebuild combined timeline using timeline entries
+                        const combinedItems: any[] = [];
+                        const processedVisitIds = new Set<string>();
+
+                        timelineEntries.forEach((entry) => {
+                            const isFirstVisitOccurrence = entry.visit_id && !processedVisitIds.has(entry.visit_id);
+                            
+                            if (isFirstVisitOccurrence && entry.visit_id) {
+                                processedVisitIds.add(entry.visit_id);
+                            }
+                            
+                            combinedItems.push({
+                                type: 'timeline',
+                                id: entry.timeline_id,
+                                timestamp: entry.created_at,
+                                data: entry,
+                                isFirstVisitOccurrence,
+                            });
+                        });
+                        
+                        setCombinedTimeline(combinedItems);
+                        
+                        return updatedEvents;
                     });
                 }
             } catch (err) {
@@ -364,7 +485,7 @@ export default function PatientJourney() {
             }
         };
 
-        const interval = setInterval(pollTimeline, 25000); // Poll every 25 seconds
+        const interval = setInterval(pollTimeline, 10000); // Poll every 10 seconds
         return () => clearInterval(interval);
     }, [patientId]);
 
@@ -967,85 +1088,311 @@ export default function PatientJourney() {
                         {/* Enhanced Vertical line */}
                         <div className="absolute left-7 top-0 bottom-0 w-1 bg-[#0078D4] rounded z-0" />
 
-                        {/* Events */}
-                        {journeyEvents.length === 0 ? (
+                        {/* Timeline Entries */}
+                        {combinedTimeline.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
                                 <FaClock className="text-4xl mx-auto mb-4 opacity-50" />
                                 <p>No timeline events found</p>
                             </div>
                         ) : (
-                            journeyEvents.map((event, index) => {
-                                const status = getStageStatus(event.stage);
-                                const isCompleted = status === 'completed' || index < journeyEvents.length - 1;
-                                const channelInfo = getChannelInfo(event.channel);
+                            combinedTimeline.map((item, index) => {
+                                const isLast = index === combinedTimeline.length - 1;
+                                const entry = item.data as ApiTimelineEntry;
+                                const isCompleted = !isLast;
+                                
+                                // Map tool name to channel for icon
+                                const channelInfo = getChannelInfo(mapToolNameToChannel(entry.tool_name));
+                                
+                                // Get visit data if this is the first occurrence
+                                const visitData = item.isFirstVisitOccurrence && entry.visit ? entry.visit : null;
+                                
                                 return (
-                                    <React.Fragment key={event.id}>
-                                        <div className="relative mb-5 pl-12 sm:pl-16">
-                                            {/* Enhanced Dot */}
-                                            <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
-                                                {getEventIcon(event)}
+                                    <div key={`timeline-${item.id}`} className="relative mb-5 pl-12 sm:pl-16">
+                                        {/* Dot */}
+                                        <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
+                                            {getEventIcon(mapTimelineEntryToJourneyEvent(entry, index))}
+                                        </div>
+
+                                        {/* Channel Badge on Dot */}
+                                        {channelInfo && (
+                                            <div className="absolute left-9 top-1.5 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center z-20 shadow-md" style={{ backgroundColor: channelInfo.color }}>
+                                                <span className="text-white text-[10px]">{channelInfo.icon}</span>
                                             </div>
+                                        )}
 
-                                            {/* Enhanced Channel Badge on Dot */}
-                                            {channelInfo && (
-                                                <div className="absolute left-9 top-1.5 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center z-20 shadow-md" style={{ backgroundColor: channelInfo.color }}>
-                                                    <span className="text-white text-[10px]">{channelInfo.icon}</span>
-                                                </div>
-                                            )}
-
-                                            {/* Enhanced Event Card */}
-                                            <Card className={`rounded-xl transition-all ml-1 border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`} bodyStyle={{ padding: '16px 20px' }}>
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2.5 mb-2.5 flex-wrap">
-                                                            <span className="text-gray-900 text-sm font-semibold leading-snug break-words">{event.description}</span>
+                                        {/* Timeline Entry Card */}
+                                        <Card className={`rounded-xl transition-all ml-1 border border-${isCompleted ? '[#0078D4]20' : 'gray-200'} shadow-sm`} bodyStyle={{ padding: '16px 20px' }}>
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start gap-2.5 mb-2.5 flex-wrap">
+                                                        <div className="flex-1 min-w-0">
+                                                            {/* Timeline Title */}
+                                                            {entry.timeline_title && (
+                                                                <div className="text-gray-900 text-sm font-semibold leading-snug break-words mb-1">
+                                                                    {entry.timeline_title}
+                                                                </div>
+                                                            )}
+                                                            {/* Timeline Description */}
+                                                            {entry.timeline_description && (
+                                                                <div className="text-gray-700 text-sm leading-relaxed break-words">
+                                                                    {entry.timeline_description}
+                                                                </div>
+                                                            )}
+                                                            {/* Fallback if neither title nor description */}
+                                                            {!entry.timeline_title && !entry.timeline_description && (
+                                                                <div className="text-gray-900 text-sm font-semibold leading-snug break-words">
+                                                                    {entry.tool_name.replace(/_/g, ' ')}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
                                                             {channelInfo && (
                                                                 <Tag icon={channelInfo.icon} className="m-0 border text-[11px] px-2 py-0.5 h-auto leading-[18px]" style={{ color: channelInfo.color, borderColor: `${channelInfo.color}30` }}>
                                                                     {channelInfo.label}
                                                                 </Tag>
                                                             )}
-                                                            {event.campaign && (
-                                                                <Link to={`/crm/marketing/campaigns#${event.campaign.campaignId}`} onClick={(e) => e.stopPropagation()}>
-                                                                    <Button type="link" size="small" icon={<FaInfoCircle />} className="p-0 h-auto text-[11px]">
-                                                                        View Attribution
-                                                                    </Button>
-                                                                </Link>
+                                                            {/* Expand button - show if there are details or arguments */}
+                                                            {((entry.tool_result && Object.keys(entry.tool_result).length > 0) || entry.decision_summary || entry.conversation_summary || (entry.tool_arguments && Object.keys(entry.tool_arguments).length > 0)) && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newExpanded = new Set(expandedTimelineEntries);
+                                                                        if (newExpanded.has(entry.timeline_id)) {
+                                                                            newExpanded.delete(entry.timeline_id);
+                                                                        } else {
+                                                                            newExpanded.add(entry.timeline_id);
+                                                                        }
+                                                                        setExpandedTimelineEntries(newExpanded);
+                                                                    }}
+                                                                    className="p-1.5 rounded hover:bg-gray-100 transition-colors flex-shrink-0"
+                                                                    title="Show details"
+                                                                >
+                                                                    {expandedTimelineEntries.has(entry.timeline_id) ? (
+                                                                        <FaChevronUp className="text-gray-600" />
+                                                                    ) : (
+                                                                        <FaChevronDown className="text-gray-600" />
+                                                                    )}
+                                                                </button>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2.5 flex-wrap">
-                                                            <Tag
-                                                                icon={getEventIcon(event)}
-                                                                className="text-xs px-3 py-1 h-auto rounded-md font-medium border-0"
-                                                                style={{
-                                                                    backgroundColor: event.type === 'ad' ? (event.campaign?.platform === 'meta' ? '#4267B2' : '#4285F4') : event.type === 'followup' ? (event.details?.channel === 'SMS' ? secondaryColor : primaryColor) : primaryColor,
-                                                                    color: 'white',
-                                                                }}>
-                                                                {getEventTypeLabel(event)}
-                                                            </Tag>
-                                                            {getCampaignBadge(event)}
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <FaCalendar className="text-xs text-gray-600 flex-shrink-0" />
-                                                                <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
-                                                                    {new Date(event.timestamp).toLocaleDateString('en-US', {
-                                                                        month: 'long',
-                                                                        day: 'numeric',
-                                                                        year: 'numeric',
-                                                                    })}
-                                                                </span>
-                                                                <span className="text-xs text-gray-400 whitespace-nowrap">
-                                                                    {new Date(event.timestamp).toLocaleTimeString('en-US', {
-                                                                        hour: 'numeric',
-                                                                        minute: '2-digit',
-                                                                    })}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        {renderEventDetails(event)}
                                                     </div>
+
+                                                    {/* Visit Attributes - Show only for first occurrence */}
+                                                    {visitData && item.isFirstVisitOccurrence && (
+                                                        <div className="mb-2.5 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <div className="text-xs font-semibold text-blue-900 flex items-center gap-1">
+                                                                    <FaCalendar className="text-xs" />
+                                                                    Visit Attribution
+                                                                </div>
+                                                                {/* Expand button for visit events */}
+                                                                {entry.visit_id && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const newExpanded = new Set(expandedVisits);
+                                                                            if (newExpanded.has(entry.visit_id!)) {
+                                                                                newExpanded.delete(entry.visit_id!);
+                                                                            } else {
+                                                                                newExpanded.add(entry.visit_id!);
+                                                                            }
+                                                                            setExpandedVisits(newExpanded);
+                                                                        }}
+                                                                        className="p-1 rounded hover:bg-blue-100 transition-colors"
+                                                                    >
+                                                                        {expandedVisits.has(entry.visit_id!) ? (
+                                                                            <FaChevronUp className="text-blue-600 text-xs" />
+                                                                        ) : (
+                                                                            <FaChevronDown className="text-blue-600 text-xs" />
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {/* UTM Parameters - Always show if available */}
+                                                            {(visitData.utm_source || visitData.utm_medium || visitData.utm_campaign || visitData.utm_term || visitData.utm_content) ? (
+                                                                <div className="mb-2">
+                                                                    <div className="text-[11px] font-semibold text-gray-700 mb-1">UTM Parameters:</div>
+                                                                    <div className="flex flex-wrap gap-2 text-xs">
+                                                                        {visitData.utm_source && (
+                                                                            <span className="text-gray-700">
+                                                                                <strong>Source:</strong> {visitData.utm_source}
+                                                                            </span>
+                                                                        )}
+                                                                        {visitData.utm_medium && (
+                                                                            <span className="text-gray-700">
+                                                                                <strong>Medium:</strong> {visitData.utm_medium}
+                                                                            </span>
+                                                                        )}
+                                                                        {visitData.utm_campaign && (
+                                                                            <span className="text-gray-700">
+                                                                                <strong>Campaign:</strong> {visitData.utm_campaign}
+                                                                            </span>
+                                                                        )}
+                                                                        {visitData.utm_term && (
+                                                                            <span className="text-gray-700">
+                                                                                <strong>Term:</strong> {visitData.utm_term}
+                                                                            </span>
+                                                                        )}
+                                                                        {visitData.utm_content && (
+                                                                            <span className="text-gray-700">
+                                                                                <strong>Content:</strong> {visitData.utm_content}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="mb-2 text-xs text-gray-500">No UTM parameters available</div>
+                                                            )}
+                                                            <div className="flex flex-col gap-1 text-xs text-gray-600">
+                                                                {visitData.landing_page && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <FaInfoCircle className="text-xs" />
+                                                                        <span className="truncate" title={visitData.landing_page}>
+                                                                            Landing: {visitData.landing_page.length > 50 ? visitData.landing_page.substring(0, 50) + '...' : visitData.landing_page}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {visitData.referrer && (
+                                                                    <div className="text-gray-500">
+                                                                        Referrer: {visitData.referrer.length > 40 ? visitData.referrer.substring(0, 40) + '...' : visitData.referrer}
+                                                                    </div>
+                                                                )}
+                                                                {visitData.device_type && (
+                                                                    <div className="text-gray-500">
+                                                                        Device: {visitData.device_type}
+                                                                    </div>
+                                                                )}
+                                                                {visitData.domain && (
+                                                                    <div className="text-gray-500">
+                                                                        Domain: {visitData.domain}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            {/* Expanded Visit Events */}
+                                                            {entry.visit_id && expandedVisits.has(entry.visit_id) && (
+                                                                <div className="mt-3 pt-3 border-t border-blue-200">
+                                                                    <div className="text-xs font-semibold text-blue-900 mb-3">Related Events:</div>
+                                                                    {allTimelineEntries
+                                                                        .filter(e => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id)
+                                                                        .map((relatedEntry) => {
+                                                                            const relatedTime = new Date(relatedEntry.created_at);
+                                                                            const relatedChannelInfo = getChannelInfo(mapToolNameToChannel(relatedEntry.tool_name));
+                                                                            return (
+                                                                                <div key={relatedEntry.timeline_id} className="mb-3 p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
+                                                                                    <div className="flex items-start gap-2 mb-2">
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            {relatedEntry.timeline_title && (
+                                                                                                <div className="text-xs font-semibold text-gray-900 mb-1 break-words">
+                                                                                                    {relatedEntry.timeline_title}
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {relatedEntry.timeline_description && (
+                                                                                                <div className="text-xs text-gray-700 leading-relaxed break-words">
+                                                                                                    {relatedEntry.timeline_description}
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <Tag 
+                                                                                            icon={getEventIcon(mapTimelineEntryToJourneyEvent(relatedEntry, 0))}
+                                                                                            className="text-[10px] px-2 py-0.5 border-0 bg-gray-500 text-white"
+                                                                                        >
+                                                                                            {relatedEntry.tool_name.replace(/_/g, ' ')}
+                                                                                        </Tag>
+                                                                                        {relatedChannelInfo && (
+                                                                                            <Tag icon={relatedChannelInfo.icon} className="text-[10px] px-2 py-0.5 border" style={{ color: relatedChannelInfo.color, borderColor: `${relatedChannelInfo.color}30` }}>
+                                                                                                {relatedChannelInfo.label}
+                                                                                            </Tag>
+                                                                                        )}
+                                                                                        <span className="text-[10px] text-gray-500">
+                                                                                            {relatedTime.toLocaleTimeString('en-US', {
+                                                                                                hour: 'numeric',
+                                                                                                minute: '2-digit',
+                                                                                            })}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    {allTimelineEntries.filter(e => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id).length === 0 && (
+                                                                        <div className="text-xs text-gray-500 italic">No other events for this visit</div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="flex items-center gap-2.5 flex-wrap">
+                                                        <Tag
+                                                            icon={getEventIcon(mapTimelineEntryToJourneyEvent(entry, index))}
+                                                            className="text-xs px-3 py-1 h-auto rounded-md font-medium border-0"
+                                                            style={{
+                                                                backgroundColor: primaryColor,
+                                                                color: 'white',
+                                                            }}>
+                                                            {entry.tool_name.replace(/_/g, ' ')}
+                                                        </Tag>
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <FaCalendar className="text-xs text-gray-600 flex-shrink-0" />
+                                                            <span className="text-sm text-gray-600 font-semibold whitespace-nowrap">
+                                                                {new Date(entry.created_at).toLocaleDateString('en-US', {
+                                                                    month: 'long',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric',
+                                                                })}
+                                                            </span>
+                                                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                                                                {new Date(entry.created_at).toLocaleTimeString('en-US', {
+                                                                    hour: 'numeric',
+                                                                    minute: '2-digit',
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Expanded Details and Arguments */}
+                                                    {expandedTimelineEntries.has(entry.timeline_id) && (
+                                                        <div className="mt-3 space-y-3">
+                                                            {/* Decision Summary */}
+                                                            {entry.decision_summary && (
+                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Outcome:</span>
+                                                                    <Tag color="green" className="text-xs">{entry.decision_summary}</Tag>
+                                                                </div>
+                                                            )}
+                                                            {/* Conversation Summary */}
+                                                            {entry.conversation_summary && (
+                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Conversation Summary:</span>
+                                                                    <p className="text-xs text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
+                                                                        {entry.conversation_summary}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            {/* Tool Result */}
+                                                            {entry.tool_result && typeof entry.tool_result === 'object' && Object.keys(entry.tool_result).length > 0 && (
+                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Details:</span>
+                                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">
+                                                                        {JSON.stringify(entry.tool_result, null, 2)}
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+                                                            {/* Tool Arguments */}
+                                                            {entry.tool_arguments && Object.keys(entry.tool_arguments).length > 0 && (
+                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Tool Arguments:</span>
+                                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">
+                                                                        {JSON.stringify(entry.tool_arguments, null, 2)}
+                                                                    </pre>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </Card>
-                                        </div>
-                                    </React.Fragment>
+                                            </div>
+                                        </Card>
+                                    </div>
                                 );
                             })
                         )}

@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import avatarImage from '../../../assets/images/avatar.png';
+import { trackingService } from '../../../services/tracking/tracking-service';
+import { useAppointments } from '../../../services/healthcare/hooks-appointments';
+import { useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 // Using inline styles instead of module import to avoid lint errors
 
 interface BookAppointmentModalProps {
@@ -14,6 +17,29 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState('');
+    const [enrichedProvider, setEnrichedProvider] = useState<any>(provider);
+    const { create_appointment, is_loading } = useAppointments();
+    const { enrichProviderWithCareDetails } = useProviderSearch();
+
+    // Fetch care details when modal opens for a provider with provider_id
+    useEffect(() => {
+        const fetchCareDetails = async () => {
+            if (!provider?.provider_id) {
+                setEnrichedProvider(provider);
+                return;
+            }
+
+            try {
+                const enriched = await enrichProviderWithCareDetails(provider);
+                setEnrichedProvider(enriched);
+            } catch (error) {
+                console.error('Error fetching care details:', error);
+                setEnrichedProvider(provider);
+            }
+        };
+
+        fetchCareDetails();
+    }, []);
 
     const handleSubmit = async () => {
         if (!reason.trim()) {
@@ -25,20 +51,62 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
         setError('');
 
         try {
-            // Show loading state for 2 seconds
-            setTimeout(async () => {
-                setIsSubmitting(false);
-                setIsSuccess(true);
+            const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
+            const isFacility = !!provider?.facility_name || !!provider?.facility_id;
+            const appointment_with = isFacility ? 'Facility' : 'Provider';
 
-                // Close modal after showing success message for 2 seconds
-                setTimeout(async () => {
-                    await onRequestAppointment(provider, reason, availability);
-                    onClose();
-                }, 2000);
+            // Extract zipcode from address if available
+            let zipcode = '';
+            if (provider?.provider_address || provider?.address) {
+                const address = provider?.provider_address || provider?.address;
+                const zipcodeMatch = address.match(/\b\d{5}\b/);
+                if (zipcodeMatch) {
+                    zipcode = zipcodeMatch[0];
+                }
+            }
+
+            // Prepare appointment details
+            const appointment_details: any = {
+                appointment_notes: reason,
+                appointment_address: provider?.provider_address || provider?.address || '',
+                appointment_zipcode: zipcode || provider?.provider_zipcode || provider?.zipcode || '',
+                appointment_status: 'Requested',
+            };
+
+            if (isFacility) {
+                appointment_details.facility_name = providerName;
+                appointment_details.facility_phone = provider?.facility_phone || provider?.phone || '';
+            } else {
+                appointment_details.doctor_name = providerName;
+                // Use phone from enriched provider (from care details API) if available, otherwise fall back to original provider phone
+                appointment_details.doctor_phone = enrichedProvider?.provider_phone || enrichedProvider?.phone || provider?.provider_phone || provider?.phone || '';
+                appointment_details.provider_id = provider?.provider_id || provider?.id;
+            }
+
+            if (availability) {
+                appointment_details.appointment_date_time = availability;
+            }
+
+            // Create appointment via API
+            await create_appointment({
+                appointment_details,
+                appointment_with,
+            });
+
+            setIsSubmitting(false);
+            setIsSuccess(true);
+
+            
+
+            // Close modal after showing success message for 2 seconds
+            setTimeout(async () => {
+                await onRequestAppointment(provider, reason, availability);
+                onClose();
             }, 2000);
         } catch (err) {
             setError('Failed to request appointment. Please try again.');
             setIsSubmitting(false);
+            console.error('Error booking appointment:', err);
         }
     };
 
@@ -114,19 +182,19 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
                 {error && <div className="text-red-700 mb-4 p-2 bg-red-50 rounded text-sm">{error}</div>}
 
                 <div className={`flex gap-3 ${isSuccess ? 'flex-row justify-center' : 'flex-col'}`}>
-                    {isSubmitting && (
+                    {(isSubmitting || is_loading) && (
                         <div className="text-center w-full mb-4">
                             <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin" />
                             <p className="m-0 text-gray-600 text-sm">Processing your request...</p>
                         </div>
                     )}
 
-                    {!isSubmitting && !isSuccess && (
+                    {!isSubmitting && !is_loading && !isSuccess && (
                         <>
                             <button onClick={onClose} className="w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 text-sm">
                                 Cancel
                             </button>
-                            <button onClick={handleSubmit} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm">
+                            <button onClick={handleSubmit} disabled={isSubmitting || is_loading} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                                 Place Request
                             </button>
                         </>

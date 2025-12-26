@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
         <div className="min-h-screen bg-white">
             {/* Header */}
-            <header className="sticky top-0 z-10 flex items-center justify-between bg-white px-6 h-16 shadow-sm">
+            <header className="sticky top-0 z-50 flex items-center justify-between bg-white px-6 h-16 shadow-sm">
                 <div className="flex items-center">
                     <DiabetrixIcon size={32} className="mr-3" />
                     <h4 className="text-lg font-semibold text-[#0078D4] m-0">

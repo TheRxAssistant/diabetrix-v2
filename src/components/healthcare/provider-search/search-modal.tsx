@@ -12,16 +12,16 @@ interface InsuranceProvider {
 }
 
 interface InsuranceCardData {
-    providerId: string;
-    providerName: string;
-    memberNumber: string;
-    groupNumber: string;
-    memberName: string;
-    effectiveDate: string;
-    planType: string;
-    copay: string;
-    deductible: string;
+    effective_date: string;
+    group_number: string;
+    images: Record<string, string>;
+    insured_name: string;
+    member_id: string;
+    plan_name: string;
+    policy_number: string;
+    provider: string;
 }
+
 
 interface InsuranceOption {
     plan_name: string;
@@ -177,15 +177,15 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         setScannedInsuranceData(cardData);
         setShowInsuranceCardModal(false);
         // Auto-select insurance provider based on scanned data
-        const matchingProvider = insuranceProviders.find((p) => p.payor.toLowerCase().includes(cardData.providerName.toLowerCase()) || cardData.providerName.toLowerCase().includes(p.payor.toLowerCase()));
+        const matchingProvider = insuranceProviders.find((p) => p.payor.toLowerCase().includes(cardData.provider.toLowerCase()) || cardData.provider.toLowerCase().includes(p.payor.toLowerCase()));
         if (matchingProvider) {
             setSelectedInsurance(matchingProvider);
         } else {
             // Create a new provider entry from scanned data
             setSelectedInsurance({
-                id: parseInt(cardData.providerId) || 999,
-                payor: cardData.providerName,
-                plan: cardData.planType || 'Unknown',
+                id: parseInt(cardData.provider) || 999,
+                payor: cardData.provider,
+                plan: cardData.plan_name || 'Unknown',
             });
         }
     };
@@ -202,8 +202,8 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                 };
             } else if (scannedInsuranceData) {
                 insuranceOption = {
-                    plan_name: scannedInsuranceData.planType || 'Unknown',
-                    payer_name: scannedInsuranceData.providerName,
+                    plan_name: scannedInsuranceData.plan_name || 'Unknown',
+                    payer_name: scannedInsuranceData.provider,
                 };
             }
 
@@ -382,13 +382,13 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                                 </div>
                                 <div className="text-sm text-green-700">
                                     <p>
-                                        <strong>Provider:</strong> {scannedInsuranceData.providerName}
+                                        <strong>Provider:</strong> {scannedInsuranceData.provider}
                                     </p>
                                     <p>
-                                        <strong>Member:</strong> {scannedInsuranceData.memberName}
+                                        <strong>Member:</strong> {scannedInsuranceData.insured_name}
                                     </p>
                                     <p>
-                                        <strong>Plan:</strong> {scannedInsuranceData.planType}
+                                        <strong>Plan:</strong> {scannedInsuranceData.plan_name}
                                     </p>
                                 </div>
                             </div>

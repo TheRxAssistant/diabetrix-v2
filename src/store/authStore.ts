@@ -1,6 +1,7 @@
 /**
  * Simple auth store for managing user authentication and phone number storage
  * This store manages user session data including phone numbers for SMS functionality
+ * Also manages auth_token and access_token stored in session storage
  */
 
 interface User {
@@ -14,6 +15,10 @@ interface AuthState {
   setUser: (user: User) => void;
   setPhoneNumber: (phoneNumber: string) => void;
   getPhoneNumber: () => string | undefined;
+  updateAuthToken: (token: string) => void;
+  updateAccessToken: (token: string) => void;
+  getAuthToken: () => string;
+  getAccessToken: () => string;
   clear: () => void;
 }
 
@@ -39,9 +44,22 @@ class AuthStore {
       getPhoneNumber: () => {
         return this.state.user?.phoneNumber;
       },
+      updateAuthToken: (token: string) => {
+        this.persistTokens({ auth_token: token });
+      },
+      updateAccessToken: (token: string) => {
+        this.persistTokens({ access_token: token });
+      },
+      getAuthToken: () => {
+        return this.getStoredTokens().auth_token || '';
+      },
+      getAccessToken: () => {
+        return this.getStoredTokens().access_token || '';
+      },
       clear: () => {
         this.state.user = null;
         localStorage.removeItem("diabetrix_user");
+        sessionStorage.removeItem("diabetrix_auth_tokens");
       },
     };
   }
@@ -61,6 +79,35 @@ class AuthStore {
       localStorage.setItem("diabetrix_user", JSON.stringify(user));
     } catch (error) {
       console.error("Error storing user:", error);
+    }
+  }
+
+  private getStoredTokens(): { auth_token: string; access_token: string } {
+    try {
+      const stored = sessionStorage.getItem("diabetrix_auth_tokens");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          auth_token: parsed.auth_token || '',
+          access_token: parsed.access_token || '',
+        };
+      }
+    } catch (error) {
+      console.error("Error loading stored tokens:", error);
+    }
+    return { auth_token: '', access_token: '' };
+  }
+
+  private persistTokens(tokens: { auth_token?: string; access_token?: string }): void {
+    try {
+      const currentTokens = this.getStoredTokens();
+      const updatedTokens = {
+        auth_token: tokens.auth_token !== undefined ? tokens.auth_token : currentTokens.auth_token,
+        access_token: tokens.access_token !== undefined ? tokens.access_token : currentTokens.access_token,
+      };
+      sessionStorage.setItem("diabetrix_auth_tokens", JSON.stringify(updatedTokens));
+    } catch (error) {
+      console.error("Error storing tokens:", error);
     }
   }
 
@@ -84,7 +131,7 @@ export const useAuthStore = {
 };
 
 // Export individual functions for convenience
-export const { setUser, setPhoneNumber, getPhoneNumber, clear } =
+export const { setUser, setPhoneNumber, getPhoneNumber, updateAuthToken, updateAccessToken, getAuthToken, getAccessToken, clear } =
   authStoreInstance.getState();
 
 export default authStoreInstance;

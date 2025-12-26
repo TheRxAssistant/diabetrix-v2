@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { postAPI, CAPABILITIES_API_URLS } from '../api';
+import { trackingService } from '../tracking/tracking-service';
 // Types exported for use in healthcare provider search components
 
 interface IAddress {
@@ -214,6 +215,21 @@ export const useProviderSearch = () => {
 
                     setProviders(providers_list as Provider[]);
                     setFacilities(facilities_list as Facility[]);
+
+                    // Track find doctor milestone
+                    const specialty = care_category_name || 'any specialty';
+                    const zipcode = location || payload.zipcode || 'unknown';
+                    await trackingService.syncTimeline({
+                        event_name: 'find_doctor',
+                        title: 'Doctor Search',
+                        description: `Find a ${specialty} doctor near zip code ${zipcode}`,
+                        event_payload: {
+                            zip_code: zipcode,
+                            specialty,
+                            care_category_type: care_category_type,
+                            results_count: results.length || 0,
+                        },
+                    });
                 } else if (result.statusCode !== 499) {
                     // Don't show error if request was cancelled (statusCode 499)
                     setError(result.message || 'Failed to search for care providers');
@@ -230,13 +246,54 @@ export const useProviderSearch = () => {
         []
     );
 
+    const fetchProviderCareDetails = useCallback(async (providerId: number | string): Promise<string | null> => {
+        if (!providerId) return null;
+
+        try {
+            const result = await postAPI(CAPABILITIES_API_URLS.GET_NEARBY_CARE_DETAILS, {
+                provider_id: providerId
+            });
+
+            if (result.statusCode === 200 && result.data) {
+                const basicInfo = result.data.basic_info;
+                if (basicInfo?.facilities && Array.isArray(basicInfo.facilities) && basicInfo.facilities.length > 0) {
+                    const firstFacility = basicInfo.facilities[0];
+                    if (firstFacility?.phone && Array.isArray(firstFacility.phone) && firstFacility.phone.length > 0) {
+                        return firstFacility.phone[0];
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`Error fetching care details for provider ${providerId}:`, error);
+        }
+
+        return null;
+    }, []);
+
+    const enrichProviderWithCareDetails = useCallback(async (provider: Provider): Promise<Provider> => {
+        if (!provider.provider_id) return provider;
+
+        const phone = await fetchProviderCareDetails(provider.provider_id);
+        if (phone) {
+            return {
+                ...provider,
+                phone: phone,
+                provider_phone: phone
+            };
+        }
+
+        return provider;
+    }, [fetchProviderCareDetails]);
+
     return {
         providers,
         facilities,
         isLoading,
         error,
         fetchSearchCategories,
-        handleCategorySelection
+        handleCategorySelection,
+        fetchProviderCareDetails,
+        enrichProviderWithCareDetails
     };
 };
 
