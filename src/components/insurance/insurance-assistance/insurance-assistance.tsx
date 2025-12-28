@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import styles from './insurance-assistance.module.scss';
 import { sendCopayRequest, sendInsuranceRequestWithCopay, sendCopayCardDetails, sendEligibilityCheckFollowUp } from '../../../services/smsService';
 import { useRxRequests } from '../../../services/rx/hooks-rx';
@@ -7,6 +7,11 @@ import DrugPharmaciesTab from '../../pharmacy/drug-pharmacies-tab/DrugPharmacies
 import { ArrowLeft } from 'lucide-react';
 import { ShieldCheckIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import InsuranceCardScanModal from '../../insurance/insurance-card-scan/insurance-card-scan-modal';
+import { UnifiedModal } from '../../unified-modal/unified-modal';
+import { checkAuthSession } from '../../unified-modal/services/auth-service';
+import { useAuthStore } from '../../../store/authStore';
+import { useUserDetails } from '../../../services/user-management/hooks-user-details';
+import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
 
 interface InsuranceAssistanceProps {
     onClose: () => void;
@@ -21,15 +26,117 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     const [pharmaciesEnabled, setPharmaciesEnabled] = useState(false);
     const [insuranceStatus, setInsuranceStatus] = useState('check_now');
     const [copayStatus, setCopayStatus] = useState('check_now');
+    const [insuranceRequestStatus, setInsuranceRequestStatus] = useState<string | null>(null);
+    const [copayRequestStatus, setCopayRequestStatus] = useState<string | null>(null);
     const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
     const [insuranceCard, setInsuranceCard] = useState(null);
     const [autoRequestAfterUpload, setAutoRequestAfterUpload] = useState(false);
     const [copayInitiatedScan, setCopayInitiatedScan] = useState(false);
     const [showCashPharmacies, setShowCashPharmacies] = useState(false);
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [pendingInsuranceAction, setPendingInsuranceAction] = useState<'coverage' | 'eligibility' | 'find_best_cost' | null>(null);
     const drugName = (userData?.drug_name as string) || 'Diabetrix';
-    
+
     // Use RX requests hook for API calls
     const { requestCopayCard, requestInsuranceCost, copay_loading, insurance_loading } = useRxRequests();
+
+    // Use user details hook to access insurance details from user state
+    const { user_details, fetch_user_details } = useUserDetails();
+
+    // Fetch user details on component mount
+    useEffect(() => {
+        const authStore = useAuthStore.getState();
+        const user = authStore.user;
+        const user_id = user?.userData?.user_id;
+        if (user_id) {
+            fetch_user_details(user_id);
+        }
+    }, [fetch_user_details]);
+
+    // Function to fetch approved requests for a specific task_type_id
+    const fetchApprovedRequests = async (task_type_id: number, user_id: string): Promise<any[]> => {
+        try {
+            const { data, statusCode } = await postAPI(CAPABILITIES_API_URLS.GET_APPROVED_REQUESTS, {
+                task_type_id,
+                domain: 'diabetrix',
+                limit: 100, // Get enough to check if any exist
+                offset: 0,
+            });
+
+            if (statusCode === 200 && data?.approved_requests) {
+                // Filter by user_id to only get requests for the current user
+                return data.approved_requests.filter((request: any) => request.user_id === user_id);
+            }
+            return [];
+        } catch (error) {
+            console.error(`Error fetching approved requests for task_type_id ${task_type_id}:`, error);
+            return [];
+        }
+    };
+
+    // Check for existing approved requests on mount
+    useEffect(() => {
+        const checkExistingRequests = async () => {
+            const authStore = useAuthStore.getState();
+            const user = authStore.user;
+            const user_id = user?.userData?.user_id;
+
+            if (!user_id) {
+                return;
+            }
+
+            // Fetch approved requests for insurance (task_type_id = 2) and copay (task_type_id = 3)
+            const [insuranceRequests, copayRequests] = await Promise.all([fetchApprovedRequests(2, user_id), fetchApprovedRequests(3, user_id)]);
+
+            // Update status if requests exist - get the most recent request's status
+            if (insuranceRequests && insuranceRequests.length > 0) {
+                // Get the most recent request (sorted by created_at descending)
+                const latestInsuranceRequest = insuranceRequests.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                const status_name = latestInsuranceRequest.request_status_name || 'Requested';
+                // Only set as 'requested' if status is not 'Failed'
+                if (status_name !== 'Failed') {
+                    setInsuranceStatus('requested');
+                    setInsuranceRequestStatus(status_name);
+                }
+            }
+            if (copayRequests && copayRequests.length > 0) {
+                // Get the most recent request (sorted by created_at descending)
+                const latestCopayRequest = copayRequests.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                const status_name = latestCopayRequest.request_status_name || 'Requested';
+                // Only set as 'requested' if status is not 'Failed'
+                if (status_name !== 'Failed') {
+                    setCopayStatus('requested');
+                    setCopayRequestStatus(status_name);
+                }
+            }
+        };
+
+        // Only check after user details are fetched
+        if (user_details || useAuthStore.getState().user?.userData?.user_id) {
+            checkExistingRequests();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user_details]);
+
+    // Helper function to check if insurance details exist in user state
+    const hasInsuranceDetails = (): boolean => {
+        // Check user_details from hook first
+        if (user_details?.insurance_details) {
+            const insurance = user_details.insurance_details;
+            // Consider insurance details present if provider and member_id are populated
+            return !!(insurance.provider && insurance.member_id);
+        }
+
+        // Fallback to authStore userData
+        const authStore = useAuthStore.getState();
+        const user = authStore.user;
+        if (user?.userData?.insurance_details) {
+            const insurance = user.userData.insurance_details;
+            return !!(insurance.provider && insurance.member_id);
+        }
+
+        return false;
+    };
 
     // Hardcoded pharmacy discount options for Jardiance in 98006
     const discount_options: DiscountOption[] = [
@@ -133,6 +240,7 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
 
     const handleInsuranceCheck = async () => {
         setInsuranceStatus('requested');
+        setInsuranceRequestStatus('Requested');
         try {
             // Call API to request insurance cost
             const result = await requestInsuranceCost(drugName);
@@ -147,13 +255,38 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                 }
             } else {
                 console.error('Failed to request insurance cost');
+                setInsuranceStatus('check_now'); // Reset status on error
+                setInsuranceRequestStatus(null);
             }
         } catch (error) {
             console.error('Failed to request insurance cost:', error);
+            setInsuranceStatus('check_now'); // Reset status on error
+            setInsuranceRequestStatus(null);
         }
     };
 
+    const checkAuthentication = (): boolean => {
+        const authCheck = checkAuthSession();
+        const authStore = useAuthStore.getState();
+        return authCheck.authenticated || authStore.user?.isAuthenticated === true;
+    };
+
     const onInsuranceActionClick = async () => {
+        // Check authentication first
+        if (!checkAuthentication()) {
+            setPendingInsuranceAction('coverage');
+            setShowVerificationModal(true);
+            return;
+        }
+
+        // Check if insurance details exist in user state first
+        if (hasInsuranceDetails()) {
+            // Bypass modal and directly call API
+            await handleInsuranceCheck();
+            return;
+        }
+
+        // If no insurance details in user state, check if insurance card was scanned
         if (!insuranceCard) {
             setIsInsuranceModalOpen(true);
             return;
@@ -162,6 +295,21 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     };
 
     const handleCopayActionClick = async () => {
+        // Check authentication first
+        if (!checkAuthentication()) {
+            setPendingInsuranceAction('eligibility');
+            setShowVerificationModal(true);
+            return;
+        }
+
+        // Check if insurance details exist in user state first
+        if (hasInsuranceDetails()) {
+            // Bypass modal and directly call API
+            await handleCopayCheck();
+            return;
+        }
+
+        // If no insurance details in user state, check if insurance card was scanned
         if (!insuranceCard) {
             setCopayInitiatedScan(true);
             setIsInsuranceModalOpen(true);
@@ -172,7 +320,7 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
 
     const handleCopayCheck = async () => {
         setCopayStatus('requested');
-
+        setCopayRequestStatus('Requested');
         try {
             // Call API to request copay card
             const result = await requestCopayCard(drugName);
@@ -195,9 +343,13 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                 }
             } else {
                 console.error('Failed to request copay card');
+                setCopayStatus('check_now'); // Reset status on error
+                setCopayRequestStatus(null);
             }
         } catch (error) {
             console.error('Failed to request copay card:', error);
+            setCopayStatus('check_now'); // Reset status on error
+            setCopayRequestStatus(null);
         }
     };
 
@@ -225,6 +377,29 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     }, [discount_options]);
 
     const handleFindBestCost = async () => {
+        // Check authentication first
+        if (!checkAuthentication()) {
+            setPendingInsuranceAction('find_best_cost');
+            setShowVerificationModal(true);
+            return;
+        }
+
+        // Check if insurance details exist in user state first
+        if (hasInsuranceDetails()) {
+            // Bypass modal and directly call API
+            await handleInsuranceCheck();
+            // Send follow-up message after 1 second
+            setTimeout(async () => {
+                try {
+                    await sendEligibilityCheckFollowUp(drugName);
+                } catch (error) {
+                    console.error('Failed to send eligibility check follow-up SMS:', error);
+                }
+            }, 1000);
+            return;
+        }
+
+        // If no insurance details in user state, check if insurance card was scanned
         if (!insuranceCard) {
             setAutoRequestAfterUpload(true);
             setIsInsuranceModalOpen(true);
@@ -241,6 +416,23 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                 console.error('Failed to send eligibility check follow-up SMS:', error);
             }
         }, 1000);
+    };
+
+    const handleVerificationComplete = () => {
+        setShowVerificationModal(false);
+        // Open insurance modal based on pending action
+        setIsInsuranceModalOpen(true);
+        if (pendingInsuranceAction === 'coverage') {
+            setCopayInitiatedScan(false);
+            setAutoRequestAfterUpload(false);
+        } else if (pendingInsuranceAction === 'eligibility') {
+            setCopayInitiatedScan(true);
+            setAutoRequestAfterUpload(false);
+        } else if (pendingInsuranceAction === 'find_best_cost') {
+            setCopayInitiatedScan(false);
+            setAutoRequestAfterUpload(true);
+        }
+        setPendingInsuranceAction(null);
     };
 
     const content = (
@@ -278,7 +470,20 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                     </div>
 
                     <div className={styles.cost_action_section}>
-                        <button className={`${styles.find_best_cost_btn} ${styles.animated_btn}`} onClick={insuranceCard ? handleFindBestCost : () => setIsInsuranceModalOpen(true)}>
+                        <button
+                            className={`${styles.find_best_cost_btn} ${styles.animated_btn}`}
+                            onClick={
+                                hasInsuranceDetails() || insuranceCard
+                                    ? handleFindBestCost
+                                    : () => {
+                                          if (!checkAuthentication()) {
+                                              setPendingInsuranceAction('find_best_cost');
+                                              setShowVerificationModal(true);
+                                          } else {
+                                              setIsInsuranceModalOpen(true);
+                                          }
+                                      }
+                            }>
                             <div className={styles.btn_content}>
                                 <span>Check Now!</span>
                             </div>
@@ -309,10 +514,12 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                             </button>
                         </div>
 
-                        {insuranceStatus === 'requested' && (
-                            <div className={styles.pending_block}>
-                                <span className={styles.pending_dot}></span>
-                                <span className={styles.pending_text}>Checking coverage...</span>
+                        {insuranceStatus === 'requested' && insuranceRequestStatus && (
+                            <div className={styles.pending_block} style={{ color: '#10b981' }}>
+                                <span className={styles.pending_dot} style={{ backgroundColor: '#10b981' }}></span>
+                                <span className={styles.pending_text} style={{ color: '#10b981' }}>
+                                    ✓ {insuranceRequestStatus === 'Completed' ? 'Request completed' : insuranceRequestStatus === 'In Progress' ? 'Request in progress' : insuranceRequestStatus === 'Requested' ? 'Request submitted successfully' : insuranceRequestStatus}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -346,10 +553,14 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                             </button>
                         </div>
 
-                        {copayStatus === 'requested' && (
-                            <div className={styles.success_block}>
-                                <span className={styles.success_icon}>✓</span>
-                                <span className={styles.success_text}>Copay card requested</span>
+                        {copayStatus === 'requested' && copayRequestStatus && (
+                            <div className={styles.success_block} style={{ color: '#10b981' }}>
+                                <span className={styles.success_icon} style={{ color: '#10b981' }}>
+                                    ✓
+                                </span>
+                                <span className={styles.success_text} style={{ color: '#10b981' }}>
+                                    ✓ {copayRequestStatus === 'Completed' ? 'Request completed' : copayRequestStatus === 'In Progress' ? 'Request in progress' : copayRequestStatus === 'Requested' ? 'Request submitted successfully' : copayRequestStatus}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -411,7 +622,7 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                             setIsInsuranceModalOpen(false);
 
                             if (autoRequestAfterUpload) {
-                                await handleFindBestCost();
+                                await handleInsuranceCheck();
                                 setAutoRequestAfterUpload(false);
                             } else if (copayInitiatedScan) {
                                 // If scan was initiated from copay assistance section, automatically check copay
@@ -419,6 +630,17 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                                 setCopayInitiatedScan(false);
                             }
                         }}
+                    />
+                )}
+
+                {showVerificationModal && (
+                    <UnifiedModal
+                        onClose={() => {
+                            setShowVerificationModal(false);
+                            setPendingInsuranceAction(null);
+                        }}
+                        initialStep="phone"
+                        onVerificationComplete={handleVerificationComplete}
                     />
                 )}
             </div>

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import diabetrixLogo from '../../../assets/images/diabetrix_logo_2.png';
 import { ArrowRight, BookOpen, DollarSign, MapPin, Pill, Search, Stethoscope, Syringe } from 'lucide-react';
 import RecentRequests from './recent-requests';
+import { useApprovedRequests } from '../../../services/crm/hooks-approved-requests';
+import { useAuthStore } from '../../../store/authStore';
+import { ApprovedRequest } from '../../../services/crm/types-approved-requests';
 
 interface Request {
     id: string;
@@ -10,6 +13,7 @@ interface Request {
     status: 'pending' | 'in_progress' | 'completed';
     date: string;
     description: string;
+    task_type_name?: string;
 }
 
 interface HomePageProps {
@@ -30,25 +34,58 @@ interface HomePageProps {
     isExternalRoute?: boolean;
 }
 
-const HomePage = ({
-    setStep,
-    openEmbeddedChatAndSend,
-    setPendingMessages,
-    setIsChatActive,
-    setIsLearnFlow,
-    setLastLearnTopic,
-    setShowQuickReplies,
-    setCurrentQuickReplies,
-    setChatResetKey,
-    create_websocket_connection,
-    messages,
-    is_reconnecting,
-    setUsedQuickReplies,
-    isNewRoute = false,
-    isExternalRoute = false,
-}: HomePageProps) => {
+const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, create_websocket_connection, messages, is_reconnecting, setUsedQuickReplies, isNewRoute = false, isExternalRoute = false }: HomePageProps) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loadingRequestId, setLoadingRequestId] = useState<string | null>(null);
+
+    const { approved_requests, is_loading, fetch_approved_requests } = useApprovedRequests();
+
+    // Fetch approved requests when component mounts if user is authenticated
+    useEffect(() => {
+        const authStore = useAuthStore.getState();
+        const user = authStore.user;
+        const user_id = user?.userData?.user_id;
+
+        if (user_id) {
+            fetch_approved_requests(user_id, 5);
+        }
+    }, [fetch_approved_requests]);
+
+    // Transform approved requests to Request format
+    const transformApprovedRequestToRequest = (approved_request: ApprovedRequest): Request => {
+        // Map task_type_name to type
+        const getTypeFromTaskType = (task_type_name?: string): 'pharmacy' | 'doctor' | 'insurance' | 'support' => {
+            if (!task_type_name) return 'support';
+            const type_lower = task_type_name.toLowerCase();
+            if (type_lower.includes('pharmacy') || type_lower.includes('stock')) return 'pharmacy';
+            if (type_lower.includes('doctor') || type_lower.includes('appointment') || type_lower.includes('care')) return 'doctor';
+            if (type_lower.includes('insurance') || type_lower.includes('copay') || type_lower.includes('prior')) return 'insurance';
+            return 'support';
+        };
+
+        // Map request_status_name to status
+        const getStatusFromRequestStatus = (status_name: string): 'pending' | 'in_progress' | 'completed' => {
+            const status_lower = status_name.toLowerCase();
+            if (status_lower.includes('completed')) return 'completed';
+            if (status_lower.includes('progress') || status_lower.includes('processing')) return 'in_progress';
+            return 'pending';
+        };
+
+        return {
+            id: approved_request.request_id,
+            type: getTypeFromTaskType(approved_request.task_type_name),
+            title: approved_request.request_name,
+            status: getStatusFromRequestStatus(approved_request.request_status_name),
+            date: approved_request.created_at,
+            description: approved_request.request_details || approved_request.request_name,
+            task_type_name: approved_request.task_type_name,
+        };
+    };
+
+    // Transform approved requests to Request format
+    const requests = useMemo(() => {
+        return approved_requests.map(transformApprovedRequestToRequest);
+    }, [approved_requests]);
 
     // Function to open chat with specific message
     const openChatWithMessage = (message: string, topic: string) => {
@@ -90,34 +127,6 @@ const HomePage = ({
             handleSearch();
         }
     };
-
-    // Mock requests data - in real app this would come from API
-    const [requests] = useState([
-        {
-            id: '1',
-            type: 'pharmacy' as const,
-            title: 'Find Pharmacy Near Me',
-            status: 'completed' as const,
-            date: '2024-01-15',
-            description: 'Found 8 pharmacies with Diabetrix® in stock',
-        },
-        {
-            id: '2',
-            type: 'doctor' as const,
-            title: 'Schedule Appointment',
-            status: 'in_progress' as const,
-            date: '2024-01-14',
-            description: 'Searching for endocrinologists in your area',
-        },
-        {
-            id: '3',
-            type: 'insurance' as const,
-            title: 'Prior Authorization Help',
-            status: 'pending' as const,
-            date: '2024-01-13',
-            description: 'Submitted documents for review',
-        },
-    ]);
 
     // Handle request action button clicks
     const handleRequestAction = async (request: Request) => {
@@ -315,18 +324,8 @@ const HomePage = ({
             <div className="mb-6">
                 <div className="flex items-center bg-white border border-gray-200 rounded-xl py-2 px-3 transition-all duration-200 mx-5 focus-within:border-gray-300 focus-within:shadow-none">
                     <Search className="w-5 h-5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Ask about your diabetes treatment..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={handleSearchKeyPress}
-                        className="flex-1 py-2 px-3 border-none outline-none text-sm bg-transparent placeholder:text-gray-500"
-                    />
-                    <button
-                        className="flex items-center justify-center p-2 bg-blue-500 text-white border-none rounded-lg cursor-pointer transition-all duration-200 ml-2 hover:bg-blue-600 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={handleSearch}
-                        disabled={!searchQuery.trim()}>
+                    <input type="text" placeholder="Ask about your diabetes treatment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-2 px-3 border-none outline-none text-sm bg-transparent placeholder:text-gray-500" />
+                    <button className="flex items-center justify-center p-2 bg-blue-500 text-white border-none rounded-lg cursor-pointer transition-all duration-200 ml-2 hover:bg-blue-600 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSearch} disabled={!searchQuery.trim()}>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
@@ -337,9 +336,7 @@ const HomePage = ({
 
             {/* Healthcare Options Grid */}
             <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white rounded-t-xl border-t border-gray-200">
-                <button
-                    className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group"
-                    onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
                         <Pill className="w-6 h-6" />
                     </div>
@@ -347,9 +344,7 @@ const HomePage = ({
                     <p className="m-0 text-xs text-gray-600 leading-snug">Schedule and dosage</p>
                 </button>
 
-                <button
-                    className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group"
-                    onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
                         <BookOpen className="w-6 h-6" />
                     </div>
@@ -357,9 +352,7 @@ const HomePage = ({
                     <p className="m-0 text-xs text-gray-600 leading-snug">Education & info</p>
                 </button>
 
-                <button
-                    className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group"
-                    onClick={() => openChatWithMessage('Help', 'Help')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Help', 'Help')}>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
                         <Syringe className="w-6 h-6" />
                     </div>

@@ -38,16 +38,16 @@ import { sendOtp, verifyOtp, verifyUserByVerified, generateAccessToken, syncUser
 import { trackingService } from '../../services/tracking/tracking-service';
 import { useAuthStore } from '../../store/authStore';
 
-
 interface UnifiedModalProps {
     onClose: () => void;
     onChatOpen?: () => void;
-    initialStep?: 'intro' | 'service_selection' | 'home';
+    initialStep?: 'intro' | 'service_selection' | 'home' | 'phone';
+    onVerificationComplete?: () => void;
 }
 
-export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: UnifiedModalProps) => {
+export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVerificationComplete }: UnifiedModalProps) => {
     const isGoodRx = useMemo(() => window.location.pathname.includes('goodrx'), []);
-    
+
     // Create a wrapper for onClose that removes the session storage item
     const handleClose = useCallback(() => {
         onClose();
@@ -59,22 +59,11 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     const pharmacyState = usePharmacyState();
 
     // Destructure for easier access
-    const { step, setStep, selectedService, setSelectedService, phoneNumber, setPhoneNumber, 
-            otp, setOtp, error, setError, resetError, isLoading, setIsLoading,
-            userData, setUserData, isAuthenticatedSession, setIsAuthenticatedSession,
-            pendingChatMessage, setPendingChatMessage, requiredFields, setRequiredFields,
-            shouldEditProfile, setShouldEditProfile } = modalState;
+    const { step, setStep, selectedService, setSelectedService, phoneNumber, setPhoneNumber, otp, setOtp, error, setError, resetError, isLoading, setIsLoading, userData, setUserData, isAuthenticatedSession, setIsAuthenticatedSession, pendingChatMessage, setPendingChatMessage, requiredFields, setRequiredFields, shouldEditProfile, setShouldEditProfile } = modalState;
 
-    const { chatResetKey, setChatResetKey, isChatActive, setIsChatActive, pendingMessages, 
-            setPendingMessages, inputMessage: input_message, setInputMessage, isLearnFlow, setIsLearnFlow,
-            showQuickReplies, setShowQuickReplies, currentQuickReplies, setCurrentQuickReplies,
-            lastLearnTopic, setLastLearnTopic, usedQuickReplies, setUsedQuickReplies,
-            showLearnOverlay, setShowLearnOverlay } = chatState;
+    const { chatResetKey, setChatResetKey, isChatActive, setIsChatActive, pendingMessages, setPendingMessages, inputMessage: input_message, setInputMessage, isLearnFlow, setIsLearnFlow, showQuickReplies, setShowQuickReplies, currentQuickReplies, setCurrentQuickReplies, lastLearnTopic, setLastLearnTopic, usedQuickReplies, setUsedQuickReplies, showLearnOverlay, setShowLearnOverlay } = chatState;
 
-    const { selectedPharmacy, setSelectedPharmacy, selectedPharmacies, setSelectedPharmacies,
-            pharmacyCheckDone, setPharmacyCheckDone, checkingPharmacies, setCheckingPharmacies,
-            currentCheckIndex, setCurrentCheckIndex, currentSubStep, setCurrentSubStep,
-            notifiedMap, setNotifiedMap, startPharmacyCheck } = pharmacyState;
+    const { selectedPharmacy, setSelectedPharmacy, selectedPharmacies, setSelectedPharmacies, pharmacyCheckDone, setPharmacyCheckDone, checkingPharmacies, setCheckingPharmacies, currentCheckIndex, setCurrentCheckIndex, currentSubStep, setCurrentSubStep, notifiedMap, setNotifiedMap, startPharmacyCheck } = pharmacyState;
 
     // Parse URL parameters early so they're available throughout the component
     const urlParams = new URLSearchParams(window.location.search);
@@ -86,20 +75,9 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     const [requestInsuranceOnInit, setRequestInsuranceOnInit] = useState<boolean>(false);
     const [showExternalLinkConfirmation, setShowExternalLinkConfirmation] = useState<boolean>(false);
     const [pendingExternalUrl, setPendingExternalUrl] = useState<string>('');
-    
+
     const messages_end_ref = useRef<HTMLDivElement | null>(null);
-    const { 
-        messages: chatMessages, 
-        is_loading: chatLoading, 
-        is_waiting_for_response, 
-        is_streaming, 
-        streaming_message,
-        sendMessage: sendChatMessage, 
-        createChatThread,
-        conversation_id,
-        error_message: chatError,
-        set_messages: setChatMessages
-    } = useChat();
+    const { messages: chatMessages, is_loading: chatLoading, is_waiting_for_response, is_streaming, streaming_message, sendMessage: sendChatMessage, createChatThread, conversation_id, error_message: chatError, set_messages: setChatMessages } = useChat();
 
     // Convert chat messages to the format expected by ChatBody
     const messages = chatMessages.map((msg, index) => ({
@@ -118,18 +96,21 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         setStep(newStep as any);
     };
 
-    const openEmbeddedChatAndSend = useCallback(async (message?: string) => {
-        setIsChatActive(true);
-        // Create chat thread if not already created
-        if (!conversation_id) {
-            await createChatThread();
-        }
-        setStep('embedded_chat' as any);
-        // Send initial message if provided
-        if (message && typeof message === "string" && message.trim().length > 0) {
-            setPendingMessages([message]);
-        }
-    }, [conversation_id, createChatThread, setIsChatActive, setStep]);
+    const openEmbeddedChatAndSend = useCallback(
+        async (message?: string) => {
+            setIsChatActive(true);
+            // Create chat thread if not already created
+            if (!conversation_id) {
+                await createChatThread();
+            }
+            setStep('embedded_chat' as any);
+            // Send initial message if provided
+            if (message && typeof message === 'string' && message.trim().length > 0) {
+                setPendingMessages([message]);
+            }
+        },
+        [conversation_id, createChatThread, setIsChatActive, setStep],
+    );
 
     // AI-powered follow-up replies generation
     const getFollowUpReplies = useCallback(async (usedReply: string, messages: any[]): Promise<string[]> => {
@@ -189,6 +170,9 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         initializeTracking();
     }, []);
 
+    // Note: User details fetching is handled by ProfilePage component using useUserDetails hook
+    // This ensures data is fetched when the profile page is accessed
+
     // Effect to send pending messages when chat becomes active and conversation is ready
     useEffect(() => {
         if (pendingMessages.length > 0 && isChatActive && conversation_id) {
@@ -196,7 +180,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                 const messagesToSend = [...pendingMessages];
 
                 for (let index = 0; index < messagesToSend.length; index++) {
-                    await new Promise(resolve => setTimeout(resolve, index * 800));
+                    await new Promise((resolve) => setTimeout(resolve, index * 800));
                     try {
                         await sendChatMessage(messagesToSend[index]);
                         console.log(`Sending message "${messagesToSend[index]}"`);
@@ -224,7 +208,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             // Check if the last message is from the assistant (AI)
             const lastMessage = messages[messages.length - 1];
             const lastMessageId = lastMessage?.id;
-            
+
             // Only generate quick replies if:
             // 1. Last message is from AI
             // 2. We haven't processed this message yet
@@ -232,7 +216,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             if (lastMessage && lastMessage.role !== 'user' && lastMessageId !== lastProcessedMessageIdRef.current) {
                 // Mark this message as processed
                 lastProcessedMessageIdRef.current = lastMessageId;
-                
+
                 // Generate AI quick replies immediately
                 (async () => {
                     try {
@@ -255,7 +239,6 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             }
         }
     }, [messages.length, loading, is_streaming, step, lastLearnTopic, generateQuickRepliesForTopic]);
-
 
     // Lock body scroll when modal is mounted (prevents background scroll on mobile/desktop)
     useEffect(() => {
@@ -310,15 +293,21 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     }, [setIsAuthenticatedSession, setUserData, setPhoneNumber]);
 
     // Phone and OTP input handlers
-    const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const formatted = formatPhoneNumber(e.target.value);
-        setPhoneNumber(formatted);
-    }, [setPhoneNumber]);
+    const handlePhoneChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const formatted = formatPhoneNumber(e.target.value);
+            setPhoneNumber(formatted);
+        },
+        [setPhoneNumber],
+    );
 
-    const handleOtpChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const formatted = formatOtp(e.target.value);
-        setOtp(formatted);
-    }, [setOtp]);
+    const handleOtpChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const formatted = formatOtp(e.target.value);
+            setOtp(formatted);
+        },
+        [setOtp],
+    );
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -349,111 +338,120 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         }
     };
 
-    const handleVerifyOtp = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
+    const handleVerifyOtp = useCallback(
+        async (e: React.FormEvent) => {
+            e.preventDefault();
+            setError('');
 
-        if (!otp || otp.length !== 6) {
-            setError('Please enter a valid 6-digit OTP');
-            return;
-        }
+            if (!otp || otp.length !== 6) {
+                setError('Please enter a valid 6-digit OTP');
+                return;
+            }
 
-        setIsLoading(true);
+            setIsLoading(true);
 
-        try {
-            const result = await verifyOtp(phoneNumber, otp);
-            
-            if (result.success && result.statusCode === 200 && result.data?.user_id) {
-                // User already exists - complete authentication
-                setUserData(result.data);
-                setIsAuthenticatedSession(true);
-                
-                // Track user login/signup milestone
-                const userData = result.data;
-                if (userData?.user_id || userData?.user?.user_id) {
-                    const user_id = userData?.user_id || userData?.user?.user_id;
-                    await trackingService.initializeTracking(user_id);
-                    await trackingService.syncTimeline({
-                        event_name: 'user_logged_in',
-                        title: 'User Logged In',
-                        description: `User ${userData?.first_name || ''} ${userData?.last_name || ''} logged in`,
-                        event_payload: {
-                            phone_number: phoneNumber,
-                        },
-                    });
-                } else {
-                    // Initialize tracking even without user_id
-                    await trackingService.initializeTracking();
-                }
-                
-                // Send welcome message
-                if (phoneNumber) {
-                    try {
-                        sendWelcomeMessage(phoneNumber);
-                        console.log('Welcome message sent successfully');
-                    } catch (error) {
-                        console.error('Failed to send welcome message:', error);
-                    }
-                }
-                
-                // If auth was required via URL param and we have a selected service, go directly to that service
-                if (isAuthRequired && selectedService) {
-                    if (selectedService === 'doctor') {
-                        setStep('healthcare_search');
-                    } else if (selectedService === 'insurance') {
-                        setStep('insurance_assistance');
-                    } else if (selectedService === 'pharmacy') {
-                        setStep('pharmacy_select');
-                    } else if (selectedService === 'chat') {
-                        openEmbeddedChatAndSend();
-                    } else if (selectedService === 'learn') {
-                        setShowLearnOverlay(true);
-                        setStep('embedded_chat');
-                        setIsChatActive(false);
+            try {
+                const result = await verifyOtp(phoneNumber, otp);
+
+                if (result.success && result.statusCode === 200 && result.data?.user_id) {
+                    // User already exists - complete authentication
+                    setUserData(result.data);
+                    setIsAuthenticatedSession(true);
+
+                    // Track user login/signup milestone
+                    const userData = result.data;
+                    if (userData?.user_id || userData?.user?.user_id) {
+                        const user_id = userData?.user_id || userData?.user?.user_id;
+                        await trackingService.initializeTracking(user_id);
+                        await trackingService.syncTimeline({
+                            event_name: 'user_logged_in',
+                            title: 'User Logged In',
+                            description: `User ${userData?.first_name || ''} ${userData?.last_name || ''} logged in`,
+                            event_payload: {
+                                phone_number: phoneNumber,
+                            },
+                        });
                     } else {
+                        // Initialize tracking even without user_id
+                        await trackingService.initializeTracking();
+                    }
+
+                    // Send welcome message
+                    if (phoneNumber) {
+                        try {
+                            sendWelcomeMessage(phoneNumber);
+                            console.log('Welcome message sent successfully');
+                        } catch (error) {
+                            console.error('Failed to send welcome message:', error);
+                        }
+                    }
+
+                    // Call verification complete callback if provided
+                    if (onVerificationComplete) {
+                        onVerificationComplete();
+                        return; // Exit early to let parent handle next steps
+                    }
+
+                    // If auth was required via URL param and we have a selected service, go directly to that service
+                    if (isAuthRequired && selectedService) {
+                        if (selectedService === 'doctor') {
+                            setStep('healthcare_search');
+                        } else if (selectedService === 'insurance') {
+                            setStep('insurance_assistance');
+                        } else if (selectedService === 'pharmacy') {
+                            setStep('pharmacy_select');
+                        } else if (selectedService === 'chat') {
+                            openEmbeddedChatAndSend();
+                        } else if (selectedService === 'learn') {
+                            setShowLearnOverlay(true);
+                            setStep('embedded_chat');
+                            setIsChatActive(false);
+                        } else {
+                            setStep('success' as any);
+                        }
+                    } else {
+                        // Default behavior: go to success step
                         setStep('success' as any);
                     }
-                } else {
-                    // Default behavior: go to success step
-                    setStep('success' as any);
-                }
-            } else if (result.statusCode === 435) {
-                // Additional info required
-                setRequiredFields(result.additionalInputs || []);
-                setStep('additional_info' as any);
-            } else if (result.statusCode === 200 && result.data?.user_data) {
-                // Success - user data retrieved, proceed to confirm profile
-                setUserData(result.data.user_data);
-                // Handle multiple addresses
-                if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
-                    const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
-                    if (selectedAddress) {
-                        result.data.user_data.address = selectedAddress;
-                    } else {
-                        result.data.user_data.address = result.data.user_data.address[0];
+                } else if (result.statusCode === 435) {
+                    // Additional info required
+                    setRequiredFields(result.additionalInputs || []);
+                    setStep('additional_info' as any);
+                } else if (result.statusCode === 200 && result.data?.user_data) {
+                    // Success - user data retrieved, proceed to confirm profile
+                    setUserData(result.data.user_data);
+                    // Handle multiple addresses
+                    if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
+                        const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
+                        if (selectedAddress) {
+                            result.data.user_data.address = selectedAddress;
+                        } else {
+                            result.data.user_data.address = result.data.user_data.address[0];
+                        }
                     }
+                    setStep('confirm_profile' as any);
+                } else if (result.statusCode === 437 || result.statusCode === 407) {
+                    // User not found or access denied - allow manual entry
+                    setUserData({ phone_number: phoneNumber });
+                    setShouldEditProfile(true);
+                    setStep('confirm_profile' as any);
+                } else if (result.statusCode === 403) {
+                    // Mismatch in additional inputs - allow manual entry
+                    setUserData({ phone_number: phoneNumber });
+                    setShouldEditProfile(true);
+                    setStep('confirm_profile' as any);
+                } else {
+                    setError(result.error || 'Invalid OTP. Please try again.');
                 }
-                setStep('confirm_profile' as any);
-            } else if (result.statusCode === 437 || result.statusCode === 407) {
-                // User not found or access denied - allow manual entry
-                setUserData({ phone_number: phoneNumber });
-                setShouldEditProfile(true);
-                setStep('confirm_profile' as any);
-            } else if (result.statusCode === 403) {
-                // Mismatch in additional inputs - allow manual entry
-                setUserData({ phone_number: phoneNumber });
-                setShouldEditProfile(true);
-                setStep('confirm_profile' as any);
-            } else {
-                setError(result.error || 'Invalid OTP. Please try again.');
+            } catch (error) {
+                setError('An error occurred. Please try again.');
+                console.error('Error verifying OTP:', error);
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error) {
-            setError('An error occurred. Please try again.');
-            console.error('Error verifying OTP:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep, setRequiredFields, setShouldEditProfile, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
+        },
+        [otp, phoneNumber, setError, setIsLoading, setUserData, setIsAuthenticatedSession, setStep, setRequiredFields, setShouldEditProfile, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive, onVerificationComplete],
+    );
 
     const handleServiceSelect = (serviceType: string) => {
         // Check if we're on the new route and redirect to external URLs
@@ -510,17 +508,11 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         setPendingExternalUrl('');
     };
 
-    const renderIntroStep = () => (
-        <IntroStep 
-            isTyping={isTyping} 
-            isGoodRx={isGoodRx} 
-            onServiceSelect={handleServiceSelect} 
-        />
-    );
+    const renderIntroStep = () => <IntroStep isTyping={isTyping} isGoodRx={isGoodRx} onServiceSelect={handleServiceSelect} />;
 
     const renderServiceDetailStep = () => {
         const service = serviceContents[selectedService] || serviceContents.doctor;
-        
+
         const handleGetStarted = () => {
             // Check if authentication is required via URL parameter
             if (isAuthRequired && !isAuthenticatedSession) {
@@ -528,7 +520,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                 setStep('phone');
                 return;
             }
-            
+
             // Skip verification step - go directly to selected service
             if (selectedService === 'doctor') {
                 setStep('healthcare_search');
@@ -546,185 +538,161 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
                 handleClose();
             }
         };
-        
+
         const handleLearnQuestionClick = (question: string) => {
             // Skip verification step - go directly to chat
             openEmbeddedChatAndSend(question);
         };
 
-        return (
-            <ServiceDetailStep
-                service={service}
-                selectedService={selectedService}
-                isAuthenticatedSession={isAuthenticatedSession}
-                onBack={() => setStep('intro')}
-                onGetStarted={handleGetStarted}
-                onLearnQuestionClick={handleLearnQuestionClick}
-            />
-        );
+        return <ServiceDetailStep service={service} selectedService={selectedService} isAuthenticatedSession={isAuthenticatedSession} onBack={() => setStep('intro')} onGetStarted={handleGetStarted} onLearnQuestionClick={handleLearnQuestionClick} />;
     };
 
+    const renderPhoneStep = () => <PhoneStep phoneNumber={phoneNumber} error={error} isLoading={isLoading} onPhoneChange={handlePhoneChange} onSubmit={handleSendOtp} onBack={() => setStep('intro')} />;
 
-    const renderPhoneStep = () => (
-        <PhoneStep
-            phoneNumber={phoneNumber}
-            error={error}
-            isLoading={isLoading}
-            onPhoneChange={handlePhoneChange}
-            onSubmit={handleSendOtp}
-            onBack={() => setStep('intro')}
-        />
-    );
+    const renderOtpStep = () => <OtpStep phoneNumber={phoneNumber} otp={otp} error={error} isLoading={isLoading} onOtpChange={handleOtpChange} onSubmit={handleVerifyOtp} onBack={() => setStep('phone')} />;
 
-    const renderOtpStep = () => (
-        <OtpStep
-            phoneNumber={phoneNumber}
-            otp={otp}
-            error={error}
-            isLoading={isLoading}
-            onOtpChange={handleOtpChange}
-            onSubmit={handleVerifyOtp}
-            onBack={() => setStep('phone')}
-        />
-    );
+    const handleAdditionalInfoSubmit = useCallback(
+        async (dateOfBirth: string, ssn: string) => {
+            setIsLoading(true);
+            setError('');
 
-    const handleAdditionalInfoSubmit = useCallback(async (dateOfBirth: string, ssn: string) => {
-        setIsLoading(true);
-        setError('');
+            try {
+                const result = await verifyUserByVerified(phoneNumber, dateOfBirth, ssn);
 
-        try {
-            const result = await verifyUserByVerified(phoneNumber, dateOfBirth, ssn);
-
-            if (result.statusCode === 200) {
-                // Success - user data retrieved
-                setUserData(result.data.user_data);
-                // Handle multiple addresses
-                if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
-                    const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
-                    if (selectedAddress) {
-                        result.data.user_data.address = selectedAddress;
-                    } else {
-                        result.data.user_data.address = result.data.user_data.address[0];
+                if (result.statusCode === 200) {
+                    // Success - user data retrieved
+                    setUserData(result.data.user_data);
+                    // Handle multiple addresses
+                    if (Array.isArray(result.data.user_data.address) && result.data.user_data.address.length > 1) {
+                        const selectedAddress = result.data.user_data.address.find((addr: any) => addr.is_selected);
+                        if (selectedAddress) {
+                            result.data.user_data.address = selectedAddress;
+                        } else {
+                            result.data.user_data.address = result.data.user_data.address[0];
+                        }
                     }
-                }
-                setStep('confirm_profile' as any);
-            } else if (result.statusCode === 403) {
-                // Mismatch in additional inputs
-                setShouldEditProfile(true);
-                setStep('confirm_profile' as any);
-            } else if (result.statusCode === 435) {
-                // Still need more info
-                setRequiredFields(result.additionalInputs || []);
-                setError(`Please provide all required information: ${(result.additionalInputs || []).join(', ')}`);
-            } else if (result.statusCode === 407) {
-                // Maximum attempts reached or access denied
-                setShouldEditProfile(true);
-                setStep('confirm_profile' as any);
-            } else if (result.statusCode === 437) {
-                // User not found
-                setUserData({ phone_number: phoneNumber });
-                setShouldEditProfile(true);
-                setStep('confirm_profile' as any);
-            } else {
-                setError(result.error || 'Verification failed. Please try again.');
-            }
-        } catch (error) {
-            setError('Verification failed. Please try again.');
-            console.error('Error submitting additional info:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [phoneNumber, setError, setIsLoading, setStep, setUserData, setRequiredFields, setShouldEditProfile]);
-
-    const renderAdditionalInfoStep = () => (
-        <AdditionalInfoStep
-            onSubmit={handleAdditionalInfoSubmit}
-            onBack={() => setStep('otp')}
-            isLoading={isLoading}
-            requiredFields={requiredFields}
-        />
-    );
-
-    const handleProfileConfirm = useCallback(async (confirmedData: any) => {
-        setIsLoading(true);
-        setError('');
-
-        try {
-            // Step 1: Generate access token
-            const tokenResult = await generateAccessToken({
-                ...confirmedData,
-                phone_number: phoneNumber,
-            });
-
-            if (tokenResult.statusCode !== 200) {
-                setError(tokenResult.error || 'Failed to generate access token.');
-                return;
-            }
-
-            // Step 2: Sync user with access token
-            const syncResult = await syncUser(confirmedData, phoneNumber);
-
-            if (syncResult.statusCode === 200) {
-                setIsAuthenticatedSession(true);
-                
-                // Track user login/signup milestone
-                const syncedUserData = syncResult.data?.user?.user_data || confirmedData;
-                const user_id = syncResult.data?.user?.user_id;
-                
-                if (user_id) {
-                    await trackingService.initializeTracking(user_id);
-                    await trackingService.syncTimeline({
-                        event_name: 'user_logged_in',
-                        title: 'User Logged In',
-                        description: `User ${syncedUserData.first_name || ''} ${syncedUserData.last_name || ''} logged in`,
-                        event_payload: {
-                            phone_number: phoneNumber,
-                        },
-                    });
+                    setStep('confirm_profile' as any);
+                } else if (result.statusCode === 403) {
+                    // Mismatch in additional inputs
+                    setShouldEditProfile(true);
+                    setStep('confirm_profile' as any);
+                } else if (result.statusCode === 435) {
+                    // Still need more info
+                    setRequiredFields(result.additionalInputs || []);
+                    setError(`Please provide all required information: ${(result.additionalInputs || []).join(', ')}`);
+                } else if (result.statusCode === 407) {
+                    // Maximum attempts reached or access denied
+                    setShouldEditProfile(true);
+                    setStep('confirm_profile' as any);
+                } else if (result.statusCode === 437) {
+                    // User not found
+                    setUserData({ phone_number: phoneNumber });
+                    setShouldEditProfile(true);
+                    setStep('confirm_profile' as any);
                 } else {
-                    await trackingService.initializeTracking();
+                    setError(result.error || 'Verification failed. Please try again.');
                 }
-                
-                // Send welcome message
-                if (phoneNumber) {
-                    try {
-                        sendWelcomeMessage(phoneNumber);
-                        console.log('Welcome message sent successfully');
-                    } catch (error) {
-                        console.error('Failed to send welcome message:', error);
+            } catch (error) {
+                setError('Verification failed. Please try again.');
+                console.error('Error submitting additional info:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [phoneNumber, setError, setIsLoading, setStep, setUserData, setRequiredFields, setShouldEditProfile],
+    );
+
+    const renderAdditionalInfoStep = () => <AdditionalInfoStep onSubmit={handleAdditionalInfoSubmit} onBack={() => setStep('otp')} isLoading={isLoading} requiredFields={requiredFields} />;
+
+    const handleProfileConfirm = useCallback(
+        async (confirmedData: any) => {
+            setIsLoading(true);
+            setError('');
+
+            try {
+                // Step 1: Generate access token
+                const tokenResult = await generateAccessToken({
+                    ...confirmedData,
+                    phone_number: phoneNumber,
+                });
+
+                if (tokenResult.statusCode !== 200) {
+                    setError(tokenResult.error || 'Failed to generate access token.');
+                    return;
+                }
+
+                // Step 2: Sync user with access token
+                const syncResult = await syncUser(confirmedData, phoneNumber);
+
+                if (syncResult.statusCode === 200) {
+                    setIsAuthenticatedSession(true);
+
+                    // Track user login/signup milestone
+                    const syncedUserData = syncResult.data?.user?.user_data || confirmedData;
+                    const user_id = syncResult.data?.user?.user_id;
+
+                    if (user_id) {
+                        await trackingService.initializeTracking(user_id);
+                        await trackingService.syncTimeline({
+                            event_name: 'user_logged_in',
+                            title: 'User Logged In',
+                            description: `User ${syncedUserData.first_name || ''} ${syncedUserData.last_name || ''} logged in`,
+                            event_payload: {
+                                phone_number: phoneNumber,
+                            },
+                        });
+                    } else {
+                        await trackingService.initializeTracking();
                     }
-                }
-                
-                // Navigate based on auth requirement
-                if (isAuthRequired && selectedService) {
-                    if (selectedService === 'doctor') {
-                        setStep('healthcare_search');
-                    } else if (selectedService === 'insurance') {
-                        setStep('insurance_assistance');
-                    } else if (selectedService === 'pharmacy') {
-                        setStep('pharmacy_select');
-                    } else if (selectedService === 'chat') {
-                        openEmbeddedChatAndSend();
-                    } else if (selectedService === 'learn') {
-                        setShowLearnOverlay(true);
-                        setStep('embedded_chat');
-                        setIsChatActive(false);
+
+                    // Send welcome message
+                    if (phoneNumber) {
+                        try {
+                            sendWelcomeMessage(phoneNumber);
+                            console.log('Welcome message sent successfully');
+                        } catch (error) {
+                            console.error('Failed to send welcome message:', error);
+                        }
+                    }
+
+                    // Call verification complete callback if provided
+                    if (onVerificationComplete) {
+                        onVerificationComplete();
+                        return; // Exit early to let parent handle next steps
+                    }
+
+                    // Navigate based on auth requirement
+                    if (isAuthRequired && selectedService) {
+                        if (selectedService === 'doctor') {
+                            setStep('healthcare_search');
+                        } else if (selectedService === 'insurance') {
+                            setStep('insurance_assistance');
+                        } else if (selectedService === 'pharmacy') {
+                            setStep('pharmacy_select');
+                        } else if (selectedService === 'chat') {
+                            openEmbeddedChatAndSend();
+                        } else if (selectedService === 'learn') {
+                            setShowLearnOverlay(true);
+                            setStep('embedded_chat');
+                            setIsChatActive(false);
+                        } else {
+                            setStep('success' as any);
+                        }
                     } else {
                         setStep('success' as any);
                     }
                 } else {
-                    setStep('success' as any);
+                    setError(syncResult.error || 'Failed to sync user data.');
                 }
-            } else {
-                setError(syncResult.error || 'Failed to sync user data.');
+            } catch (error) {
+                setError('Failed to complete login. Please try again.');
+                console.error('Profile confirmation error:', error);
+            } finally {
+                setIsLoading(false);
             }
-        } catch (error) {
-            setError('Failed to complete login. Please try again.');
-            console.error('Profile confirmation error:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [phoneNumber, setError, setIsLoading, setStep, setIsAuthenticatedSession, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive]);
+        },
+        [phoneNumber, setError, setIsLoading, setStep, setIsAuthenticatedSession, isAuthRequired, selectedService, openEmbeddedChatAndSend, setShowLearnOverlay, setIsChatActive, onVerificationComplete],
+    );
 
     const renderConfirmProfileStep = () => (
         <ConfirmProfileStep
@@ -761,26 +729,12 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             }
         };
 
-        return (
-            <SuccessStep
-                userData={userData}
-                selectedService={selectedService}
-                onBack={() => setStep('otp')}
-                onContinue={handleContinue}
-            />
-        );
+        return <SuccessStep userData={userData} selectedService={selectedService} onBack={() => setStep('otp')} onContinue={handleContinue} />;
     };
 
-    const renderHealthcareSearchStep = () => (
-        <HealthcareSearchStep onBack={() => setStep('home')} />
-    );
+    const renderHealthcareSearchStep = () => <HealthcareSearchStep onBack={() => setStep('home')} />;
 
-    const renderInsuranceAssistanceStep = () => (
-        <InsuranceAssistanceStep 
-            requestInsuranceOnInit={requestInsuranceOnInit}
-            onBack={() => setStep('home')} 
-        />
-    );
+    const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} />;
 
     const renderEmbeddedChatStep = () => (
         <EmbeddedChatStep
@@ -886,29 +840,9 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         };
     }, [step, currentCheckIndex, currentSubStep, checkingPharmacies, drugName, notifiedMap]);
 
-    const renderPharmacySelectStep = () => (
-        <PharmacySelectStep
-            pharmacies={pharmacies}
-            selectedPharmacies={selectedPharmacies}
-            drugName={drugName}
-            onPharmaciesChange={setSelectedPharmacies}
-            onSubmit={handlePharmaciesSubmit}
-            onBack={() => setStep('home')}
-        />
-    );
+    const renderPharmacySelectStep = () => <PharmacySelectStep pharmacies={pharmacies} selectedPharmacies={selectedPharmacies} drugName={drugName} onPharmaciesChange={setSelectedPharmacies} onSubmit={handlePharmaciesSubmit} onBack={() => setStep('home')} />;
 
-    const renderPharmacyCheckingStep = () => (
-        <PharmacyCheckingStep
-            checkingPharmacies={checkingPharmacies}
-            pharmacies={pharmacies as any}
-            currentCheckIndex={currentCheckIndex}
-            currentSubStep={currentSubStep}
-            pharmacyCheckDone={pharmacyCheckDone}
-            onSetPharmacyCheckDone={setPharmacyCheckDone}
-            onGoHome={() => setStep('home')}
-            onGoBack={() => setStep('pharmacy_select')}
-        />
-    );
+    const renderPharmacyCheckingStep = () => <PharmacyCheckingStep checkingPharmacies={checkingPharmacies} pharmacies={pharmacies as any} currentCheckIndex={currentCheckIndex} currentSubStep={currentSubStep} pharmacyCheckDone={pharmacyCheckDone} onSetPharmacyCheckDone={setPharmacyCheckDone} onGoHome={() => setStep('home')} onGoBack={() => setStep('pharmacy_select')} />;
 
     // Detect current route
     const currentPath = window.location.pathname;
@@ -927,7 +861,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
             'find-doctor': SERVICE_TYPES.DOCTOR,
             'insurance-help': SERVICE_TYPES.INSURANCE,
         };
-        
+
         return externalMap[serviceParam] || '';
     }, [isExternalRoute, serviceParam]);
 
@@ -945,32 +879,32 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
     }, [isExternalRoute, serviceParam]);
 
     // Render Home page using the imported component
-    const renderHomePage = useCallback(() => (
-        <HomePage
-            setStep={handleSetStep}
-            openEmbeddedChatAndSend={openEmbeddedChatAndSend}
-            setPendingMessages={setPendingMessages}
-            setIsChatActive={setIsChatActive}
-            setIsLearnFlow={setIsLearnFlow}
-            setLastLearnTopic={setLastLearnTopic}
-            setShowQuickReplies={setShowQuickReplies}
-            setCurrentQuickReplies={setCurrentQuickReplies}
-            setChatResetKey={setChatResetKey}
-            create_websocket_connection={async () => {
-                if (!conversation_id) {
-                    await createChatThread();
-                }
-            }}
-            messages={messages}
-            is_reconnecting={false}
-            setUsedQuickReplies={setUsedQuickReplies}
-            isNewRoute={isNewRoute}
-            isExternalRoute={isExternalRoute}
-        />
-    ), [handleSetStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, 
-        setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, 
-        conversation_id, createChatThread, messages, setUsedQuickReplies, 
-        isNewRoute, isExternalRoute]);
+    const renderHomePage = useCallback(
+        () => (
+            <HomePage
+                setStep={handleSetStep}
+                openEmbeddedChatAndSend={openEmbeddedChatAndSend}
+                setPendingMessages={setPendingMessages}
+                setIsChatActive={setIsChatActive}
+                setIsLearnFlow={setIsLearnFlow}
+                setLastLearnTopic={setLastLearnTopic}
+                setShowQuickReplies={setShowQuickReplies}
+                setCurrentQuickReplies={setCurrentQuickReplies}
+                setChatResetKey={setChatResetKey}
+                create_websocket_connection={async () => {
+                    if (!conversation_id) {
+                        await createChatThread();
+                    }
+                }}
+                messages={messages}
+                is_reconnecting={false}
+                setUsedQuickReplies={setUsedQuickReplies}
+                isNewRoute={isNewRoute}
+                isExternalRoute={isExternalRoute}
+            />
+        ),
+        [handleSetStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, conversation_id, createChatThread, messages, setUsedQuickReplies, isNewRoute, isExternalRoute],
+    );
 
     // Render More page using the imported component
     const renderMorePage = useCallback(() => <MorePage setStep={handleSetStep} />, [handleSetStep]);
@@ -980,12 +914,12 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         // Clear session storage using auth service
         const { clearAuthSession } = await import('./services/auth-service');
         clearAuthSession();
-        
+
         // Reset states using custom hooks
         modalState.resetAuth();
         chatState.resetChat();
         pharmacyState.resetPharmacySelection();
-        
+
         setRequestInsuranceOnInit(false);
 
         // Clear auth store
@@ -996,16 +930,14 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home' }: Unif
         handleClose();
     }, [modalState, chatState, pharmacyState, handleClose]);
 
+    // Handler for showing ongoing requests
+    const handleShowRequests = useCallback(() => {
+        // Navigate to home page to show ongoing requests
+        setStep('home');
+    }, [setStep]);
+
     // Render Profile page
-    const renderProfilePage = () => (
-        <ProfilePage
-            userData={userData}
-            selectedService={selectedService}
-            selectedPharmacies={selectedPharmacies}
-            messages={messages}
-            onLogout={handleLogout}
-        />
-    );
+    const renderProfilePage = () => <ProfilePage userData={userData} selectedService={selectedService} selectedPharmacies={selectedPharmacies} messages={messages} onLogout={handleLogout} onShowRequests={handleShowRequests} />;
 
     // Helper function to determine if bottom navigation should be shown
     const hasBottomNavigation = () => {

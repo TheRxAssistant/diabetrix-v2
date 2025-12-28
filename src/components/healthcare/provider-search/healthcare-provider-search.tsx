@@ -64,64 +64,64 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [showProviderDetailsModal, setShowProviderDetailsModal] = useState(false);
     const [selectedProviderForDetails, setSelectedProviderForDetails] = useState<Provider | Facility | LegacyProvider | null>(null);
     const [showInsuranceSearchModal, setShowInsuranceSearchModal] = useState(false);
-    
+
     // Insurance providers with detailed payor and plan information
     const insuranceProviders = [
-        { id: 1, payor: "Blue Cross Blue Shield", plan: "BCBS PPO Gold 1000" },
-        { id: 2, payor: "Blue Cross Blue Shield", plan: "BCBS HMO Silver Advantage" },
-        { id: 3, payor: "Blue Cross Blue Shield", plan: "BCBS Bronze Essential" },
-        { id: 4, payor: "Blue Cross Blue Shield", plan: "Blue Choice PPO Plus" },
-        { id: 5, payor: "Blue Cross Blue Shield", plan: "Blue Advantage HMO Direct" },
-        { id: 6, payor: "Aetna", plan: "Aetna Open Choice PPO" },
-        { id: 7, payor: "Aetna", plan: "Aetna Select HMO" },
-        { id: 8, payor: "Aetna", plan: "Aetna Whole Health EPO" },
-        { id: 9, payor: "Aetna", plan: "Aetna Gold Preferred PPO" },
-        { id: 10, payor: "Aetna", plan: "Aetna Silver Value HMO" },
-        { id: 11, payor: "UnitedHealthcare", plan: "UHC Choice Plus PPO" },
-        { id: 12, payor: "UnitedHealthcare", plan: "UHC Navigate HMO" },
-        { id: 13, payor: "UnitedHealthcare", plan: "UHC Compass EPO" },
-        { id: 14, payor: "UnitedHealthcare", plan: "UHC Charter Balanced PPO" },
-        { id: 15, payor: "UnitedHealthcare", plan: "UHC Silver Advantage HMO" },
-        { id: 16, payor: "Cigna", plan: "Cigna LocalPlus HMO" },
-        { id: 17, payor: "Cigna", plan: "Cigna Open Access Plus PPO" },
-        { id: 18, payor: "Cigna", plan: "Cigna Connect Network" },
-        { id: 19, payor: "Cigna", plan: "Cigna SureFit HMO" },
-        { id: 20, payor: "Cigna", plan: "Cigna Silver Choice PPO" },
-        { id: 21, payor: "Humana", plan: "Humana National POS" },
-        { id: 22, payor: "Humana", plan: "Humana Preferred PPO" },
-        { id: 23, payor: "Humana", plan: "Humana HMOx Gold" },
-        { id: 24, payor: "Humana", plan: "Humana Basic EPO" },
-        { id: 25, payor: "Humana", plan: "Humana ChoiceCare PPO" },
-        { id: 26, payor: "Kaiser Permanente", plan: "Kaiser HMO Silver 2000" },
-        { id: 27, payor: "Kaiser Permanente", plan: "Kaiser Gold Advantage HMO" },
-        { id: 28, payor: "Kaiser Permanente", plan: "Kaiser Bronze Deductible HMO" },
-        { id: 29, payor: "Kaiser Permanente", plan: "Kaiser Flex Choice PPO" },
-        { id: 30, payor: "Kaiser Permanente", plan: "Kaiser Platinum Direct HMO" },
-        { id: 31, payor: "Medicare", plan: "Original Medicare Part A & B" },
-        { id: 32, payor: "Medicare", plan: "Medicare Advantage PPO" },
-        { id: 33, payor: "Medicare", plan: "Medicare Advantage HMO" },
-        { id: 34, payor: "Medicare", plan: "Medicare Advantage Special Needs Plan (SNP)" },
-        { id: 35, payor: "Medicare", plan: "Medicare Advantage Dual Eligible" },
-        { id: 36, payor: "Medicaid", plan: "State Medicaid Basic" },
-        { id: 37, payor: "Medicaid", plan: "Medicaid Managed Care HMO" },
-        { id: 38, payor: "Medicaid", plan: "Children's Health Insurance Program (CHIP)" },
-        { id: 39, payor: "Medicaid", plan: "Medicaid Expansion Silver" },
-        { id: 40, payor: "Medicaid", plan: "Medicaid Dual Special Needs Plan" },
-        { id: 41, payor: "Oscar Health", plan: "Oscar Classic Gold PPO" },
-        { id: 42, payor: "Oscar Health", plan: "Oscar Simple Bronze HMO" },
-        { id: 43, payor: "Oscar Health", plan: "Oscar Silver Saver EPO" },
-        { id: 44, payor: "Molina Healthcare", plan: "Molina Marketplace Silver" },
-        { id: 45, payor: "Molina Healthcare", plan: "Molina Medicaid Managed Care" },
-        { id: 46, payor: "Molina Healthcare", plan: "Molina Medicare Advantage" },
-        { id: 47, payor: "Centene / Ambetter", plan: "Ambetter Balanced Care Silver" },
-        { id: 48, payor: "Centene / Ambetter", plan: "Ambetter Essential Care Bronze" },
-        { id: 49, payor: "Centene / Ambetter", plan: "Ambetter Secure Care Gold" },
-        { id: 50, payor: "WellCare", plan: "WellCare Medicare Advantage HMO" },
-        { id: 51, payor: "WellCare", plan: "WellCare Value PPO" },
-        { id: 52, payor: "WellCare", plan: "WellCare Medicaid Managed Care" }
+        { id: 1, payor: 'Blue Cross Blue Shield', plan: 'BCBS PPO Gold 1000' },
+        { id: 2, payor: 'Blue Cross Blue Shield', plan: 'BCBS HMO Silver Advantage' },
+        { id: 3, payor: 'Blue Cross Blue Shield', plan: 'BCBS Bronze Essential' },
+        { id: 4, payor: 'Blue Cross Blue Shield', plan: 'Blue Choice PPO Plus' },
+        { id: 5, payor: 'Blue Cross Blue Shield', plan: 'Blue Advantage HMO Direct' },
+        { id: 6, payor: 'Aetna', plan: 'Aetna Open Choice PPO' },
+        { id: 7, payor: 'Aetna', plan: 'Aetna Select HMO' },
+        { id: 8, payor: 'Aetna', plan: 'Aetna Whole Health EPO' },
+        { id: 9, payor: 'Aetna', plan: 'Aetna Gold Preferred PPO' },
+        { id: 10, payor: 'Aetna', plan: 'Aetna Silver Value HMO' },
+        { id: 11, payor: 'UnitedHealthcare', plan: 'UHC Choice Plus PPO' },
+        { id: 12, payor: 'UnitedHealthcare', plan: 'UHC Navigate HMO' },
+        { id: 13, payor: 'UnitedHealthcare', plan: 'UHC Compass EPO' },
+        { id: 14, payor: 'UnitedHealthcare', plan: 'UHC Charter Balanced PPO' },
+        { id: 15, payor: 'UnitedHealthcare', plan: 'UHC Silver Advantage HMO' },
+        { id: 16, payor: 'Cigna', plan: 'Cigna LocalPlus HMO' },
+        { id: 17, payor: 'Cigna', plan: 'Cigna Open Access Plus PPO' },
+        { id: 18, payor: 'Cigna', plan: 'Cigna Connect Network' },
+        { id: 19, payor: 'Cigna', plan: 'Cigna SureFit HMO' },
+        { id: 20, payor: 'Cigna', plan: 'Cigna Silver Choice PPO' },
+        { id: 21, payor: 'Humana', plan: 'Humana National POS' },
+        { id: 22, payor: 'Humana', plan: 'Humana Preferred PPO' },
+        { id: 23, payor: 'Humana', plan: 'Humana HMOx Gold' },
+        { id: 24, payor: 'Humana', plan: 'Humana Basic EPO' },
+        { id: 25, payor: 'Humana', plan: 'Humana ChoiceCare PPO' },
+        { id: 26, payor: 'Kaiser Permanente', plan: 'Kaiser HMO Silver 2000' },
+        { id: 27, payor: 'Kaiser Permanente', plan: 'Kaiser Gold Advantage HMO' },
+        { id: 28, payor: 'Kaiser Permanente', plan: 'Kaiser Bronze Deductible HMO' },
+        { id: 29, payor: 'Kaiser Permanente', plan: 'Kaiser Flex Choice PPO' },
+        { id: 30, payor: 'Kaiser Permanente', plan: 'Kaiser Platinum Direct HMO' },
+        { id: 31, payor: 'Medicare', plan: 'Original Medicare Part A & B' },
+        { id: 32, payor: 'Medicare', plan: 'Medicare Advantage PPO' },
+        { id: 33, payor: 'Medicare', plan: 'Medicare Advantage HMO' },
+        { id: 34, payor: 'Medicare', plan: 'Medicare Advantage Special Needs Plan (SNP)' },
+        { id: 35, payor: 'Medicare', plan: 'Medicare Advantage Dual Eligible' },
+        { id: 36, payor: 'Medicaid', plan: 'State Medicaid Basic' },
+        { id: 37, payor: 'Medicaid', plan: 'Medicaid Managed Care HMO' },
+        { id: 38, payor: 'Medicaid', plan: "Children's Health Insurance Program (CHIP)" },
+        { id: 39, payor: 'Medicaid', plan: 'Medicaid Expansion Silver' },
+        { id: 40, payor: 'Medicaid', plan: 'Medicaid Dual Special Needs Plan' },
+        { id: 41, payor: 'Oscar Health', plan: 'Oscar Classic Gold PPO' },
+        { id: 42, payor: 'Oscar Health', plan: 'Oscar Simple Bronze HMO' },
+        { id: 43, payor: 'Oscar Health', plan: 'Oscar Silver Saver EPO' },
+        { id: 44, payor: 'Molina Healthcare', plan: 'Molina Marketplace Silver' },
+        { id: 45, payor: 'Molina Healthcare', plan: 'Molina Medicaid Managed Care' },
+        { id: 46, payor: 'Molina Healthcare', plan: 'Molina Medicare Advantage' },
+        { id: 47, payor: 'Centene / Ambetter', plan: 'Ambetter Balanced Care Silver' },
+        { id: 48, payor: 'Centene / Ambetter', plan: 'Ambetter Essential Care Bronze' },
+        { id: 49, payor: 'Centene / Ambetter', plan: 'Ambetter Secure Care Gold' },
+        { id: 50, payor: 'WellCare', plan: 'WellCare Medicare Advantage HMO' },
+        { id: 51, payor: 'WellCare', plan: 'WellCare Value PPO' },
+        { id: 52, payor: 'WellCare', plan: 'WellCare Medicaid Managed Care' },
     ];
-    
-    const [selectedInsurance, setSelectedInsurance] = useState<{id: number, payor: string, plan: string} | null>(null);
+
+    const [selectedInsurance, setSelectedInsurance] = useState<{ id: number; payor: string; plan: string } | null>(null);
 
     // Map view state
     const [showMapView, setShowMapView] = useState(false);
@@ -233,16 +233,16 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     if (showMapView) {
         // Get providers for map
         const providersForMap = selectedMapProvider ? [selectedMapProvider] : getAllProvidersForMap();
-        
+
         // Convert to PlotMap component compatible format
         // PlotMap expects Provider[] | Facility[] from types/healthcare/types.ts
-        const providersForMapConverted = providersForMap.map(provider => {
+        const providersForMapConverted = providersForMap.map((provider) => {
             const reviewCount = provider.review_count || provider.provider_review_count;
             const reviewCountNum = typeof reviewCount === 'string' ? parseInt(reviewCount, 10) : reviewCount;
-            
+
             const languages = provider.languages || provider.provider_languages;
             const languagesStr = Array.isArray(languages) ? languages.join(', ') : languages;
-            
+
             return {
                 provider_id: provider.provider_id !== undefined ? String(provider.provider_id) : undefined,
                 provider_name: provider.name || provider.provider_name,
@@ -269,22 +269,26 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         return (
             <div
                 className={embedded ? '' : 'fixed inset-0 z-50 flex items-center justify-center'}
-                style={embedded ? {
-                    height: '100vh',
-                    width: '100vw',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                } : {
-                    height: '100vh',
-                    width: '100vw',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                    backdropFilter: 'blur(2px)',
-                    WebkitBackdropFilter: 'blur(2px)',
-                }}>
+                style={
+                    embedded
+                        ? {
+                              height: '100vh',
+                              width: '100vw',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                          }
+                        : {
+                              height: '100vh',
+                              width: '100vw',
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                              backdropFilter: 'blur(2px)',
+                              WebkitBackdropFilter: 'blur(2px)',
+                          }
+                }>
                 <div
                     className="h-screen w-full max-w-full flex flex-col"
                     style={{
@@ -300,15 +304,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                             height: '100vh',
                             position: 'relative',
                         }}>
-                        <PlotMap 
-                            list={providersForMapConverted} 
-                            selected_id={selectedMapProvider?.provider_id !== undefined ? String(selectedMapProvider.provider_id) : undefined} 
-                            on_provider_select={(provider) => setSelectedMapProvider(provider as MapProvider)} 
-                        />
+                        <PlotMap list={providersForMapConverted} selected_id={selectedMapProvider?.provider_id !== undefined ? String(selectedMapProvider.provider_id) : undefined} on_provider_select={(provider) => setSelectedMapProvider(provider as MapProvider)} />
                         {/* Show List button - floating at bottom */}
-                        <button
-                            className="fixed bottom-32 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-3 px-6 rounded-full font-medium hover:shadow-lg transition-all duration-200 shadow-lg z-40 flex items-center space-x-2"
-                            onClick={handleBackToList}>
+                        <button className="fixed bottom-32 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-3 px-6 rounded-full font-medium hover:shadow-lg transition-all duration-200 shadow-lg z-40 flex items-center space-x-2" onClick={handleBackToList}>
                             <ArrowLeft size={16} />
                             <span>Show List</span>
                         </button>
@@ -337,19 +335,15 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         const last_name = userData?.last_name || userData?.user?.last_name;
 
         // Convert insurance format if needed
-        const insuranceOption = insurance ? {
-            plan_name: insurance.plan_name,
-            payer_name: insurance.payer_name,
-        } : null;
+        const insuranceOption = insurance
+            ? {
+                  plan_name: insurance.plan_name,
+                  payer_name: insurance.payer_name,
+              }
+            : null;
 
         // Call API based on category type with new parameters
-        await handleCategorySelection(
-            category, 
-            userLocation,
-            first_name,
-            last_name,
-            insuranceOption
-        );
+        await handleCategorySelection(category, userLocation, first_name, last_name, insuranceOption);
     };
 
     // Generate mock distance for demo
@@ -372,10 +366,14 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             provider_image: provider.image || provider.provider_image,
             provider_rating: provider.rating !== null && provider.rating !== undefined ? provider.rating : provider.provider_rating,
             provider_review_count: provider.review_count !== undefined ? (typeof provider.review_count === 'string' ? parseInt(provider.review_count) || 0 : provider.review_count) : provider.provider_review_count,
-            provider_full_address_obj: provider.provider_full_address_obj || (provider.latitude && provider.longitude ? {
-                lat: provider.latitude,
-                long: provider.longitude,
-            } : undefined),
+            provider_full_address_obj:
+                provider.provider_full_address_obj ||
+                (provider.latitude && provider.longitude
+                    ? {
+                          lat: provider.latitude,
+                          long: provider.longitude,
+                      }
+                    : undefined),
             languages: provider.languages || (provider.provider_languages ? (typeof provider.provider_languages === 'string' ? provider.provider_languages.split(', ') : []) : []),
             insurance_accepted: provider.insurance_accepted || [],
         } as Provider;
@@ -420,9 +418,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                 <div className="flex items-center space-x-1">
                                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                                     <span className="font-medium">{providerRating}</span>
-                                    {reviewCount !== undefined && reviewCount !== null && (
-                                        <span>({reviewCount} reviews)</span>
-                                    )}
+                                    {reviewCount !== undefined && reviewCount !== null && <span>({reviewCount} reviews)</span>}
                                 </div>
                             )}
                             <div className="flex items-center space-x-1">
@@ -430,15 +426,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                 <span>{distance}</span>
                             </div>
                         </div>
-                        {providerAddress && (
-                            <p className="text-sm text-gray-600 mb-1">{providerAddress}</p>
-                        )}
-                        {provider.languages && provider.languages.length > 0 && (
-                            <p className="text-sm text-gray-600">Languages: {provider.languages.join(', ')}</p>
-                        )}
-                        {provider.insurance_accepted && provider.insurance_accepted.length > 0 && (
-                            <p className="text-sm text-gray-500 mt-1">Accepts: {provider.insurance_accepted.join(', ')}</p>
-                        )}
+                        {providerAddress && <p className="text-sm text-gray-600 mb-1">{providerAddress}</p>}
+                        {provider.languages && provider.languages.length > 0 && <p className="text-sm text-gray-600">Languages: {provider.languages.join(', ')}</p>}
+                        {provider.insurance_accepted && provider.insurance_accepted.length > 0 && <p className="text-sm text-gray-500 mt-1">Accepts: {provider.insurance_accepted.join(', ')}</p>}
                     </div>
                 </div>
 
@@ -454,7 +444,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     <button
                         className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                         onClick={() => {
-                            console.log(provider)
+                            console.log(provider);
                             setSelectedProviderForDetails(provider);
                             setShowProviderDetailsModal(true);
                         }}>
@@ -590,10 +580,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 </div>
 
                 <div className="flex space-x-2 mt-4">
-                    <button
-                        className="flex-1 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-2 px-4 rounded-lg text-sm font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => handleBookAppointment(provider)}
-                        disabled={isBooking && selectedProvider?.id === provider.id}>
+                    <button className="flex-1 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-2 px-4 rounded-lg text-sm font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => handleBookAppointment(provider)} disabled={isBooking && selectedProvider?.id === provider.id}>
                         {isBooking && selectedProvider?.id === provider.id ? (
                             <>
                                 <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
@@ -651,19 +638,13 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 <p className="text-gray-600 mb-4">Search for doctors, hospitals, and healthcare services in your area</p>
 
                 <div className="mb-4">
-                    <input
-                        type="text"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search specialty (e.g., Dermatology)"
-                    />
+                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search specialty (e.g., Dermatology)" />
                 </div>
-
+                {/* 
                 <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2" onClick={() => setShowEarliestAppointmentModal(true)}>
                     <Zap size={20} />
                     <span>Book Earliest Appointment</span>
-                </button>
+                </button> */}
 
                 <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 mt-4" onClick={() => setShowInsuranceSearchModal(true)}>
                     <Search size={20} />
@@ -728,7 +709,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
 
             {/* Provider Details Modal */}
             {showProviderDetailsModal && (
-                <ProviderDetailsModal 
+                <ProviderDetailsModal
                     provider={selectedProviderForDetails}
                     onClose={() => {
                         setShowProviderDetailsModal(false);
@@ -776,7 +757,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     }
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',

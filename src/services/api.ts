@@ -3,7 +3,7 @@
  */
 const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'RX_HUB' | 'CAPABILITIES' | 'CORE_ENGINE'): string => {
     const env = import.meta.env;
-    
+
     switch (apiType) {
         case 'INDEX_MEMBER':
             return env.VITE_API_INDEX_MEMBER_BASE_URL || 'https://index-member-be-dev.healthbackend.com';
@@ -22,16 +22,12 @@ const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'RX_HUB' | 'CAPABILITIES' | 'CORE_
  * Centralized POST API function
  * Supports both endpoint keys and full URLs
  */
-export const postAPI = async (
-    url: string | keyof typeof INDEX_MEMBER_API_URLS | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS,
-    payload: any = {},
-    abortSignal?: AbortSignal
-): Promise<{ statusCode: number; message: string; data: any }> => {
+export const postAPI = async (url: string | keyof typeof INDEX_MEMBER_API_URLS | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS, payload: any = {}, abortSignal?: AbortSignal): Promise<{ statusCode: number; message: string; data: any }> => {
     // Import auth store to get tokens
     const { useAuthStore } = await import('../store/authStore');
     const authStore = useAuthStore.getState();
     let finalUrl: string;
-    
+
     // Check if it's a full URL (starts with http)
     if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
         finalUrl = url;
@@ -39,12 +35,12 @@ export const postAPI = async (
         // It's an endpoint key or value, resolve it
         let apiPath = '';
         let baseUrl = '';
-        
+
         // Check if it's a key in INDEX_MEMBER_API_URLS
         if (url in INDEX_MEMBER_API_URLS) {
             apiPath = INDEX_MEMBER_API_URLS[url as keyof typeof INDEX_MEMBER_API_URLS];
             baseUrl = getBaseUrl('INDEX_MEMBER');
-        } 
+        }
         // Check if it's a value in INDEX_MEMBER_API_URLS
         else if (Object.values(INDEX_MEMBER_API_URLS).includes(url as any)) {
             apiPath = url as string;
@@ -77,7 +73,7 @@ export const postAPI = async (
                 data: {},
             };
         }
-        
+
         // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
         const cleanBaseUrl = baseUrl.replace(/\/$/, '');
         const cleanApiPath = apiPath.replace(/^\//, '');
@@ -128,7 +124,7 @@ export const postAPI = async (
             } catch {
                 // If response is not JSON, use default message
             }
-            
+
             // Handle 403 status code by clearing auth session
             if (response.status === 403) {
                 // Clear tokens from session storage
@@ -145,7 +141,7 @@ export const postAPI = async (
         }
 
         const responseData = await response.json();
-        
+
         // Handle different response formats
         let statusCode: number;
         let message: string;
@@ -196,18 +192,14 @@ export const postAPI = async (
 /**
  * Stream API function for handling streaming responses
  */
-export const streamAPI = async (
-    url: keyof typeof CORE_ENGINE_API_URLS,
-    payload: any = {},
-    onChunk: (chunk: string) => void
-): Promise<void> => {
+export const streamAPI = async (url: keyof typeof CORE_ENGINE_API_URLS, payload: any = {}, onChunk: (chunk: string) => void): Promise<void> => {
     // Import auth store to get tokens
     const { useAuthStore } = await import('../store/authStore');
     const authStore = useAuthStore.getState();
 
     const apiPath = CORE_ENGINE_API_URLS[url];
     const baseUrl = getBaseUrl('CORE_ENGINE');
-    
+
     // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
     const cleanBaseUrl = baseUrl.replace(/\/$/, '');
     const cleanApiPath = apiPath.replace(/^\//, '');
@@ -266,7 +258,6 @@ export const streamAPI = async (
 
 // Index Member API endpoints (auth, AI)
 export const INDEX_MEMBER_API_URLS = {
-
     // AI
     AI_GENERATE_OBJECT: 'ai/generate-object',
     AI_GENERATE_TEXT: 'ai/generate-text',
@@ -312,6 +303,8 @@ export const CAPABILITIES_API_URLS = {
     GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
     GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
     GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
+    // Approved Requests APIs
+    GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',
 } as const;
 
 // Core Engine API endpoints
@@ -322,4 +315,3 @@ export const CORE_ENGINE_API_URLS = {
     GET_CHAT_MESSAGES: 'conversation/get-messages',
     STREAM_CHAT_MESSAGE: 'conversation/stream-message',
 } as const;
-
