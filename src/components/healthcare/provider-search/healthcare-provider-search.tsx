@@ -178,31 +178,55 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         // Add API providers
         displayProviders.forEach((p) => {
             const provider = p as any;
-            // Support both new API format (latitude/longitude) and legacy format
-            const lat = provider.latitude || provider.provider_lat || provider.provider_full_address_obj?.lat || 39.3643 + Math.random() * 0.05;
-            const lng = provider.longitude || provider.provider_lng || provider.provider_full_address_obj?.long || -74.4229 + Math.random() * 0.05;
+            // Support both new API format (latitude/longitude from find-nearby-care-v2) and legacy format
+            const lat = provider.latitude || provider.provider_lat || provider.provider_full_address_obj?.lat;
+            const lng = provider.longitude || provider.provider_lng || provider.provider_full_address_obj?.long;
 
-            allProviders.push({
-                ...provider,
-                provider_lat: typeof lat === 'number' ? lat : 39.3643 + Math.random() * 0.05,
-                provider_lng: typeof lng === 'number' ? lng : -74.4229 + Math.random() * 0.05,
-            });
+            // Only use fallback coordinates if no valid coordinates found
+            const finalLat = (typeof lat === 'number' && !isNaN(lat)) ? lat : (lat !== undefined && lat !== null ? parseFloat(lat) : null);
+            const finalLng = (typeof lng === 'number' && !isNaN(lng)) ? lng : (lng !== undefined && lng !== null ? parseFloat(lng) : null);
+
+            if (finalLat !== null && finalLng !== null && !isNaN(finalLat) && !isNaN(finalLng)) {
+                allProviders.push({
+                    ...provider,
+                    latitude: finalLat,
+                    longitude: finalLng,
+                    provider_lat: finalLat,
+                    provider_lng: finalLng,
+                    provider_full_address_obj: provider.provider_full_address_obj || {
+                        lat: finalLat,
+                        long: finalLng,
+                    },
+                });
+            }
         });
 
         // Add facilities
         facilities.forEach((facility) => {
-            // Ensure we have valid numeric coordinates
-            const lat = typeof facility.facility_full_address_obj?.lat === 'number' ? facility.facility_full_address_obj.lat : 39.3643 + Math.random() * 0.05;
-            const lng = typeof facility.facility_full_address_obj?.long === 'number' ? facility.facility_full_address_obj.long : -74.4229 + Math.random() * 0.05;
+            // Extract coordinates from facility
+            const facilityAny = facility as any;
+            const lat = facility.facility_full_address_obj?.lat || facilityAny.latitude;
+            const lng = facility.facility_full_address_obj?.long || facilityAny.longitude;
 
-            allProviders.push({
-                provider_id: facility.facility_id,
-                provider_name: facility.facility_name,
-                provider_address: facility.facility_address,
-                provider_phone: facility.facility_phone || '',
-                provider_lat: lat,
-                provider_lng: lng,
-            } as MapProvider);
+            const finalLat = (typeof lat === 'number' && !isNaN(lat)) ? lat : (lat !== undefined && lat !== null ? parseFloat(lat) : null);
+            const finalLng = (typeof lng === 'number' && !isNaN(lng)) ? lng : (lng !== undefined && lng !== null ? parseFloat(lng) : null);
+
+            if (finalLat !== null && finalLng !== null && !isNaN(finalLat) && !isNaN(finalLng)) {
+                allProviders.push({
+                    provider_id: facility.facility_id,
+                    provider_name: facility.facility_name,
+                    provider_address: facility.facility_address,
+                    provider_phone: facility.facility_phone || '',
+                    provider_lat: finalLat,
+                    provider_lng: finalLng,
+                    latitude: finalLat,
+                    longitude: finalLng,
+                    facility_full_address_obj: facility.facility_full_address_obj || {
+                        lat: finalLat,
+                        long: finalLng,
+                    },
+                } as MapProvider);
+            }
         });
 
         // Add legacy providers if needed
@@ -243,6 +267,17 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             const languages = provider.languages || provider.provider_languages;
             const languagesStr = Array.isArray(languages) ? languages.join(', ') : languages;
 
+            // Extract coordinates from various sources (API response has latitude/longitude)
+            const lat = provider.latitude || provider.provider_lat || provider.provider_full_address_obj?.lat;
+            const lng = provider.longitude || provider.provider_lng || provider.provider_full_address_obj?.long;
+
+            // Ensure provider_full_address_obj has coordinates if they exist
+            const addressObj = provider.provider_full_address_obj || {};
+            if (lat !== undefined && lng !== undefined) {
+                addressObj.lat = typeof lat === 'number' ? lat : parseFloat(lat);
+                addressObj.long = typeof lng === 'number' ? lng : parseFloat(lng);
+            }
+
             return {
                 provider_id: provider.provider_id !== undefined ? String(provider.provider_id) : undefined,
                 provider_name: provider.name || provider.provider_name,
@@ -260,7 +295,10 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 provider_degree: provider.provider_degree,
                 provider_languages: languagesStr,
                 provider_facilities: provider.provider_facilities,
-                provider_full_address_obj: provider.provider_full_address_obj,
+                provider_full_address_obj: addressObj,
+                // Include latitude/longitude directly for PlotMap compatibility
+                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
+                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
                 is_bookmarked: provider.is_bookmarked,
             };
         });
@@ -453,10 +491,18 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     <button
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                         onClick={() => {
+                            const lat = provider.latitude || provider.provider_full_address_obj?.lat;
+                            const lng = provider.longitude || provider.provider_full_address_obj?.long;
                             setSelectedMapProvider({
                                 ...provider,
-                                provider_lat: provider.provider_full_address_obj?.lat,
-                                provider_lng: provider.provider_full_address_obj?.long,
+                                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
+                                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
+                                provider_lat: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
+                                provider_lng: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
+                                provider_full_address_obj: provider.provider_full_address_obj || (lat !== undefined && lng !== undefined ? {
+                                    lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                    long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                } : undefined),
                             });
                             setShowMapView(true);
                         }}>
@@ -525,13 +571,22 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     <button
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                         onClick={() => {
+                            const facilityAny = facility as any;
+                            const lat = facility.facility_full_address_obj?.lat || facilityAny.latitude;
+                            const lng = facility.facility_full_address_obj?.long || facilityAny.longitude;
                             setSelectedMapProvider({
                                 ...facility,
                                 provider_id: facility.facility_id,
                                 provider_name: facility.facility_name,
                                 provider_address: facility.facility_address,
-                                provider_lat: facility.facility_full_address_obj?.lat,
-                                provider_lng: facility.facility_full_address_obj?.long,
+                                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
+                                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
+                                provider_lat: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
+                                provider_lng: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
+                                facility_full_address_obj: facility.facility_full_address_obj || (lat !== undefined && lng !== undefined ? {
+                                    lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                    long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                } : undefined),
                             } as MapProvider);
                             setShowMapView(true);
                         }}>
