@@ -115,12 +115,15 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
 
     return (
         <div onClick={onClose} className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-            <div style={{ minHeight: 'calc(90vh - 180px)' , maxHeight: 'calc(90vh - 100px)' }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">
-                    ×
-                </button>
+            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg w-full max-w-lg shadow-xl relative flex flex-col max-h-[90vh] overflow-hidden">
+                <div className="flex-shrink-0 p-6 pb-4 border-b border-gray-200">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl z-10">
+                        ×
+                    </button>
+                    <h2 className="text-xl font-semibold mt-0 mb-0 pr-8">{isSuccess ? 'Appointment Requested' : 'Book Appointment'}</h2>
+                </div>
 
-                <h2 className="text-xl font-semibold mt-0 mb-6">{isSuccess ? 'Appointment Requested' : 'Book Appointment'}</h2>
+                <div className="flex-1 overflow-y-auto p-6 pt-4">
 
                 {isSuccess ? (
                     <div className="text-center mb-6">
@@ -180,31 +183,35 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
                 )}
 
                 {error && <div className="text-red-700 mb-4 p-2 bg-red-50 rounded text-sm">{error}</div>}
+                
+                </div>
 
-                <div className={`flex gap-3 ${isSuccess ? 'flex-row justify-center' : 'flex-col'}`}>
-                    {(isSubmitting || is_loading) && (
-                        <div className="text-center w-full mb-4">
-                            <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin" />
-                            <p className="m-0 text-gray-600 text-sm">Processing your request...</p>
-                        </div>
-                    )}
+                <div className="flex-shrink-0 p-6 pt-4 border-t border-gray-200">
+                    <div className={`flex gap-3 ${isSuccess ? 'flex-row justify-center' : 'flex-col'}`}>
+                        {(isSubmitting || is_loading) && (
+                            <div className="text-center w-full">
+                                <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin" />
+                                <p className="m-0 text-gray-600 text-sm">Processing your request...</p>
+                            </div>
+                        )}
 
-                    {!isSubmitting && !is_loading && !isSuccess && (
-                        <>
-                            <button onClick={onClose} className="w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 text-sm">
-                                Cancel
+                        {!isSubmitting && !is_loading && !isSuccess && (
+                            <>
+                                <button onClick={onClose} className="w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 text-sm">
+                                    Cancel
+                                </button>
+                                <button onClick={handleSubmit} disabled={isSubmitting || is_loading} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Place Request
+                                </button>
+                            </>
+                        )}
+
+                        {isSuccess && (
+                            <button onClick={onClose} className="py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm w-full max-w-[200px] text-sm">
+                                Close
                             </button>
-                            <button onClick={handleSubmit} disabled={isSubmitting || is_loading} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                                Place Request
-                            </button>
-                        </>
-                    )}
-
-                    {isSuccess && (
-                        <button onClick={onClose} className="py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm w-full max-w-[200px] text-sm">
-                            Close
-                        </button>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
