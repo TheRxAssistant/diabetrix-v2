@@ -114,8 +114,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
     const providerSpecialty = provider?.provider_specialty || provider?.facility_type || 'Healthcare Provider';
 
     return (
-        <div onClick={onClose} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div style={{ height: 'calc(100vh - 300px)', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-auto relative">
+        <div onClick={onClose} className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+            <div style={{ minHeight: 'calc(90vh - 180px)' , maxHeight: 'calc(90vh - 100px)' }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl relative">
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">
                     ×
                 </button>
@@ -135,7 +135,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
                             <div
                                 className="w-12 h-12 min-w-[3rem] min-h-[3rem] rounded-full bg-gray-200 mr-4 bg-cover bg-center bg-no-repeat"
                                 style={{
-                                    backgroundImage: `url(${avatarImage})`,
+                                    backgroundImage: `url(${provider?.provider_image || avatarImage})`,
                                 }}
                                 aria-label={`${providerName} avatar`}
                             />
