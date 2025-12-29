@@ -624,17 +624,17 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
 
     // Main content of the component
     const searchContent = (
-        <div className={'bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto'}>
-            {/* Header */}
-            <div className="flex items-center p-4 border-b border-gray-200">
+        <div className={'bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col'}>
+            {/* Header - Fixed */}
+            <div className="flex items-center p-4 border-b border-gray-200 flex-shrink-0">
                 <button className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={onClose} aria-label="Back">
                     <ArrowLeft size={20} />
                 </button>
                 <h1 className="text-xl font-semibold text-gray-900">Find Healthcare Services</h1>
             </div>
 
-            {/* Search Section */}
-            <div className="p-6 border-b border-gray-100">
+            {/* Search Section - Fixed */}
+            <div className="p-6 border-b border-gray-100 flex-shrink-0">
                 <p className="text-gray-600 mb-4">Search for doctors, hospitals, and healthcare services in your area</p>
 
                 <div className="mb-4">
@@ -652,8 +652,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 </button>
             </div>
 
-            {/* Results Section */}
-            <div className="p-6">
+            {/* Results Section - Scrollable */}
+            <div className="p-6 overflow-y-auto flex-1">
                 <div className="mb-6">
                     {isLoading ? (
                         <h2 className="text-lg font-semibold text-gray-900">Loading...</h2>
