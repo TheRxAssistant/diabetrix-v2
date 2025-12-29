@@ -56,14 +56,17 @@ const InsuranceSearchModal: React.FC<InsuranceSearchModalProps> = ({ onClose, on
 
     return (
         <div 
-            className="fixed inset-0 flex items-center justify-center" 
+            className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+            onClick={onClose}
             style={{ 
-                zIndex: 1000,
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
                 backdropFilter: 'blur(2px)',
                 WebkitBackdropFilter: 'blur(2px)',
             }}>
-            <div className="bg-white w-[calc(100%-32px)] rounded-lg shadow-lg overflow-hidden max-h-[450px] flex flex-col">
+            <div 
+                className="bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden max-h-[450px] flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="p-4 border-b flex items-center justify-between">
                     <div className="flex items-center">

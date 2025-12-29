@@ -58,6 +58,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [searchTerm, setSearchTerm] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [categorySelected, setCategorySelected] = useState(false);
+    const [currentCategory, setCurrentCategory] = useState<SearchCategory | null>(null);
     const [userLocation, setUserLocation] = useState<string>('');
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | null>(null);
@@ -369,6 +370,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const handleCategoryClick = async (category: SearchCategory, insurance?: { plan_name: string; payer_name: string } | null) => {
         setShowSearchModal(false);
         setCategorySelected(true);
+        setCurrentCategory(category);
 
         // Update search term with the selected category name
         const categoryName = category.category_name || category.care_category_name || searchTerm;
@@ -784,10 +786,44 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 <InsuranceSearchModal
                     insurances={insuranceProviders}
                     onClose={() => setShowInsuranceSearchModal(false)}
-                    onSelect={(insurance) => {
+                    onSelect={async (insurance) => {
                         setSelectedInsurance(insurance);
                         setShowInsuranceSearchModal(false);
                         console.log('Selected insurance:', insurance);
+
+                        // Extract user information from userData
+                        const first_name = userData?.first_name || userData?.user?.first_name;
+                        const last_name = userData?.last_name || userData?.user?.last_name;
+
+                        // Convert insurance format
+                        const insuranceOption = {
+                            plan_name: insurance.plan,
+                            payer_name: insurance.payor,
+                        };
+
+                        // If there's a current category, use it; otherwise create a default category from searchTerm
+                        if (currentCategory) {
+                            // Call API with current category and selected insurance
+                            await handleCategorySelection(currentCategory, userLocation, first_name, last_name, insuranceOption);
+                        } else if (searchTerm && searchTerm.trim() !== 'endocrinologist') {
+                            // Create a default category from searchTerm
+                            const defaultCategory: SearchCategory = {
+                                care_category_name: searchTerm,
+                                category_name: searchTerm,
+                                care_category_type: 'specialty',
+                                category_type: 'specialty',
+                            };
+                            await handleCategorySelection(defaultCategory, userLocation, first_name, last_name, insuranceOption);
+                        } else {
+                            // Use default endocrinologist category
+                            const defaultCategory: SearchCategory = {
+                                care_category_name: 'endocrinologist',
+                                category_name: 'endocrinologist',
+                                care_category_type: 'specialty',
+                                category_type: 'specialty',
+                            };
+                            await handleCategorySelection(defaultCategory, userLocation, first_name, last_name, insuranceOption);
+                        }
                     }}
                 />
             )}

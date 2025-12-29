@@ -186,10 +186,10 @@ export const useProviderSearch = () => {
 
             const payload: any = {
                 zipcode: HARDCODED_ZIP,
-                first_name: HARDCODED_FIRST_NAME,
-                last_name: HARDCODED_LAST_NAME,
-                payer_name: HARDCODED_PAYER_NAME,
-                plan_name: HARDCODED_PLAN_NAME,
+                first_name: first_name || HARDCODED_FIRST_NAME,
+                last_name: last_name || HARDCODED_LAST_NAME,
+                payer_name: selected_insurance?.payer_name || HARDCODED_PAYER_NAME,
+                plan_name: selected_insurance?.plan_name || HARDCODED_PLAN_NAME,
                 care_category_id: care_category_id,
                 care_category_type: care_category_type,
                 care_category_name: care_category_name,
