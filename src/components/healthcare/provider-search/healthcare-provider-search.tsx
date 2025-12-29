@@ -57,6 +57,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [isBooking, setIsBooking] = useState(false);
     const [searchTerm, setSearchTerm] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [categorySelected, setCategorySelected] = useState(false);
     const [userLocation, setUserLocation] = useState<string>('');
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | null>(null);
@@ -158,12 +159,12 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const displayProviders = apiProviders.length > 0 ? apiProviders : [];
     const shouldShowLegacyProviders = apiProviders.length === 0 && facilities.length === 0;
 
-    // Show search modal when search term is entered
+    // Show search modal when search term is entered (but not if category was just selected)
     useEffect(() => {
-        if (searchTerm.trim()) {
+        if (searchTerm.trim() && !categorySelected) {
             setShowSearchModal(true);
         }
-    }, [searchTerm]);
+    }, [searchTerm, categorySelected]);
 
     // Handle back to list from map view
     const handleBackToList = () => {
@@ -367,6 +368,11 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
 
     const handleCategoryClick = async (category: SearchCategory, insurance?: { plan_name: string; payer_name: string } | null) => {
         setShowSearchModal(false);
+        setCategorySelected(true);
+
+        // Update search term with the selected category name
+        const categoryName = category.category_name || category.care_category_name || searchTerm;
+        setSearchTerm(categoryName);
 
         // Extract user information from userData
         const first_name = userData?.first_name || userData?.user?.first_name;
@@ -693,7 +699,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 <p className="text-gray-600 mb-4">Search for doctors, hospitals, and healthcare services in your area</p>
 
                 <div className="mb-4">
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search specialty (e.g., Dermatology)" />
+                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={searchTerm} onChange={(e) => { setCategorySelected(false); setSearchTerm(e.target.value); }} placeholder="Search specialty (e.g., Dermatology)" />
                 </div>
                 {/* 
                 <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2" onClick={() => setShowEarliestAppointmentModal(true)}>
