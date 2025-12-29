@@ -1044,6 +1044,9 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
                     <button
                         className={styles.close_btn}
                         onClick={handleClose}
+                        style={{
+                            top:  step === 'healthcare_search' ? '14px' : '20px',
+                        }}
                         onTouchStart={(e) => {
                             e.stopPropagation();
                         }}
