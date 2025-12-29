@@ -790,6 +790,46 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     const handlePharmaciesSubmit = async () => {
         if (selectedPharmacies.length === 0) return;
+
+        // Call sync-pharmacy-stock-check API
+        try {
+            const authStore = useAuthStore.getState();
+            const user = authStore.user;
+            const user_id = user?.userData?.user_id || userData?.user_id || userData?.user?.user_id;
+            const first_name = userData?.first_name || userData?.user?.first_name || '';
+            const last_name = userData?.last_name || userData?.user?.last_name || '';
+            const user_name = `${first_name} ${last_name}`.trim() || 'User';
+            const user_phone = phoneNumber || userData?.phone_number || userData?.user?.phone_number || '';
+            const user_address = userData?.address 
+                ? (typeof userData.address === 'string' 
+                    ? userData.address 
+                    : `${userData.address.street || ''}, ${userData.address.city || ''}, ${userData.address.state || ''}`.trim())
+                : '';
+            const user_zipcode = userData?.address?.zip_code || userData?.zip_code || userData?.address?.zip || '';
+            const drug_brand_name = drugName || userData?.drug_name || 'Diabetrix';
+            const drug_strength = userData?.drug_strength || userData?.strength || '';
+            const drug_quantity = userData?.drug_quantity || userData?.quantity || '1';
+            const domain = 'diabetrix';
+
+            if (user_id && user_phone) {
+                await postAPI(CAPABILITIES_API_URLS.SYNC_PHARMACY_STOCK_CHECK, {
+                    user_id,
+                    user_name,
+                    user_phone,
+                    user_address: user_address || 'Not provided',
+                    user_zipcode: user_zipcode || 'Not provided',
+                    drug_brand_name,
+                    drug_strength: drug_strength || '500mg',
+                    drug_quantity: drug_quantity || '10',
+                    user_email: userData?.email || userData?.user?.email || null,
+                    user_insurance_details: userData?.insurance_details || null,
+                    domain,
+                });
+            }
+        } catch (error) {
+            console.error('Error calling sync-pharmacy-stock-check:', error);
+        }
+
         setSelectedPharmacy(selectedPharmacies[0] || '');
         setCheckingPharmacies(selectedPharmacies);
         setCurrentCheckIndex(0);

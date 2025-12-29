@@ -305,6 +305,8 @@ export const CAPABILITIES_API_URLS = {
     GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
     // Approved Requests APIs
     GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',
+    // Pharmacy Stock Check APIs
+    SYNC_PHARMACY_STOCK_CHECK: 'pharmacy-stock-checks/sync-pharmacy-stock-check',
 } as const;
 
 // Core Engine API endpoints
