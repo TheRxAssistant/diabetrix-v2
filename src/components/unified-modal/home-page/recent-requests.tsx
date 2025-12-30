@@ -97,7 +97,15 @@ const RecentRequests: React.FC<RecentRequestsProps> = ({ requests, loadingReques
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-base font-semibold text-gray-900 line-clamp-1 mb-1.5">{request.title}</h3>
-                                <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{request.description}</p>
+                                <div className="relative group/desc">
+                                    <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{request.description}</p>
+                                    {request.description && (
+                                        <div className="absolute left-0 bottom-full mb-2 px-3 py-2 bg-white text-black text-xs rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover/desc:opacity-100 group-hover/desc:visible transition-all duration-200 z-10 max-w-xs whitespace-normal pointer-events-none">
+                                            {request.description}
+                                            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
