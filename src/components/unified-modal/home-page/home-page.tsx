@@ -71,13 +71,32 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             return 'pending';
         };
 
+        // Generate description based on task type
+        const generateDescription = (): string => {
+            const task_type = approved_request.task_type_name?.toLowerCase() || '';
+            const json_data = approved_request.request_json || {};
+            
+            if (task_type === 'doctor-appointment-booking') {
+                let appointment_data = json_data.appointment_with_details || {};
+                const provider_name = appointment_data.provider_name || appointment_data.doctor_name;
+                
+                if (provider_name) {
+                    return `Appointment Request for ${provider_name} on ${appointment_data.appointment_date_time || appointment_data.availability || ''}`;
+                } else {
+                    return `Appointment Request`;
+                }
+            }
+            
+            return approved_request.request_details || approved_request.request_name;
+        };
+
         return {
             id: approved_request.request_id,
             type: getTypeFromTaskType(approved_request.task_type_name),
             title: approved_request.request_name,
             status: getStatusFromRequestStatus(approved_request.request_status_name),
             date: approved_request.created_at,
-            description: approved_request.request_details || approved_request.request_name,
+            description: generateDescription(),
             task_type_name: approved_request.task_type_name,
         };
     };
