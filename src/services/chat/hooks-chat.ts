@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { postAPI, streamAPI, CORE_ENGINE_API_URLS } from '../api';
+import { trackingService } from '../tracking/tracking-service';
 
 interface ConversationMessage {
     message_id: string;
@@ -36,6 +37,21 @@ export const useChat = () => {
                 // Load initial messages after creating thread
                 const initialMessages = await getChatMessages(conversationId);
                 set_messages(initialMessages);
+                
+                // Sync timeline after conversation sync is done
+                try {
+                    await trackingService.syncTimeline({
+                        event_name: 'conversation_started',
+                        title: 'Conversation Started',
+                        description: `Chat conversation started with conversation_id: ${conversationId}`,
+                        event_payload: {
+                            conversation_id: conversationId,
+                        },
+                    });
+                } catch (error) {
+                    console.error('Error syncing timeline after conversation sync:', error);
+                }
+                
                 return conversationId;
             } else {
                 set_error_message(message);
