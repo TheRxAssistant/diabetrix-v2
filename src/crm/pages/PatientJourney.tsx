@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaChevronUp, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner } from 'react-icons/fa';
 import { Link, useParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
@@ -74,6 +74,7 @@ export default function PatientJourney() {
     const patientId = params.id || '1';
     const [lastEngagementExpanded, setLastEngagementExpanded] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isTimelineLoading, setIsTimelineLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [journeyStages, setJourneyStages] = useState<ApiJourneyStage[]>([]);
     const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>([]);
@@ -93,6 +94,7 @@ export default function PatientJourney() {
         phone: null as string | null,
         email: null as string | null,
     });
+    const loadingNodeRef = useRef<HTMLDivElement>(null);
 
     const primaryColor = '#0078D4';
     const secondaryColor = '#00B7C3';
@@ -416,6 +418,7 @@ export default function PatientJourney() {
 
         const pollTimeline = async () => {
             try {
+                setIsTimelineLoading(true);
                 const timelineResponse = await postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, {
                     user_id: patientId,
                 });
@@ -482,12 +485,27 @@ export default function PatientJourney() {
                 }
             } catch (err) {
                 console.error('Error polling timeline:', err);
+            } finally {
+                setIsTimelineLoading(false);
             }
         };
 
         const interval = setInterval(pollTimeline, 10000); // Poll every 10 seconds
         return () => clearInterval(interval);
     }, [patientId]);
+
+    // Auto-scroll to loading node when timeline loading starts
+    useEffect(() => {
+        if (isTimelineLoading && loadingNodeRef.current) {
+            // Small delay to ensure the node is rendered
+            setTimeout(() => {
+                loadingNodeRef.current?.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'end' 
+                });
+            }, 100);
+        }
+    }, [isTimelineLoading]);
 
     // Calculate current stage index from API journey stages
     const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 ? journeyStages.findIndex((s) => s.is_current) : journeyStages.filter((s) => s.is_completed).length - 1;
@@ -1395,6 +1413,99 @@ export default function PatientJourney() {
                                     </div>
                                 );
                             })
+                        )}
+                        
+                        {/* Loading Node - appears at bottom during API calls */}
+                        {isTimelineLoading && combinedTimeline.length > 0 && (
+                            <div ref={loadingNodeRef} className="relative mb-5 pl-12 sm:pl-16">
+                                {/* Animated Dot with pulsing effect */}
+                                <div 
+                                    className="absolute left-3.5 top-2.5 w-8 h-8 rounded-full border-4 border-white z-10 shadow-lg flex items-center justify-center"
+                                    style={{
+                                        backgroundColor: '#0078D4',
+                                        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                    }}
+                                >
+                                    <FaSpinner className="text-white text-sm animate-spin" />
+                                </div>
+                                
+                                {/* Loading Card with shimmer effect */}
+                                <Card 
+                                    className="rounded-xl ml-1 border border-gray-200 shadow-sm bg-gray-50" 
+                                    bodyStyle={{ padding: '16px 20px' }}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start gap-2.5 mb-2.5 flex-wrap">
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Skeleton Title */}
+                                                    <div 
+                                                        className="h-4 bg-gray-300 rounded w-3/4 mb-2"
+                                                        style={{
+                                                            animation: 'shimmer 1.5s ease-in-out infinite',
+                                                        }}
+                                                    ></div>
+                                                    {/* Skeleton Description */}
+                                                    <div 
+                                                        className="h-3 bg-gray-200 rounded w-full mb-1"
+                                                        style={{
+                                                            animation: 'shimmer 1.5s ease-in-out infinite 0.2s',
+                                                        }}
+                                                    ></div>
+                                                    <div 
+                                                        className="h-3 bg-gray-200 rounded w-5/6"
+                                                        style={{
+                                                            animation: 'shimmer 1.5s ease-in-out infinite 0.4s',
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2.5 flex-wrap mt-3">
+                                                {/* Skeleton Tag */}
+                                                <div 
+                                                    className="h-6 bg-gray-300 rounded w-24"
+                                                    style={{
+                                                        animation: 'shimmer 1.5s ease-in-out infinite 0.6s',
+                                                    }}
+                                                ></div>
+                                                {/* Skeleton Date */}
+                                                <div 
+                                                    className="h-4 bg-gray-200 rounded w-32"
+                                                    style={{
+                                                        animation: 'shimmer 1.5s ease-in-out infinite 0.8s',
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                                
+                                {/* Add CSS animations */}
+                                <style>{`
+                                    @keyframes pulse {
+                                        0%, 100% {
+                                            opacity: 1;
+                                            transform: scale(1);
+                                        }
+                                        50% {
+                                            opacity: 0.7;
+                                            transform: scale(1.05);
+                                        }
+                                    }
+                                    @keyframes shimmer {
+                                        0% {
+                                            opacity: 0.6;
+                                        }
+                                        50% {
+                                            opacity: 1;
+                                        }
+                                        100% {
+                                            opacity: 0.6;
+                                        }
+                                    }
+                                `}</style>
+                            </div>
                         )}
                     </div>
                 </Card>
