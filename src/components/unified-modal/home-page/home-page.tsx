@@ -286,12 +286,10 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                 </div>
             </div>
 
-            <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent mx-0 my-4"></div>
-
             {/* Prominent Icons Section - 3 Columns */}
-            <div className="grid grid-cols-3 gap-4 px-5 pb-6">
+            <div className="grid grid-cols-3 gap-3 px-5 pb-6 pt-4">
                 <button
-                    className="flex flex-col items-center p-5 px-3 bg-white border border-gray-200 rounded-2xl cursor-pointer transition-all duration-300 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-blue-500 active:-translate-y-0.5 group"
+                    className="flex flex-col items-center p-5 px-3 bg-white/95 backdrop-blur-md border border-blue-100/60 rounded-3xl cursor-pointer transition-all duration-500 text-center shadow-lg shadow-blue-50/50 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-100/60 hover:border-blue-300/80 hover:bg-gradient-to-br hover:from-blue-50/50 hover:to-white active:-translate-y-0.5 group relative overflow-hidden"
                     onClick={() => {
                         if (isNewRoute) {
                             window.open('http://therxassistant-stage.healthbackend.com/external?service=find-doctor', '_blank');
@@ -299,15 +297,16 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('healthcare_search');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <Stethoscope className="w-8 h-8" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/0 to-blue-600/0 group-hover:from-blue-500/10 group-hover:via-blue-500/5 group-hover:to-blue-600/10 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-50 via-blue-100/80 to-blue-50 rounded-3xl mb-3.5 text-blue-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-blue-500 group-hover:via-blue-600 group-hover:to-blue-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-blue-200/50 relative z-10">
+                        <Stethoscope className="w-7 h-7 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Find Care</h3>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">Doctors & specialists</p>
+                    <h3 className="m-0 mb-1.5 text-sm font-bold text-gray-900 leading-tight relative z-10 group-hover:text-blue-700 transition-colors duration-300">Find Care</h3>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Doctors & specialists</p>
                 </button>
 
                 <button
-                    className="flex flex-col items-center p-5 px-3 bg-white border border-gray-200 rounded-2xl cursor-pointer transition-all duration-300 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-blue-500 active:-translate-y-0.5 group"
+                    className="flex flex-col items-center p-5 px-3 bg-white/95 backdrop-blur-md border border-orange-100/60 rounded-3xl cursor-pointer transition-all duration-500 text-center shadow-lg shadow-orange-50/50 hover:-translate-y-2 hover:shadow-2xl hover:shadow-orange-100/60 hover:border-orange-300/80 hover:bg-gradient-to-br hover:from-orange-50/50 hover:to-white active:-translate-y-0.5 group relative overflow-hidden"
                     onClick={() => {
                         if (isNewRoute) {
                             window.open('http://therxassistant-stage.healthbackend.com/external?service=find-pharmacy', '_blank');
@@ -315,15 +314,16 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('pharmacy_select');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <MapPin className="w-8 h-8" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 via-orange-500/0 to-orange-600/0 group-hover:from-orange-500/10 group-hover:via-orange-500/5 group-hover:to-orange-600/10 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-50 via-orange-100/80 to-orange-50 rounded-3xl mb-3.5 text-orange-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-orange-500 group-hover:via-orange-600 group-hover:to-orange-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-orange-200/50 relative z-10">
+                        <MapPin className="w-7 h-7 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Find Pharmacy</h3>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">In-stock locations</p>
+                    <h3 className="m-0 mb-1.5 text-sm font-bold text-gray-900 leading-tight relative z-10 group-hover:text-orange-700 transition-colors duration-300">Find Pharmacy</h3>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">In-stock locations</p>
                 </button>
 
                 <button
-                    className="flex flex-col items-center p-5 px-3 bg-white border border-gray-200 rounded-2xl cursor-pointer transition-all duration-300 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-blue-500 active:-translate-y-0.5 group"
+                    className="flex flex-col items-center p-5 px-3 bg-white/95 backdrop-blur-md border border-emerald-100/60 rounded-3xl cursor-pointer transition-all duration-500 text-center shadow-lg shadow-emerald-50/50 hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-100/60 hover:border-emerald-300/80 hover:bg-gradient-to-br hover:from-emerald-50/50 hover:to-white active:-translate-y-0.5 group relative overflow-hidden"
                     onClick={() => {
                         if (isNewRoute) {
                             window.open('http://therxassistant-stage.healthbackend.com/external?service=insurance-help', '_blank');
@@ -331,20 +331,32 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('insurance_assistance');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <DollarSign className="w-8 h-8" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 via-emerald-500/0 to-emerald-600/0 group-hover:from-emerald-500/10 group-hover:via-emerald-500/5 group-hover:to-emerald-600/10 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-50 via-emerald-100/80 to-emerald-50 rounded-3xl mb-3.5 text-emerald-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-emerald-500 group-hover:via-emerald-600 group-hover:to-emerald-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-xl group-hover:shadow-emerald-200/50 relative z-10">
+                        <DollarSign className="w-7 h-7 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Savings</h3>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">Patient assistance</p>
+                    <h3 className="m-0 mb-1.5 text-sm font-bold text-gray-900 leading-tight relative z-10 group-hover:text-emerald-700 transition-colors duration-300">Savings</h3>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Patient assistance</p>
                 </button>
             </div>
 
             {/* Search Bar */}
-            <div className="mb-6">
-                <div className="flex items-center bg-white border border-gray-200 rounded-xl py-2 px-3 transition-all duration-200 mx-5 focus-within:border-gray-300 focus-within:shadow-none">
-                    <Search className="w-5 h-5 text-gray-400" />
-                    <input type="text" placeholder="Ask about your diabetes treatment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-2 px-3 border-none outline-none text-sm bg-transparent placeholder:text-gray-500" />
-                    <button className="flex items-center justify-center p-2 bg-blue-500 text-white border-none rounded-lg cursor-pointer transition-all duration-200 ml-2 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSearch} disabled={!searchQuery.trim()}>
+            <div className="mb-6 px-5">
+                <div className="flex items-center bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-2xl py-3 px-4 transition-all duration-300 shadow-md shadow-gray-100/50 focus-within:border-blue-400/60 focus-within:shadow-xl focus-within:shadow-blue-100/50 focus-within:bg-white">
+                    <Search className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                    <input 
+                        type="text" 
+                        placeholder="Ask about your diabetes treatment..." 
+                        value={searchQuery} 
+                        onChange={(e) => setSearchQuery(e.target.value)} 
+                        onKeyPress={handleSearchKeyPress} 
+                        className="flex-1 py-1 px-2 border-none outline-none text-sm bg-transparent placeholder:text-gray-400 text-gray-900 font-medium" 
+                    />
+                    <button 
+                        className="flex items-center justify-center p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl cursor-pointer transition-all duration-300 ml-2 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-200/50 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none" 
+                        onClick={handleSearch} 
+                        disabled={!searchQuery.trim()}
+                    >
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
@@ -354,29 +366,32 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             <RecentRequests requests={requests} loadingRequestId={loadingRequestId} onRequestAction={handleRequestAction} isNewRoute={isNewRoute} onFindPharmacy={handleFindPharmacy} is_loading={is_loading} />
 
             {/* Healthcare Options Grid */}
-            <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white rounded-t-xl border-t border-gray-200">
-                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <Pill className="w-6 h-6" />
+            <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white/80 backdrop-blur-sm rounded-t-3xl border-t border-gray-200/60 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-purple-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-purple-100/50 hover:border-purple-300/80 hover:bg-gradient-to-br hover:from-purple-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/0 to-purple-600/0 group-hover:from-purple-500/8 group-hover:via-purple-500/4 group-hover:to-purple-600/8 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-50 via-purple-100/70 to-purple-50 rounded-2xl mb-2.5 text-purple-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:via-purple-600 group-hover:to-purple-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-purple-200/50 relative z-10">
+                        <Pill className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">About diabetrix</h4>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">Schedule and dosage</p>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-purple-700 transition-colors duration-300">About diabetrix</h4>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Schedule and dosage</p>
                 </button>
 
-                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <BookOpen className="w-6 h-6" />
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-indigo-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-indigo-100/50 hover:border-indigo-300/80 hover:bg-gradient-to-br hover:from-indigo-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-indigo-500/0 to-indigo-600/0 group-hover:from-indigo-500/8 group-hover:via-indigo-500/4 group-hover:to-indigo-600/8 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-50 via-indigo-100/70 to-indigo-50 rounded-2xl mb-2.5 text-indigo-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:via-indigo-600 group-hover:to-indigo-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-indigo-200/50 relative z-10">
+                        <BookOpen className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">About diabetes</h4>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">Education & info</p>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-indigo-700 transition-colors duration-300">About diabetes</h4>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Education & info</p>
                 </button>
 
-                <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Help', 'Help')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
-                        <Syringe className="w-6 h-6" />
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-teal-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-teal-100/50 hover:border-teal-300/80 hover:bg-gradient-to-br hover:from-teal-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Help', 'Help')}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-500/0 via-teal-500/0 to-teal-600/0 group-hover:from-teal-500/8 group-hover:via-teal-500/4 group-hover:to-teal-600/8 transition-all duration-500"></div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-teal-50 via-teal-100/70 to-teal-50 rounded-2xl mb-2.5 text-teal-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-teal-500 group-hover:via-teal-600 group-hover:to-teal-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-teal-200/50 relative z-10">
+                        <Syringe className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">Help</h4>
-                    <p className="m-0 text-xs text-gray-600 leading-snug">How to use</p>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-teal-700 transition-colors duration-300">Help</h4>
+                    <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">How to use</p>
                 </button>
             </div>
         </div>
