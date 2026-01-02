@@ -95,6 +95,8 @@ export default function PatientJourney() {
         email: null as string | null,
     });
     const loadingNodeRef = useRef<HTMLDivElement>(null);
+    const lastTimelineEntryRef = useRef<HTMLDivElement>(null);
+    const previousTimelineLengthRef = useRef<number>(0);
 
     const primaryColor = '#0078D4';
     const secondaryColor = '#00B7C3';
@@ -338,6 +340,8 @@ export default function PatientJourney() {
                 });
                 
                 setCombinedTimeline(combinedItems);
+                // Initialize previous timeline length reference
+                previousTimelineLengthRef.current = combinedItems.length;
 
                 // Extract last engagement from timeline
                 const lastEntry = timelineEntries[timelineEntries.length - 1];
@@ -494,18 +498,27 @@ export default function PatientJourney() {
         return () => clearInterval(interval);
     }, [patientId]);
 
-    // Auto-scroll to loading node when timeline loading starts
+    // Auto-scroll to bottom when new timeline entries are added
     useEffect(() => {
-        if (isTimelineLoading && loadingNodeRef.current) {
-            // Small delay to ensure the node is rendered
+        const currentLength = combinedTimeline.length;
+        const previousLength = previousTimelineLengthRef.current;
+        
+        // Only scroll if new entries were added (length increased)
+        if (currentLength > previousLength && currentLength > 0) {
+            // Small delay to ensure the new node is rendered
             setTimeout(() => {
-                loadingNodeRef.current?.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'end' 
-                });
+                if (lastTimelineEntryRef.current) {
+                    lastTimelineEntryRef.current.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'end' 
+                    });
+                }
             }, 100);
         }
-    }, [isTimelineLoading]);
+        
+        // Update the previous length reference
+        previousTimelineLengthRef.current = currentLength;
+    }, [combinedTimeline.length]);
 
     // Calculate current stage index from API journey stages
     const currentStageIndex = journeyStages.findIndex((s) => s.is_current) >= 0 ? journeyStages.findIndex((s) => s.is_current) : journeyStages.filter((s) => s.is_completed).length - 1;
@@ -1125,7 +1138,11 @@ export default function PatientJourney() {
                                 const visitData = item.isFirstVisitOccurrence && entry.visit ? entry.visit : null;
                                 
                                 return (
-                                    <div key={`timeline-${item.id}`} className="relative mb-5 pl-12 sm:pl-16">
+                                    <div 
+                                        key={`timeline-${item.id}`} 
+                                        ref={isLast ? lastTimelineEntryRef : null}
+                                        className="relative mb-5 pl-12 sm:pl-16"
+                                    >
                                         {/* Dot */}
                                         <div className={`absolute left-3.5 top-2.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm border-4 border-white z-10 transition-all ${isCompleted ? 'bg-[#0078D4] shadow-lg' : 'bg-gray-300'}`} style={isCompleted ? { boxShadow: '0 4px 12px rgba(0, 120, 212, 0.3), 0 0 0 2px rgba(0, 120, 212, 0.1)' } : {}}>
                                             {getEventIcon(mapTimelineEntryToJourneyEvent(entry, index))}
