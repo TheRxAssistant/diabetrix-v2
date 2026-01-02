@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from '../unified-modal.module.scss';
 import { useUserDetails } from '../../../services/user-management/hooks-user-details';
+import { useAuthStore } from '@/store/authStore';
 
 const avatar = '/assets/images/avatar.png';
 
@@ -15,6 +16,15 @@ interface ProfilePageProps {
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ userData, selectedService, selectedPharmacies, messages, onLogout, onShowRequests }) => {
     const { user_details, is_loading, error, fetch_user_details } = useUserDetails();
+    const [insuranceDetails, setInsuranceDetails] = useState<any>(null);
+
+    const authStore = useAuthStore.getState();
+    const user = authStore.user;
+
+    useEffect(() => {
+        const insurance_details = user?.userData?.insurance_details || {};
+        setInsuranceDetails(insurance_details);
+    }, [user]);
 
     // Fetch user details on component mount
     useEffect(() => {
@@ -106,37 +116,37 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userData, selectedServ
                             <i className="fas fa-shield-alt"></i> Insurance Information
                         </h4>
                         <div className={styles.profile_info}>
-                            {displayUserData.insurance_details.provider && (
+                            {(displayUserData?.insurance_details?.provider || insuranceDetails?.provider) && (
                                 <div className={styles.info_row}>
                                     <span className={styles.info_label}>Provider:</span>
-                                    <span className={styles.info_value}>{displayUserData.insurance_details.provider}</span>
+                                    <span className={styles.info_value}>{displayUserData?.insurance_details?.provider || insuranceDetails?.provider}</span>
                                 </div>
                             )}
-                            {displayUserData.insurance_details.member_id && (
+                            {(displayUserData?.insurance_details?.member_id || insuranceDetails?.member_id) && (
                                 <div className={styles.info_row}>
                                     <span className={styles.info_label}>Member ID:</span>
-                                    <span className={styles.info_value}>{displayUserData.insurance_details.member_id}</span>
+                                    <span className={styles.info_value}>{displayUserData?.insurance_details?.member_id || insuranceDetails?.member_id}</span>
                                 </div>
                             )}
-                            {displayUserData.insurance_details.policy_number && (
+                            {(displayUserData?.insurance_details?.policy_number || insuranceDetails?.policy_number) && (
                                 <div className={styles.info_row}>
                                     <span className={styles.info_label}>Policy Number:</span>
-                                    <span className={styles.info_value}>{displayUserData.insurance_details.policy_number}</span>
+                                    <span className={styles.info_value}>{displayUserData?.insurance_details?.policy_number || insuranceDetails?.policy_number}</span>
                                 </div>
                             )}
-                            {displayUserData.insurance_details.group_number && (
+                            {(displayUserData?.insurance_details?.group_number || insuranceDetails?.group_number) && (
                                 <div className={styles.info_row}>
                                     <span className={styles.info_label}>Group Number:</span>
-                                    <span className={styles.info_value}>{displayUserData.insurance_details.group_number}</span>
+                                    <span className={styles.info_value}>{displayUserData?.insurance_details?.group_number || insuranceDetails?.group_number}</span>
                                 </div>
                             )}
-                            {displayUserData.insurance_details.effective_date && (
+                            {(displayUserData?.insurance_details?.effective_date || insuranceDetails?.effective_date) && (
                                 <div className={styles.info_row}>
                                     <span className={styles.info_label}>Effective Date:</span>
                                     <span className={styles.info_value}>{displayUserData.insurance_details.effective_date}</span>
                                 </div>
                             )}
-                            {!displayUserData.insurance_details.provider && !displayUserData.insurance_details.member_id && !displayUserData.insurance_details.policy_number && !displayUserData.insurance_details.group_number && !displayUserData.insurance_details.effective_date && <p className={styles.no_data}>No insurance information available</p>}
+                            {!displayUserData.insurance_details.provider || !insuranceDetails?.provider && <p className={styles.no_data}>No insurance information available</p>}
                         </div>
                     </div>
                 )}
