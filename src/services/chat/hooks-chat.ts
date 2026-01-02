@@ -44,6 +44,7 @@ export const useChat = () => {
                         event_name: 'conversation_started',
                         title: 'Conversation Started',
                         description: `Chat conversation started with conversation_id: ${conversationId}`,
+                        conversation_id: conversationId,
                         event_payload: {
                             conversation_id: conversationId,
                         },

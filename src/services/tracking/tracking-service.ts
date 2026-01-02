@@ -236,6 +236,7 @@ class TrackingService {
             event_payload: params.event_payload,
             title: params.title,
             description: params.description,
+            conversation_id: params.conversation_id,
         };
 
         try {

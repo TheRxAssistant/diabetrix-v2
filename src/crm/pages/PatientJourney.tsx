@@ -1369,9 +1369,9 @@ export default function PatientJourney() {
                                                                 </div>
                                                             )}
                                                             {/* Timeline Description */}
-                                                            {entry.timeline_description && (
+                                                            {entry.conversation_summary || entry.timeline_description && (
                                                                 <div className="text-gray-700 text-sm leading-relaxed break-words">
-                                                                    {entry.timeline_description}
+                                                                    {entry.conversation_summary || entry.timeline_description}
                                                                 </div>
                                                             )}
                                                             {/* Fallback if neither title nor description */}

@@ -41,5 +41,6 @@ export interface SyncTimelineParams {
     title: string;
     description: string;
     event_payload?: any;
+    conversation_id?: string;
 }
 
