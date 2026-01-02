@@ -280,7 +280,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('healthcare_search');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <Stethoscope className="w-8 h-8" />
                     </div>
                     <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Find Care</h3>
@@ -296,7 +296,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('pharmacy_select');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <MapPin className="w-8 h-8" />
                     </div>
                     <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Find Pharmacy</h3>
@@ -312,7 +312,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                             setStep('insurance_assistance');
                         }
                     }}>
-                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-14 h-14 bg-gradient-to-b from-slate-50 to-gray-200 rounded-2xl mb-3 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <DollarSign className="w-8 h-8" />
                     </div>
                     <h3 className="m-0 mb-1 text-sm font-semibold text-gray-900 leading-tight">Savings</h3>
@@ -325,19 +325,19 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                 <div className="flex items-center bg-white border border-gray-200 rounded-xl py-2 px-3 transition-all duration-200 mx-5 focus-within:border-gray-300 focus-within:shadow-none">
                     <Search className="w-5 h-5 text-gray-400" />
                     <input type="text" placeholder="Ask about your diabetes treatment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-2 px-3 border-none outline-none text-sm bg-transparent placeholder:text-gray-500" />
-                    <button className="flex items-center justify-center p-2 bg-blue-500 text-white border-none rounded-lg cursor-pointer transition-all duration-200 ml-2 hover:bg-blue-600 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSearch} disabled={!searchQuery.trim()}>
+                    <button className="flex items-center justify-center p-2 bg-blue-500 text-white border-none rounded-lg cursor-pointer transition-all duration-200 ml-2 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSearch} disabled={!searchQuery.trim()}>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
             {/* Recent Requests Section */}
-            <RecentRequests requests={requests} loadingRequestId={loadingRequestId} onRequestAction={handleRequestAction} isNewRoute={isNewRoute} onFindPharmacy={handleFindPharmacy} />
+            <RecentRequests requests={requests} loadingRequestId={loadingRequestId} onRequestAction={handleRequestAction} isNewRoute={isNewRoute} onFindPharmacy={handleFindPharmacy} is_loading={is_loading} />
 
             {/* Healthcare Options Grid */}
             <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white rounded-t-xl border-t border-gray-200">
                 <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <Pill className="w-6 h-6" />
                     </div>
                     <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">About diabetrix</h4>
@@ -345,7 +345,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                 </button>
 
                 <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <BookOpen className="w-6 h-6" />
                     </div>
                     <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">About diabetes</h4>
@@ -353,7 +353,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
                 </button>
 
                 <button className="flex flex-col items-center p-4 px-3 bg-slate-50 border border-gray-200 rounded-xl cursor-pointer transition-all duration-300 text-center min-h-[100px] hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500 hover:bg-white active:translate-y-0 group" onClick={() => openChatWithMessage('Help', 'Help')}>
-                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:scale-105">
+                    <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-b from-slate-100 to-gray-200 rounded-xl mb-2 text-blue-500 transition-all duration-300 group-hover:bg-gradient-to-b group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white">
                         <Syringe className="w-6 h-6" />
                     </div>
                     <h4 className="m-0 mb-1 text-xs font-semibold text-gray-900 leading-tight">Help</h4>
