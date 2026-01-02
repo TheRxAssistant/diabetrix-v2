@@ -106,10 +106,10 @@ export const useRxRequests = () => {
                 user_address,
                 user_zipcode,
                 user_insurance_details,
-                drug_brand_name,
-                drug_form,
-                drug_quantity,
-                drug_strength,
+                drug_brand_name: drug_brand_name || 'diabetrix',
+                drug_form: drug_form || 'tablet',
+                drug_quantity: drug_quantity || '30',
+                drug_strength: drug_strength || '500mg',
             });
 
             if (statusCode === 200) {
