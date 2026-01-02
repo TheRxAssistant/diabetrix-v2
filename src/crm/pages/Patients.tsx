@@ -247,18 +247,11 @@ export default function AllPatients() {
             title: 'Action',
             key: 'action',
             render: (_: any, record: Patient) => (
-                <div className="flex gap-2">
-                    <Link to={`/crm/patients/${record.user_id}/journey`}>
-                        <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
-                            Journey
-                        </Button>
-                    </Link>
-                    <Link to={`/crm/patients/${record.user_id}`}>
-                        <Button type="link" className="p-0 text-[#0078D4]">
-                            Details
-                        </Button>
-                    </Link>
-                </div>
+                <Link to={`/crm/patients/${record.user_id}/journey`}>
+                    <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
+                        Journey
+                    </Button>
+                </Link>
             ),
         },
     ];
