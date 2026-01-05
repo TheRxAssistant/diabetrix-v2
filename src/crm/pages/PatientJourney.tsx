@@ -51,7 +51,7 @@ interface ApiTimelineEntry {
     decision_summary?: string | null;
     timeline_description: string;
     timeline_title: string | null;
-    conversation_summary?: string | null;
+    conversation_summary?: string[] | null;
     visit?: {
         visit_id: string;
         created_at: Date | string;
@@ -1369,11 +1369,38 @@ export default function PatientJourney() {
                                                                 </div>
                                                             )}
                                                             {/* Timeline Description */}
-                                                            {entry.conversation_summary || entry.timeline_description && (
-                                                                <div className="text-gray-700 text-sm leading-relaxed break-words">
-                                                                    {entry.conversation_summary || entry.timeline_description}
-                                                                </div>
-                                                            )}
+                                                            {(() => {
+                                                                // Check if conversation_summary is an array with items
+                                                                if (Array.isArray(entry.conversation_summary) && entry.conversation_summary.length > 0) {
+                                                                    return (
+                                                                        <div className="pt-2.5 space-y-2.5">
+                                                                            {entry.conversation_summary.map((point, index) => (
+                                                                                <div 
+                                                                                    key={index} 
+                                                                                    className="flex items-start gap-3 group relative pl-1"
+                                                                                >
+                                                                                    <div className="flex-shrink-0 mt-1.5 relative">
+                                                                                        <div className="absolute inset-0 bg-[#0078D4] rounded-full opacity-20 group-hover:opacity-30 transition-opacity animate-pulse"></div>
+                                                                                        <div className="relative w-2 h-2 rounded-full bg-gradient-to-br from-[#0078D4] to-[#005a9e] shadow-md group-hover:shadow-lg group-hover:scale-110 transition-all duration-200 ring-2 ring-[#0078D4]/20 group-hover:ring-[#0078D4]/40"></div>
+                                                                                    </div>
+                                                                                    <p className="text-sm text-gray-700 leading-relaxed break-words flex-1 group-hover:text-gray-900 transition-all duration-200" style={{ fontWeight: 500 }}>
+                                                                                        {point}
+                                                                                    </p>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                // Fallback to conversation_summary string or timeline_description
+                                                                if (entry.conversation_summary || entry.timeline_description) {
+                                                                    return (
+                                                                        <div className="text-gray-700 text-sm leading-relaxed break-words">
+                                                                            {typeof entry.conversation_summary === 'string' ? entry.conversation_summary : entry.timeline_description}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
                                                             {/* Fallback if neither title nor description */}
                                                             {!entry.timeline_title && !entry.timeline_description && (
                                                                 <div className="text-gray-900 text-sm font-semibold leading-snug break-words">
