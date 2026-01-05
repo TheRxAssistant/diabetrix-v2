@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { isValidPhoneNumber } from '../utils/phone-utils';
 
 const avatar = '/assets/images/avatar.png';
 
@@ -19,6 +20,54 @@ export const PhoneStep: React.FC<PhoneStepProps> = ({
     onSubmit,
     onBack
 }) => {
+    const hasSubmittedRef = useRef(false);
+    const prevPhoneNumberRef = useRef(phoneNumber);
+    const isInitialMountRef = useRef(true);
+
+    // Reset ref on mount to prevent auto-submit when navigating back
+    useEffect(() => {
+        hasSubmittedRef.current = false;
+        prevPhoneNumberRef.current = phoneNumber;
+        isInitialMountRef.current = true;
+        // Mark that initial mount is complete after a brief delay
+        const timer = setTimeout(() => {
+            isInitialMountRef.current = false;
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Auto-submit when phone number reaches 10 digits
+    useEffect(() => {
+        const prevPhone = prevPhoneNumberRef.current;
+        const currentPhone = phoneNumber;
+        
+        // Update previous phone number
+        prevPhoneNumberRef.current = currentPhone;
+
+        // Reset ref when phone number becomes invalid (user edits it)
+        if (!isValidPhoneNumber(currentPhone)) {
+            hasSubmittedRef.current = false;
+            return;
+        }
+
+        // Only auto-submit if:
+        // 1. Phone number is valid (10 digits)
+        // 2. Not loading and no error
+        // 3. Not already submitted
+        // 4. Phone number increased in length (user is typing forward, not navigating back)
+        //    This prevents auto-submit when navigating back (component mounts with existing 10-digit number)
+        const prevDigits = prevPhone.replace(/\D/g, '').length;
+        const currentDigits = currentPhone.replace(/\D/g, '').length;
+        const isTypingForward = currentDigits > prevDigits;
+
+        if (!isLoading && !error && !hasSubmittedRef.current && isTypingForward) {
+            hasSubmittedRef.current = true;
+            const syntheticEvent = {
+                preventDefault: () => {},
+            } as React.FormEvent;
+            onSubmit(syntheticEvent);
+        }
+    }, [phoneNumber, isLoading, error, onSubmit]);
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Header */}

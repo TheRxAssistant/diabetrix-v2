@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { isValidOtp } from '../utils/phone-utils';
 
 const avatar = '/assets/images/avatar.png';
 
@@ -21,6 +22,64 @@ export const OtpStep: React.FC<OtpStepProps> = ({
     onSubmit,
     onBack
 }) => {
+    const hasSubmittedRef = useRef(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const prevOtpRef = useRef(otp);
+    const isInitialMountRef = useRef(true);
+
+    // Reset ref on mount to prevent auto-submit when navigating back
+    useEffect(() => {
+        hasSubmittedRef.current = false;
+        prevOtpRef.current = otp;
+        isInitialMountRef.current = true;
+        // Mark that initial mount is complete after a brief delay
+        const timer = setTimeout(() => {
+            isInitialMountRef.current = false;
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Autofocus input when component mounts
+    useEffect(() => {
+        // Small delay to ensure the modal animation completes
+        const timer = setTimeout(() => {
+            inputRef.current?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Auto-submit when OTP reaches 6 digits
+    useEffect(() => {
+        const prevOtp = prevOtpRef.current;
+        const currentOtp = otp;
+        
+        // Update previous OTP
+        prevOtpRef.current = currentOtp;
+
+        // Reset ref when OTP becomes invalid (user edits it)
+        if (!isValidOtp(currentOtp)) {
+            hasSubmittedRef.current = false;
+            return;
+        }
+
+        // Only auto-submit if:
+        // 1. OTP is valid (6 digits)
+        // 2. Not loading and no error
+        // 3. Not already submitted
+        // 4. OTP length increased (user is typing forward, not navigating back)
+        //    This prevents auto-submit when navigating back (component mounts with existing 6-digit OTP)
+        const prevLength = prevOtp.length;
+        const currentLength = currentOtp.length;
+        const isTypingForward = currentLength > prevLength;
+
+        if (!isLoading && !error && !hasSubmittedRef.current && isTypingForward) {
+            hasSubmittedRef.current = true;
+            const syntheticEvent = {
+                preventDefault: () => {},
+            } as React.FormEvent;
+            onSubmit(syntheticEvent);
+        }
+    }, [otp, isLoading, error, onSubmit]);
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Header */}
@@ -49,6 +108,7 @@ export const OtpStep: React.FC<OtpStepProps> = ({
                             Verification Code
                         </label>
                         <input
+                            ref={inputRef}
                             id="otp"
                             type="text"
                             value={otp}

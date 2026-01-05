@@ -46,7 +46,7 @@ interface HealthcareProviderSearchProps {
     embedded?: boolean; // Whether component is embedded in another modal
 }
 
-export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinologist', embedded = false }) => {
+export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinology', embedded = false }) => {
     const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection } = useProviderSearch();
 
     // Legacy state for backward compatibility
@@ -185,8 +185,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             const lng = provider.longitude || provider.provider_lng || provider.provider_full_address_obj?.long;
 
             // Only use fallback coordinates if no valid coordinates found
-            const finalLat = (typeof lat === 'number' && !isNaN(lat)) ? lat : (lat !== undefined && lat !== null ? parseFloat(lat) : null);
-            const finalLng = (typeof lng === 'number' && !isNaN(lng)) ? lng : (lng !== undefined && lng !== null ? parseFloat(lng) : null);
+            const finalLat = typeof lat === 'number' && !isNaN(lat) ? lat : lat !== undefined && lat !== null ? parseFloat(lat) : null;
+            const finalLng = typeof lng === 'number' && !isNaN(lng) ? lng : lng !== undefined && lng !== null ? parseFloat(lng) : null;
 
             if (finalLat !== null && finalLng !== null && !isNaN(finalLat) && !isNaN(finalLng)) {
                 allProviders.push({
@@ -210,8 +210,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             const lat = facility.facility_full_address_obj?.lat || facilityAny.latitude;
             const lng = facility.facility_full_address_obj?.long || facilityAny.longitude;
 
-            const finalLat = (typeof lat === 'number' && !isNaN(lat)) ? lat : (lat !== undefined && lat !== null ? parseFloat(lat) : null);
-            const finalLng = (typeof lng === 'number' && !isNaN(lng)) ? lng : (lng !== undefined && lng !== null ? parseFloat(lng) : null);
+            const finalLat = typeof lat === 'number' && !isNaN(lat) ? lat : lat !== undefined && lat !== null ? parseFloat(lat) : null;
+            const finalLng = typeof lng === 'number' && !isNaN(lng) ? lng : lng !== undefined && lng !== null ? parseFloat(lng) : null;
 
             if (finalLat !== null && finalLng !== null && !isNaN(finalLat) && !isNaN(finalLng)) {
                 allProviders.push({
@@ -299,8 +299,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 provider_facilities: provider.provider_facilities,
                 provider_full_address_obj: addressObj,
                 // Include latitude/longitude directly for PlotMap compatibility
-                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
-                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
+                latitude: typeof lat === 'number' ? lat : lat !== undefined ? parseFloat(lat) : undefined,
+                longitude: typeof lng === 'number' ? lng : lng !== undefined ? parseFloat(lng) : undefined,
                 is_bookmarked: provider.is_bookmarked,
             };
         });
@@ -503,14 +503,18 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                             const lng = provider.longitude || provider.provider_full_address_obj?.long;
                             setSelectedMapProvider({
                                 ...provider,
-                                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
-                                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
-                                provider_lat: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
-                                provider_lng: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
-                                provider_full_address_obj: provider.provider_full_address_obj || (lat !== undefined && lng !== undefined ? {
-                                    lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                    long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                } : undefined),
+                                latitude: typeof lat === 'number' ? lat : lat !== undefined ? parseFloat(lat) : undefined,
+                                longitude: typeof lng === 'number' ? lng : lng !== undefined ? parseFloat(lng) : undefined,
+                                provider_lat: typeof lat === 'number' ? lat : lat !== undefined ? parseFloat(lat) : undefined,
+                                provider_lng: typeof lng === 'number' ? lng : lng !== undefined ? parseFloat(lng) : undefined,
+                                provider_full_address_obj:
+                                    provider.provider_full_address_obj ||
+                                    (lat !== undefined && lng !== undefined
+                                        ? {
+                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                          }
+                                        : undefined),
                             });
                             setShowMapView(true);
                         }}>
@@ -587,14 +591,18 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                 provider_id: facility.facility_id,
                                 provider_name: facility.facility_name,
                                 provider_address: facility.facility_address,
-                                latitude: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
-                                longitude: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
-                                provider_lat: typeof lat === 'number' ? lat : (lat !== undefined ? parseFloat(lat) : undefined),
-                                provider_lng: typeof lng === 'number' ? lng : (lng !== undefined ? parseFloat(lng) : undefined),
-                                facility_full_address_obj: facility.facility_full_address_obj || (lat !== undefined && lng !== undefined ? {
-                                    lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                    long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                } : undefined),
+                                latitude: typeof lat === 'number' ? lat : lat !== undefined ? parseFloat(lat) : undefined,
+                                longitude: typeof lng === 'number' ? lng : lng !== undefined ? parseFloat(lng) : undefined,
+                                provider_lat: typeof lat === 'number' ? lat : lat !== undefined ? parseFloat(lat) : undefined,
+                                provider_lng: typeof lng === 'number' ? lng : lng !== undefined ? parseFloat(lng) : undefined,
+                                facility_full_address_obj:
+                                    facility.facility_full_address_obj ||
+                                    (lat !== undefined && lng !== undefined
+                                        ? {
+                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                          }
+                                        : undefined),
                             } as MapProvider);
                             setShowMapView(true);
                         }}>
@@ -701,7 +709,16 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 <p className="text-gray-600 mb-4">Search for doctors, hospitals, and healthcare services in your area</p>
 
                 <div className="mb-4">
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" value={searchTerm} onChange={(e) => { setCategorySelected(false); setSearchTerm(e.target.value); }} placeholder="Search specialty (e.g., Dermatology)" />
+                    <input
+                        type="text"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setCategorySelected(false);
+                            setSearchTerm(e.target.value);
+                        }}
+                        placeholder="Search specialty (e.g., Dermatology)"
+                    />
                 </div>
                 {/* 
                 <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2" onClick={() => setShowEarliestAppointmentModal(true)}>
@@ -805,7 +822,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         if (currentCategory) {
                             // Call API with current category and selected insurance
                             await handleCategorySelection(currentCategory, userLocation, first_name, last_name, insuranceOption);
-                        } else if (searchTerm && searchTerm.trim() !== 'endocrinologist') {
+                        } else if (searchTerm && searchTerm.trim() !== 'endocrinology') {
                             // Create a default category from searchTerm
                             const defaultCategory: SearchCategory = {
                                 care_category_name: searchTerm,
@@ -817,8 +834,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         } else {
                             // Use default endocrinologist category
                             const defaultCategory: SearchCategory = {
-                                care_category_name: 'endocrinologist',
-                                category_name: 'endocrinologist',
+                                care_category_name: 'endocrinology',
+                                category_name: 'endocrinology',
                                 care_category_type: 'specialty',
                                 category_type: 'specialty',
                             };
