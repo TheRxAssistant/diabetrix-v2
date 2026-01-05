@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styles from './unified-modal.module.scss';
-import { sendMedicationAvailability, sendWelcomeMessage } from '../../services/smsService';
+import { sendMedicationAvailability, sendWelcomeMessage } from '@/services/smsService.ts';
 import { featuredPharmacies } from '../../data/pharmacies/pharmacies';
 import { AIService } from '../../services/ai-service';
-import { postAPI, INDEX_MEMBER_API_URLS } from '../../services/api';
+import { postAPI } from '../../services/api';
 import ChatHeader from '../chat/chat-header/chat-header';
 import ChatBody from '../chat/chat-body/chat-body';
 import ChatFooter from '../chat/chat-footer/chat-footer';
@@ -800,11 +800,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
             const last_name = userData?.last_name || userData?.user?.last_name || '';
             const user_name = `${first_name} ${last_name}`.trim() || 'User';
             const user_phone = phoneNumber || userData?.phone_number || userData?.user?.phone_number || '';
-            const user_address = userData?.address 
-                ? (typeof userData.address === 'string' 
-                    ? userData.address 
-                    : `${userData.address.street || ''}, ${userData.address.city || ''}, ${userData.address.state || ''}`.trim())
-                : '';
+            const user_address = userData?.address ? (typeof userData.address === 'string' ? userData.address : `${userData.address.street || ''}, ${userData.address.city || ''}, ${userData.address.state || ''}`.trim()) : '';
             const user_zipcode = userData?.address?.zip_code || userData?.zip_code || userData?.address?.zip || '';
             const drug_brand_name = drugName || userData?.drug_name || 'Diabetrix';
             const drug_strength = userData?.drug_strength || userData?.strength || '';
@@ -1045,7 +1041,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
                         className={styles.close_btn}
                         onClick={handleClose}
                         style={{
-                            top:  step === 'healthcare_search' ? '14px' : '20px',
+                            top: step === 'healthcare_search' ? '14px' : '20px',
                         }}
                         onTouchStart={(e) => {
                             e.stopPropagation();
@@ -1072,7 +1068,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
                     </div>
 
                     {/* Bottom Navigation Component */}
-                    <BottomNavigation step={step} setStep={handleSetStep} openEmbeddedChatAndSend={openEmbeddedChatAndSend} />
+                    <BottomNavigation step={step} setStep={handleSetStep} openEmbeddedChatAndSend={openEmbeddedChatAndSend} isAuthenticated={isAuthenticatedSession} />
                 </div>
             </div>
 

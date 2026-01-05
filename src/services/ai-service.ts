@@ -1,4 +1,4 @@
-import { postAPI, INDEX_MEMBER_API_URLS, CAPABILITIES_API_URLS } from './api';
+import { postAPI, CAPABILITIES_API_URLS } from './api';
 
 // AI Service for generating quick replies and contextual responses
 export interface AIResponse {
@@ -33,7 +33,6 @@ export interface IntelligentOptionsResult {
 }
 
 export class AIService {
-
     /**
      * Generate contextual quick replies based on conversation history or search text
      * Schema: search_text is optional. If provided, send both messages and search_text. Otherwise, send only messages array.
@@ -42,9 +41,9 @@ export class AIService {
         try {
             // Build payload: messages is always sent, search_text is optional
             const payload: { search_text?: string; messages: any[] } = {
-                messages: Array.isArray(messages) ? messages : []
+                messages: Array.isArray(messages) ? messages : [],
             };
-            
+
             // If search_text is provided, add it to payload (optional field)
             if (search_text && search_text.trim()) {
                 payload.search_text = search_text.trim();
@@ -54,7 +53,7 @@ export class AIService {
 
             console.log('📡 API Response status:', result.statusCode);
             console.log('text', result.data);
-            
+
             if (result.statusCode === 200 && result.data.quick_replies && result.data.quick_replies.length > 0) {
                 // Map the response to match QuickReply interface
                 return result.data.quick_replies.map((reply: any) => ({
@@ -67,42 +66,6 @@ export class AIService {
         } catch (error) {
             console.error('Error generating quick replies:', error);
             return this.getFallbackQuickReplies();
-        }
-    }
-
-    /**
-     * Generate a response to help clarify user intent
-     */
-    static async generateClarificationResponse(userMessage: string, conversationHistory: any[]): Promise<string> {
-        try {
-            const context = this.buildConversationContext(conversationHistory);
-
-            const prompt = `
-        The user just said: "${userMessage}"
-        
-        Conversation history:
-        ${context}
-        
-        Generate a helpful clarifying question or response to better understand what the user needs help with regarding their healthcare or pharmaceutical assistance.
-      `;
-
-            const result = await postAPI(INDEX_MEMBER_API_URLS.AI_GENERATE_TEXT, {
-                prompt,
-            });
-
-            if (result.statusCode !== 200) {
-                throw new Error(`AI service error: ${result.statusCode} - ${result.message}`);
-            }
-
-            const data = result.data as any;
-
-            // Try both possible response structures
-            const text = data?.data?.res?.text || data?.res?.text || (data as AIResponse)?.res?.text;
-
-            return text || 'Could you please provide more details about how I can help you?';
-        } catch (error) {
-            console.error('Error generating clarification response:', error);
-            return 'Could you please provide more details about how I can help you?';
         }
     }
 
@@ -147,29 +110,35 @@ export class AIService {
             const result = await postAPI(CAPABILITIES_API_URLS.GENERATE_INTELLIGENT_OPTIONS, payload);
 
             console.log('📡 Intelligent Options API Response:', result.statusCode);
-            
+
             if (result.statusCode === 200) {
                 const hasOptions = result.data.options && result.data.options.length > 0;
                 const hasInputFields = result.data.input_fields && result.data.input_fields.length > 0;
                 const hasActionLink = result.data.action_link && result.data.action_link.url;
-                
+
                 if (hasOptions || hasInputFields || hasActionLink) {
                     return {
-                        options: hasOptions ? result.data.options.map((option: any) => ({
-                            text: option.text || option,
-                            type: 'action',
-                        })) : [],
-                        input_fields: hasInputFields ? result.data.input_fields.map((field: any) => ({
-                            field_type: field.field_type,
-                            label: field.label,
-                            placeholder: field.placeholder,
-                        })) : [],
+                        options: hasOptions
+                            ? result.data.options.map((option: any) => ({
+                                  text: option.text || option,
+                                  type: 'action',
+                              }))
+                            : [],
+                        input_fields: hasInputFields
+                            ? result.data.input_fields.map((field: any) => ({
+                                  field_type: field.field_type,
+                                  label: field.label,
+                                  placeholder: field.placeholder,
+                              }))
+                            : [],
                         option_type: result.data.option_type || 'generic',
-                        action_link: hasActionLink ? {
-                            url: result.data.action_link.url,
-                            label: result.data.action_link.label,
-                            open_in_new_tab: result.data.action_link.open_in_new_tab,
-                        } : null,
+                        action_link: hasActionLink
+                            ? {
+                                  url: result.data.action_link.url,
+                                  label: result.data.action_link.label,
+                                  open_in_new_tab: result.data.action_link.open_in_new_tab,
+                              }
+                            : null,
                     };
                 }
             }
@@ -216,4 +185,3 @@ export class AIService {
         ); // Only for substantial responses
     }
 }
-

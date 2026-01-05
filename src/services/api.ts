@@ -1,14 +1,12 @@
 /**
  * Get base URL from environment variables with fallback defaults
  */
-const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'RX_HUB' | 'CAPABILITIES' | 'CORE_ENGINE'): string => {
+const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'CAPABILITIES' | 'CORE_ENGINE'): string => {
     const env = import.meta.env;
 
     switch (apiType) {
         case 'INDEX_MEMBER':
             return env.VITE_API_INDEX_MEMBER_BASE_URL || 'https://index-member-be-dev.healthbackend.com';
-        case 'RX_HUB':
-            return env.VITE_API_RX_HUB_BASE_URL || 'https://rx-hub-be-dev.healthbackend.com';
         case 'CAPABILITIES':
             return env.VITE_API_CAPABILITIES_BASE_URL || 'https://capabilities-ai-be-dev.healthbackend.com';
         case 'CORE_ENGINE':
@@ -22,7 +20,7 @@ const getBaseUrl = (apiType: 'INDEX_MEMBER' | 'RX_HUB' | 'CAPABILITIES' | 'CORE_
  * Centralized POST API function
  * Supports both endpoint keys and full URLs
  */
-export const postAPI = async (url: string | keyof typeof INDEX_MEMBER_API_URLS | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS, payload: any = {}, abortSignal?: AbortSignal): Promise<{ statusCode: number; message: string; data: any }> => {
+export const postAPI = async (url: string | keyof typeof CAPABILITIES_API_URLS | keyof typeof CORE_ENGINE_API_URLS, payload: any = {}, abortSignal?: AbortSignal): Promise<{ statusCode: number; message: string; data: any }> => {
     // Import auth store to get tokens
     const { useAuthStore } = await import('../store/authStore');
     const authStore = useAuthStore.getState();
@@ -36,19 +34,8 @@ export const postAPI = async (url: string | keyof typeof INDEX_MEMBER_API_URLS |
         let apiPath = '';
         let baseUrl = '';
 
-        // Check if it's a key in INDEX_MEMBER_API_URLS
-        if (url in INDEX_MEMBER_API_URLS) {
-            apiPath = INDEX_MEMBER_API_URLS[url as keyof typeof INDEX_MEMBER_API_URLS];
-            baseUrl = getBaseUrl('INDEX_MEMBER');
-        }
-        // Check if it's a value in INDEX_MEMBER_API_URLS
-        else if (Object.values(INDEX_MEMBER_API_URLS).includes(url as any)) {
-            apiPath = url as string;
-            baseUrl = getBaseUrl('INDEX_MEMBER');
-        }
-
         // Check if it's a key in CAPABILITIES_API_URLS
-        else if (url in CAPABILITIES_API_URLS) {
+        if (url in CAPABILITIES_API_URLS) {
             apiPath = CAPABILITIES_API_URLS[url as keyof typeof CAPABILITIES_API_URLS];
             baseUrl = getBaseUrl('CAPABILITIES');
         }
@@ -255,13 +242,6 @@ export const streamAPI = async (url: keyof typeof CORE_ENGINE_API_URLS, payload:
         throw error;
     }
 };
-
-// Index Member API endpoints (auth, AI)
-export const INDEX_MEMBER_API_URLS = {
-    // AI
-    AI_GENERATE_OBJECT: 'ai/generate-object',
-    AI_GENERATE_TEXT: 'ai/generate-text',
-} as const;
 
 // Capabilities API endpoints
 export const CAPABILITIES_API_URLS = {

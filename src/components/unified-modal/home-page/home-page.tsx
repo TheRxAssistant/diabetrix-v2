@@ -75,18 +75,18 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
         const generateDescription = (): string => {
             const task_type = approved_request.task_type_name?.toLowerCase() || '';
             const json_data = approved_request.request_json || {};
-            
+
             if (task_type === 'doctor-appointment-booking') {
                 let appointment_data = json_data.appointment_with_details || {};
                 const provider_name = appointment_data.provider_name || appointment_data.doctor_name;
-                
+
                 if (provider_name) {
                     return `Appointment Request for ${provider_name} on ${appointment_data.appointment_date_time || appointment_data.availability || ''}`;
                 } else {
                     return `Appointment Request`;
                 }
             }
-            
+
             return approved_request.request_details || approved_request.request_name;
         };
 
@@ -277,7 +277,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             <div className="px-6 py-6 bg-white border-b border-gray-200 mb-4">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center text-left">
-                        <img src={diabetrixLogo} alt="Diabetrix" className="w-8 h-8 rounded-md mr-3" />
+                        <img src={diabetrixLogo} alt="Diabetrix" className="h-8 w-auto rounded-md mr-3 object-contain" />
                         <div className="flex flex-col">
                             <h1 className="text-lg font-semibold text-gray-900 leading-tight mb-0.5">Diabetrix® Care</h1>
                             <p className="text-xs text-gray-600 font-normal m-0">Your health companion</p>
@@ -344,19 +344,8 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             <div className="mb-6 px-5">
                 <div className="flex items-center bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-2xl py-3 px-4 transition-all duration-300 shadow-md shadow-gray-100/50 focus-within:border-blue-400/60 focus-within:shadow-xl focus-within:shadow-blue-100/50 focus-within:bg-white">
                     <Search className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                    <input 
-                        type="text" 
-                        placeholder="Ask about your diabetes treatment..." 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        onKeyPress={handleSearchKeyPress} 
-                        className="flex-1 py-1 px-2 border-none outline-none text-sm bg-transparent placeholder:text-gray-400 text-gray-900 font-medium" 
-                    />
-                    <button 
-                        className="flex items-center justify-center p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl cursor-pointer transition-all duration-300 ml-2 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-200/50 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none" 
-                        onClick={handleSearch} 
-                        disabled={!searchQuery.trim()}
-                    >
+                    <input type="text" placeholder="Ask about your diabetes treatment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-1 px-2 border-none outline-none text-sm bg-transparent placeholder:text-gray-400 text-gray-900 font-medium" />
+                    <button className="flex items-center justify-center p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl cursor-pointer transition-all duration-300 ml-2 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-200/50 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none" onClick={handleSearch} disabled={!searchQuery.trim()}>
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
