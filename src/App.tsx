@@ -7,6 +7,7 @@ import FindDoctor from './pages/FindDoctor';
 import Campaigns from './crm/pages/Campaigns';
 import Patients from './crm/pages/Patients';
 import PatientJourney from './crm/pages/PatientJourney';
+import Analytics from './crm/pages/Analytics';
 
 function PatientDetailsRedirect() {
     const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ function App() {
                 <Route path="/find-doctor" element={<FindDoctor />} />
                 <Route path="/crm" element={<Navigate to="/crm/patients" replace />} />
                 <Route path="/crm/marketing/campaigns" element={<Campaigns />} />
+                <Route path="/crm/analytics" element={<Analytics />} />
                 <Route path="/crm/patients" element={<Patients />} />
                 <Route path="/crm/patients/:id" element={<PatientDetailsRedirect />} />
                 <Route path="/crm/patients/:id/journey" element={<PatientJourney />} />

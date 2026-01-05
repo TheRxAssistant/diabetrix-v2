@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaUser, FaChartLine } from 'react-icons/fa';
+import { FaUser, FaChartLine, FaChartBar } from 'react-icons/fa';
 import Avatar from './ui/Avatar';
 import avatarImage from '../../assets/images/avatar.png';
 import DiabetrixIcon from './ui/DiabetrixIcon';
@@ -16,6 +16,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (location.pathname === '/crm/patients') return '2';
         if (location.pathname.includes('/crm/patients/')) return '2';
         if (location.pathname.includes('/crm/marketing')) return '5';
+        if (location.pathname.includes('/crm/analytics')) return '6';
         return '2';
     });
 
@@ -24,6 +25,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const menuItems = [
         { key: '2', icon: <FaUser />, label: 'Patient Journeys', path: '/crm/patients' },
         { key: '5', icon: <FaChartLine />, label: 'Marketing', path: '/crm/marketing/campaigns' },
+        { key: '6', icon: <FaChartBar />, label: 'Analytics', path: '/crm/analytics' },
     ];
 
     return (
