@@ -21,18 +21,39 @@ export const useChat = () => {
     const [streaming_message, set_streaming_message] = useState<string>('');
     const [error_message, set_error_message] = useState<string | null>(null);
 
-    const authStore = useAuthStore.getState();
-    const user = authStore.user;
-    const user_id = user?.userData?.user_id || '';
-
     const createChatThread = async () => {
         set_is_loading(true);
         set_error_message(null);
 
+        // Try to get user_id from multiple sources
+        let user_id: string | undefined;
+
+        // First, try from authStore
+        const authStore = useAuthStore.getState();
+        const user = authStore.user;
+        if (user?.userData?.user_id && user.userData.user_id.trim() !== '') {
+            user_id = user.userData.user_id;
+        }
+
+        // If not found, try from localStorage
+        if (!user_id) {
+            try {
+                const storedUserDetails = localStorage.getItem('diabetrix_user_details');
+                if (storedUserDetails) {
+                    const parsed = JSON.parse(storedUserDetails);
+                    if (parsed.user_id && parsed.user_id.trim() !== '') {
+                        user_id = parsed.user_id;
+                    }
+                }
+            } catch (error) {
+                console.error('Error reading user details from localStorage:', error);
+            }
+        }
+
         try {
             const { statusCode, data, message } = await postAPI(CORE_ENGINE_API_URLS.SYNC_CHAT_THREAD, {
                 context: {},
-                user_id: user_id,
+                user_id: user_id || '',
             });
 
             set_is_loading(false);
