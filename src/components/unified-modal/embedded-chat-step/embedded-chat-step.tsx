@@ -96,6 +96,24 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                        isChatActive;
 
         if (shouldGenerateOptions) {
+            // Check if the last assistant message contains "upload" and "insurance card"
+            // If so, skip calling intelligent options API (insurance upload button will be shown instead)
+            const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
+            const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+            const messageContent = (lastAssistantMessage?.content || '').toLowerCase();
+            const shouldSkipIntelligentOptions = messageContent.includes('upload') && messageContent.includes('insurance card');
+            
+            if (shouldSkipIntelligentOptions) {
+                console.log('⏭️ Skipping intelligent options API - insurance upload detected');
+                intelligentOptionsGeneratedRef.current = true;
+                lastMessageCountForIntelligentOptions.current = messages.length;
+                set_intelligent_options([]);
+                set_intelligent_input_fields([]);
+                set_intelligent_action_link(null);
+                set_intelligent_options_loading(false);
+                return;
+            }
+            
             // Check if we need to regenerate (new message arrived or first time)
             const currentMessageCount = messages.length;
             const needsRegeneration = !intelligentOptionsGeneratedRef.current || 
@@ -115,9 +133,6 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         });
 
                         // Get the last assistant message
-                        const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
-                        const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
-                        
                         if (!lastAssistantMessage) {
                             console.log('⚠️ No assistant message found');
                             set_intelligent_options_loading(false);
@@ -175,6 +190,23 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     // Generate quick replies when input is disabled (legacy - keeping for fallback)
     useEffect(() => {
         if (!show_input && chat_mode === 'input') {
+            // Check if the last assistant message contains "upload" and "insurance card"
+            // If so, skip generating quick replies (intelligent options will handle it)
+            const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
+            const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+            const messageContent = (lastAssistantMessage?.content || '').toLowerCase();
+            const shouldSkipQuickReplies = messageContent.includes('upload') && messageContent.includes('insurance card');
+            
+            // Also skip if intelligent options are already being shown
+            const hasIntelligentOptions = intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link;
+            
+            if (shouldSkipQuickReplies || hasIntelligentOptions) {
+                console.log('⏭️ Skipping quick replies - intelligent options detected');
+                quickRepliesGeneratedForDisabledInput.current = false;
+                onSetShowQuickReplies(false);
+                return;
+            }
+            
             // Reset the flag when input becomes disabled
             if (!quickRepliesGeneratedForDisabledInput.current) {
                 quickRepliesGeneratedForDisabledInput.current = true;
@@ -188,7 +220,6 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         });
 
                         // Use messages if available, otherwise use empty array (API will handle it)
-                        const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
                         const quickReplies = await AIService.generateQuickReplies(currentMessages.length > 0 ? currentMessages : []);
                         const replyTexts = quickReplies.map((reply) => reply.text);
                         console.log('✨ Generated quick replies:', replyTexts);
@@ -221,7 +252,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
             // Reset flag when input becomes visible again
             quickRepliesGeneratedForDisabledInput.current = false;
         }
-    }, [show_input, chat_mode, isChatActive, messages.length, isLearnFlow, onSetCurrentQuickReplies, onSetShowQuickReplies]);
+    }, [show_input, chat_mode, isChatActive, messages.length, isLearnFlow, onSetCurrentQuickReplies, onSetShowQuickReplies, intelligent_options.length, intelligent_input_fields.length, intelligent_action_link, messages]);
 
     // Clear MCQ options when switching modes
     useEffect(() => {
@@ -243,11 +274,21 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
 
     // Show quick replies once they're available after streaming ends
     useEffect(() => {
-        if (!is_streaming && currentQuickReplies.length > 0 && !showQuickReplies) {
+        // Check if we should skip quick replies due to intelligent options
+        const currentMessages = isLearnFlow && messages.length > 2 ? messages.slice(2) : messages;
+        const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+        const messageContent = (lastAssistantMessage?.content || '').toLowerCase();
+        const shouldSkipQuickReplies = messageContent.includes('upload') && messageContent.includes('insurance card');
+        const hasIntelligentOptions = intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link;
+        
+        if (!is_streaming && currentQuickReplies.length > 0 && !showQuickReplies && !shouldSkipQuickReplies && !hasIntelligentOptions) {
             // Show quick replies after streaming ends if they're available
             onSetShowQuickReplies(true);
+        } else if ((shouldSkipQuickReplies || hasIntelligentOptions) && showQuickReplies) {
+            // Hide quick replies if intelligent options should be shown instead
+            onSetShowQuickReplies(false);
         }
-    }, [is_streaming, currentQuickReplies.length, showQuickReplies, onSetShowQuickReplies]);
+    }, [is_streaming, currentQuickReplies.length, showQuickReplies, onSetShowQuickReplies, messages, isLearnFlow, intelligent_options.length, intelligent_input_fields.length, intelligent_action_link]);
 
     // Auto-scroll to bottom when quick replies are generated and shown
     useEffect(() => {
@@ -346,12 +387,25 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
         
         // Regenerate intelligent options after state update
         setTimeout(async () => {
+            // Check if we should skip intelligent options API (insurance upload case)
+            const currentMessages = messages.slice(0, 3);
+            const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
+            const messageContent = (lastAssistantMessage?.content || '').toLowerCase();
+            const shouldSkipIntelligentOptions = messageContent.includes('upload') && messageContent.includes('insurance card');
+            
+            if (shouldSkipIntelligentOptions) {
+                console.log('⏭️ Skipping intelligent options API in start again - insurance upload detected');
+                intelligentOptionsGeneratedRef.current = true;
+                lastMessageCountForIntelligentOptions.current = 3;
+                set_intelligent_options([]);
+                set_intelligent_input_fields([]);
+                set_intelligent_action_link(null);
+                set_intelligent_options_loading(false);
+                return;
+            }
+            
             try {
                 set_intelligent_options_loading(true);
-                
-                // Get the current messages (should be first 3 after slice)
-                const currentMessages = messages.slice(0, 3);
-                const lastAssistantMessage = [...currentMessages].reverse().find(m => m.role === 'assistant');
                 
                 if (lastAssistantMessage) {
                     const result = await AIService.generateIntelligentOptions(
@@ -467,7 +521,9 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                         boxSizing: 'border-box',
                     }}>
                     {/* Quick Replies - Only show when input is enabled (not disabled), not in MCQ mode, and not streaming */}
-                    {show_input && chat_mode !== 'mcq' && !is_streaming && showQuickReplies && currentQuickReplies.length > 0 ? (
+                    {/* Also hide if intelligent options (like insurance upload) are present */}
+                    {show_input && chat_mode !== 'mcq' && !is_streaming && showQuickReplies && currentQuickReplies.length > 0 && 
+                     !(intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link) ? (
                         <div className={styles.quick_replies_container}>
                             <div className={styles.quick_replies_grid}>
                                 {currentQuickReplies.map((reply, index) => (

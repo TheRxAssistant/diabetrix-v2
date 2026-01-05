@@ -4,6 +4,7 @@ import ChatLoader from './chat-loader';
 import './chat-body.scss';
 import ConnectingAnimation from '../../shared/connecting-animation/ConnectingAnimation';
 import NumericDialer from '../../shared/numeric-dialer/NumericDialer';
+import { InsuranceCardScanModal } from '../../insurance/insurance-card-scan/insurance-card-scan-modal';
 
 interface Message {
     id: number;
@@ -59,6 +60,24 @@ interface ChatBodyProps {
 const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_action_link = null, intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again, show_input = true }) => {
     const [allow_chat, set_allow_chat] = useState(false);
     const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
+    const [show_insurance_upload_modal, set_show_insurance_upload_modal] = useState(false);
+    
+    // Check if the last assistant message contains "upload" and "insurance card"
+    const shouldShowInsuranceUpload = React.useMemo(() => {
+        if (messages.length === 0 && !streaming_message) return false;
+        
+        // Check streaming message first if available
+        const contentToCheck = is_streaming && streaming_message 
+            ? streaming_message 
+            : messages.length > 0 
+                ? messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || ''
+                : '';
+        
+        if (!contentToCheck) return false;
+        
+        const lowerContent = contentToCheck.toLowerCase();
+        return lowerContent.includes('upload') && lowerContent.includes('insurance card');
+    }, [messages, streaming_message, is_streaming]);
 
     // Reset input field values when input_fields change - use index as key for uniqueness
     useEffect(() => {
@@ -318,6 +337,30 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                         </div>
                     )}
 
+                    {/* Insurance Card Upload Button - Right Side (when AI mentions upload and insurance card) */}
+                    {/* Show only when no MCQ options or intelligent options are displayed */}
+                    {shouldShowInsuranceUpload && !is_streaming && !loading && 
+                     !(chat_mode === 'mcq' && mcq_options.length > 0) && 
+                     !(show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link)) && (
+                        <div className="mcq-options-container mcq-right-side">
+                            <div className="mcq-options-content">
+                                <div className="insurance-upload-button-container">
+                                    <button 
+                                        className="insurance-upload-button"
+                                        onClick={() => set_show_insurance_upload_modal(true)}
+                                    >
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                        Upload Insurance Card
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Start Again Button - shows when input is disabled */}
                     {show_start_again && !is_streaming && !loading && !intelligent_options_loading && (
                         <div className="start-again-container">
@@ -331,6 +374,33 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                     )}
 
                     <div ref={messages_end_ref} />
+                    
+                    {/* Insurance Card Scan Modal */}
+                    {show_insurance_upload_modal && (
+                        <InsuranceCardScanModal
+                            isOpen={show_insurance_upload_modal}
+                            onClose={() => set_show_insurance_upload_modal(false)}
+                            onScanComplete={(data) => {
+                                set_show_insurance_upload_modal(false);
+                                // Send insurance card data as user input after successful upload
+                                if (data) {
+                                    // Format the insurance data as a message
+                                    const insuranceDetails = [];
+                                    if (data.provider) insuranceDetails.push(`Provider: ${data.provider}`);
+                                    if (data.member_id) insuranceDetails.push(`Member ID: ${data.member_id}`);
+                                    if (data.policy_number) insuranceDetails.push(`Policy Number: ${data.policy_number}`);
+                                    if (data.group_number) insuranceDetails.push(`Group Number: ${data.group_number}`);
+                                    
+                                    // Send formatted insurance data as user message
+                                    const insuranceMessage = insuranceDetails.length > 0 
+                                        ? insuranceDetails.join(', ')
+                                        : 'Insurance card uploaded successfully';
+                                    
+                                    handle_button_click(insuranceMessage);
+                                }
+                            }}
+                        />
+                    )}
                 </>
             ) : (
                 <ConnectingAnimation />

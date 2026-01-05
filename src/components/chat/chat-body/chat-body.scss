@@ -612,6 +612,44 @@
   justify-content: center;
 }
 
+// Insurance Upload Button Styles
+.insurance-upload-button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.insurance-upload-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #007aff 0%, #0052cc 100%);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: $font_size_base;
+  font-weight: 600;
+  min-height: $touch_target_min;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #0052cc 0%, #003d99 100%);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+  }
+
+  &:active {
+    transform: translateX(2px);
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
 .mcq-loading-indicator {
   display: flex;
   align-items: center;
