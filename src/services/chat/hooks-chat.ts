@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { postAPI, streamAPI, CORE_ENGINE_API_URLS } from '../api';
 import { trackingService } from '../tracking/tracking-service';
+import { useAuthStore } from '@/store/authStore';
 
 interface ConversationMessage {
     message_id: string;
@@ -20,15 +21,20 @@ export const useChat = () => {
     const [streaming_message, set_streaming_message] = useState<string>('');
     const [error_message, set_error_message] = useState<string | null>(null);
 
+    const authStore = useAuthStore.getState();
+    const user = authStore.user;
+    const user_id = user?.userData?.user_id || '';
+
     const createChatThread = async () => {
         set_is_loading(true);
         set_error_message(null);
-        
+
         try {
             const { statusCode, data, message } = await postAPI(CORE_ENGINE_API_URLS.SYNC_CHAT_THREAD, {
                 context: {},
+                user_id: user_id,
             });
-            
+
             set_is_loading(false);
 
             if (statusCode === 200) {
@@ -37,7 +43,7 @@ export const useChat = () => {
                 // Load initial messages after creating thread
                 const initialMessages = await getChatMessages(conversationId);
                 set_messages(initialMessages);
-                
+
                 // Sync timeline after conversation sync is done
                 try {
                     await trackingService.syncTimeline({
@@ -52,7 +58,7 @@ export const useChat = () => {
                 } catch (error) {
                     console.error('Error syncing timeline after conversation sync:', error);
                 }
-                
+
                 return conversationId;
             } else {
                 set_error_message(message);
@@ -188,4 +194,3 @@ export const useChat = () => {
         set_conversation_id,
     };
 };
-
