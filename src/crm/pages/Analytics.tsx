@@ -152,6 +152,36 @@ export default function AnalyticsPage() {
         { state: 'Illinois', city: 'Chicago', count: 80 },
     ];
 
+    // Coverage & Barriers data
+    const coverageOutcomes = [
+        { type: 'Covered', value: 68 },
+        { type: 'Prior Authorization required', value: 22 },
+        { type: 'Step Therapy required', value: 7 },
+        { type: 'Not covered', value: 3 },
+    ];
+
+    const averagePatientCost = {
+        commercial: 45,
+        medicarePartD: 38,
+        medicaid: 3,
+        uninsured: 1247,
+    };
+
+    const topDenialReasons = [
+        { type: 'Missing prior authorization', value: 45 },
+        { type: 'Step therapy not completed', value: 28 },
+        { type: 'Off-formulary', value: 18 },
+        { type: 'Medical necessity', value: 9 },
+    ];
+
+    const accessFrictionScores = [
+        { payer: 'BCBS', score: 2.3, level: 'Low friction' },
+        { payer: 'UHC', score: 2.8, level: 'Medium' },
+        { payer: 'Aetna', score: 3.4, level: 'Medium-High' },
+        { payer: 'Cigna', score: 2.1, level: 'Low' },
+        { payer: 'Humana', score: 3.9, level: 'High friction' },
+    ];
+
     // Helper function to render pie chart
     const renderPieChart = (data: Array<{ type: string; value: number }>, height = 300) => {
         const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -186,12 +216,51 @@ export default function AnalyticsPage() {
     const renderBarChart = (data: Array<{ [key: string]: string | number }>, xKey: string, yKey: string, height = 300) => {
         return (
             <ResponsiveContainer width="100%" height={height}>
-                <BarChart data={data} layout="vertical">
+                <BarChart data={data} layout="vertical" margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
-                    <YAxis dataKey={yKey} type="category" width={100} />
+                    <YAxis dataKey={yKey} type="category" width={180} />
                     <Tooltip />
                     <Bar dataKey={xKey} fill="#0078D4" />
+                </BarChart>
+            </ResponsiveContainer>
+        );
+    };
+
+    // Helper function to get friction score color based on level
+    const getFrictionColor = (level: string): string => {
+        if (level.includes('Low')) return '#83C995'; // Green
+        if (level.includes('Medium-High') || level.includes('High')) return '#f5222d'; // Red
+        return '#faad14'; // Yellow/Orange for Medium
+    };
+
+    // Helper function to render friction score bar chart with color coding
+    const renderFrictionScoreChart = (data: Array<{ payer: string; score: number; level: string }>, height = 300) => {
+        const CustomTooltip = ({ active, payload }: any) => {
+            if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                return (
+                    <div className="bg-white p-3 border border-gray-300 rounded shadow-lg">
+                        <p className="font-semibold">{`${data.score}/5 (${data.level})`}</p>
+                        <p className="text-sm text-gray-600">Friction Score</p>
+                    </div>
+                );
+            }
+            return null;
+        };
+
+        return (
+            <ResponsiveContainer width="100%" height={height}>
+                <BarChart data={data} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" domain={[0, 5]} />
+                    <YAxis dataKey="payer" type="category" width={100} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="score">
+                        {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={getFrictionColor(entry.level)} />
+                        ))}
+                    </Bar>
                 </BarChart>
             </ResponsiveContainer>
         );
@@ -223,6 +292,7 @@ export default function AnalyticsPage() {
                         <TabsTrigger value="3">Insurance</TabsTrigger>
                         <TabsTrigger value="4">Questions & Actions</TabsTrigger>
                         <TabsTrigger value="5">Prescriptions</TabsTrigger>
+                        <TabsTrigger value="6">Coverage & Barriers</TabsTrigger>
                     </TabsList>
 
                     {/* Tab 1: Overview */}
@@ -402,6 +472,48 @@ export default function AnalyticsPage() {
                                         pagination={false}
                                     />
                                 </Card>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab 6: Coverage & Barriers */}
+                    <TabsContent value="6">
+                        <div className="space-y-6">
+                            {/* Coverage Outcomes */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">Coverage Outcomes</h3>
+                                <Card title="Coverage Status & Barriers">{renderPieChart(coverageOutcomes)}</Card>
+                            </div>
+
+                            {/* Average Patient Cost */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">Average Patient Cost</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <Card>
+                                        <Statistic title="Commercial" value={averagePatientCost.commercial} prefix="$" suffix=" copay" valueStyle={{ color: '#0078D4' }} />
+                                    </Card>
+                                    <Card>
+                                        <Statistic title="Medicare Part D" value={averagePatientCost.medicarePartD} prefix="$" suffix=" copay" valueStyle={{ color: '#0078D4' }} />
+                                    </Card>
+                                    <Card>
+                                        <Statistic title="Medicaid" value={averagePatientCost.medicaid} prefix="$" suffix=" copay" valueStyle={{ color: '#0078D4' }} />
+                                    </Card>
+                                    <Card>
+                                        <Statistic title="Uninsured" value={averagePatientCost.uninsured} prefix="$" suffix=" (cash price)" valueStyle={{ color: '#f5222d' }} />
+                                    </Card>
+                                </div>
+                            </div>
+
+                            {/* Top Denial Reasons */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">Top Denial Reasons</h3>
+                                <Card title="Denial Reasons Breakdown">{renderBarChart(topDenialReasons, 'value', 'type')}</Card>
+                            </div>
+
+                            {/* Access Friction Score by Payer */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4">Access Friction Score by Payer</h3>
+                                <Card title="Payer Friction Analysis">{renderFrictionScoreChart(accessFrictionScores)}</Card>
                             </div>
                         </div>
                     </TabsContent>
