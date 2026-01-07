@@ -20,7 +20,6 @@ interface SMSOptions {
 }
 
 class SMSService {
-
     /**
      * Send an SMS message
      * @param message - The message content to send
@@ -190,4 +189,3 @@ export const sendMedicationAvailability = (medicationName: string, pharmacyName:
 export const sendWelcomeMessage = (phoneNumber: string) => {
     return smsService.sendWelcomeMessage(phoneNumber);
 };
-

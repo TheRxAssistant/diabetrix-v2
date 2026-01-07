@@ -247,12 +247,6 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
             if (result) {
                 console.log('Insurance cost request submitted successfully');
                 // Send SMS notification as secondary
-                try {
-                    await sendInsuranceRequestWithCopay(drugName);
-                    console.log('Insurance coverage SMS sent successfully');
-                } catch (error) {
-                    console.error('Failed to send insurance coverage SMS:', error);
-                }
             } else {
                 console.error('Failed to request insurance cost');
                 setInsuranceStatus('check_now'); // Reset status on error
@@ -389,13 +383,7 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
             // Bypass modal and directly call API
             await handleInsuranceCheck();
             // Send follow-up message after 1 second
-            setTimeout(async () => {
-                try {
-                    await sendEligibilityCheckFollowUp(drugName);
-                } catch (error) {
-                    console.error('Failed to send eligibility check follow-up SMS:', error);
-                }
-            }, 1000);
+
             return;
         }
 
@@ -407,15 +395,6 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
         }
         await handleInsuranceCheck();
         // await handleCopayCheck();
-
-        // Send follow-up message after 1 second
-        setTimeout(async () => {
-            try {
-                await sendEligibilityCheckFollowUp(drugName);
-            } catch (error) {
-                console.error('Failed to send eligibility check follow-up SMS:', error);
-            }
-        }, 1000);
     };
 
     const handleVerificationComplete = () => {
