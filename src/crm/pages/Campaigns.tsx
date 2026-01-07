@@ -177,21 +177,21 @@ export default function CampaignsPage() {
                 return <Tag color={colors[status]}>{status.toUpperCase()}</Tag>;
             },
         },
-        {
-            title: 'Budget / Spent',
-            key: 'budget',
-            render: (_: any, record: Campaign) => (
-                <div>
-                    <div>
-                        <span className="text-gray-900">${record.spent.toLocaleString()}</span>
-                        <span className="text-gray-500"> / ${record.budget.toLocaleString()}</span>
-                    </div>
-                    <div className="mt-1">
-                        <Progress percent={Math.round((record.spent / record.budget) * 100)} size="small" showInfo={false} strokeColor={record.spent > record.budget * 0.9 ? dangerColor : primaryColor} />
-                    </div>
-                </div>
-            ),
-        },
+        // {
+        //     title: 'Budget / Spent',
+        //     key: 'budget',
+        //     render: (_: any, record: Campaign) => (
+        //         <div>
+        //             <div>
+        //                 <span className="text-gray-900">${record.spent.toLocaleString()}</span>
+        //                 <span className="text-gray-500"> / ${record.budget.toLocaleString()}</span>
+        //             </div>
+        //             <div className="mt-1">
+        //                 <Progress percent={Math.round((record.spent / record.budget) * 100)} size="small" showInfo={false} strokeColor={record.spent > record.budget * 0.9 ? dangerColor : primaryColor} />
+        //             </div>
+        //         </div>
+        //     ),
+        // },
         {
             title: 'Funnel',
             key: 'funnel',
