@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import styles from './unified-modal.module.scss';
-import { sendMedicationAvailability, sendWelcomeMessage } from '@/services/smsService.ts';
+import { sendWelcomeMessage } from '@/services/smsService.ts';
 import { featuredPharmacies } from '../../data/pharmacies/pharmacies';
 import { AIService } from '../../services/ai-service';
 import { postAPI } from '../../services/api';
@@ -845,11 +845,6 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
                 // Send notification once per pharmacy during the "Initiating call" substep
                 if (currentSubStep === 1 && !notifiedMap[currentCheckIndex]) {
-                    try {
-                        await sendMedicationAvailability(drugName, target, 'checking');
-                    } catch (e) {
-                        console.error('Failed to send availability SMS', e);
-                    }
                     setNotifiedMap((map) => {
                         const next = [...map];
                         next[currentCheckIndex] = true;
