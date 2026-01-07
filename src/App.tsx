@@ -22,21 +22,21 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route element={<ProtectedRoute />}>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/book-appointment" element={<BookAppointment />} />
-                    <Route path="/request-copay" element={<RequestCopay />} />
-                    <Route path="/savings-assistance" element={<SavingsAssistance />} />
-                    <Route path="/find-doctor" element={<FindDoctor />} />
-                    <Route path="/medication-info" element={<MedicationInfo />} />
-                    <Route path="/patient-support" element={<PatientSupport />} />
-                    <Route path="/quiz" element={<Quiz />} />
-                    <Route path="/crm" element={<Navigate to="/crm/patients" replace />} />
-                    <Route path="/crm/marketing/campaigns" element={<Campaigns />} />
-                    <Route path="/crm/analytics" element={<Analytics />} />
-                    <Route path="/crm/patients" element={<Patients />} />
-                    <Route path="/crm/patients/:id" element={<PatientDetailsRedirect />} />
-                    <Route path="/crm/patients/:id/journey" element={<PatientJourney />} />
+                <Route path="/" element={<Home />} />
+                <Route path="/book-appointment" element={<BookAppointment />} />
+                <Route path="/request-copay" element={<RequestCopay />} />
+                <Route path="/savings-assistance" element={<SavingsAssistance />} />
+                <Route path="/find-doctor" element={<FindDoctor />} />
+                <Route path="/medication-info" element={<MedicationInfo />} />
+                <Route path="/patient-support" element={<PatientSupport />} />
+                <Route path="/quiz" element={<Quiz />} />
+                <Route path="/crm" element={<ProtectedRoute />}>
+                    <Route index element={<Navigate to="/crm/patients" replace />} />
+                    <Route path="marketing/campaigns" element={<Campaigns />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="patients" element={<Patients />} />
+                    <Route path="patients/:id" element={<PatientDetailsRedirect />} />
+                    <Route path="patients/:id/journey" element={<PatientJourney />} />
                 </Route>
             </Routes>
         </BrowserRouter>
