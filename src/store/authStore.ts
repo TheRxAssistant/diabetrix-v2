@@ -19,6 +19,8 @@ interface AuthState {
   updateAccessToken: (token: string) => void;
   getAuthToken: () => string;
   getAccessToken: () => string;
+  setAuthenticated: (authenticated: boolean) => void;
+  isAuthenticated: () => boolean;
   clear: () => void;
 }
 
@@ -56,9 +58,22 @@ class AuthStore {
       getAccessToken: () => {
         return this.getStoredTokens().access_token || '';
       },
+      setAuthenticated: (authenticated: boolean) => {
+        localStorage.setItem("diabetrix_authenticated", JSON.stringify(authenticated));
+      },
+      isAuthenticated: () => {
+        try {
+          const stored = localStorage.getItem("diabetrix_authenticated");
+          return stored ? JSON.parse(stored) : false;
+        } catch (error) {
+          console.error("Error loading auth status:", error);
+          return false;
+        }
+      },
       clear: () => {
         this.state.user = null;
         localStorage.removeItem("diabetrix_user");
+        localStorage.removeItem("diabetrix_authenticated");
         sessionStorage.removeItem("diabetrix_auth_tokens");
       },
     };
@@ -131,7 +146,7 @@ export const useAuthStore = {
 };
 
 // Export individual functions for convenience
-export const { setUser, setPhoneNumber, getPhoneNumber, updateAuthToken, updateAccessToken, getAuthToken, getAccessToken, clear } =
+export const { setUser, setPhoneNumber, getPhoneNumber, updateAuthToken, updateAccessToken, getAuthToken, getAccessToken, setAuthenticated, isAuthenticated, clear } =
   authStoreInstance.getState();
 
 export default authStoreInstance;
