@@ -48,7 +48,42 @@ const Home = () => {
             {/* Hero Section */}
             <section className="bg-gradient-blue text-white py-20 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    {/* Top-right links */}
+                    <div className="absolute top-4 sm:top-6 lg:top-0 right-4 sm:right-6 lg:right-8 flex flex-wrap justify-end gap-3 sm:gap-4 z-10">
+                        <a 
+                            href="https://drive.google.com/file/d/1XXdfzRJJS8K1bRUNeELMK5112CcGlcec/view?usp=sharing&t=71" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
+                        >
+                            Benefits Check
+                        </a>
+                        <a 
+                            href="https://drive.google.com/file/d/1HD1hCvCIhPYZAj4EYkEcsRX4hiHlj6Ry/view?usp=sharing&t=132" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
+                        >
+                            Copay Automation
+                        </a>
+                        <a 
+                            href="https://drive.google.com/file/d/1UUlSyi_Oiixq13nDQOhM5BUesM7hIU7B/view?usp=sharing" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
+                        >
+                            Scheduling Appointment
+                        </a>
+                        <a 
+                            href="https://drive.google.com/drive/u/0/folders/1Ax4GPGjtEeaez3LIhZyrBE-9Et37P8dP" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
+                        >
+                            Find Stock Call
+                        </a>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center pt-16 sm:pt-20 lg:pt-0">
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="lg:pr-10">
                             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-6">Transform Your Diabetes Management with Diabetrix®</h1>
                             <p className="text-xl mb-8 text-white">A revolutionary once-daily oral treatment for adults with Type 2 Diabetes, designed to help achieve better glycemic control.</p>
