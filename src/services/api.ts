@@ -250,41 +250,48 @@ export const CAPABILITIES_API_URLS = {
     VERIFY_OTP: 'authenticate/verify-otp',
     VERIFY_USER_BY_VERIFIED: 'authenticate/verify-user-by-verified',
     GENERATE_INTERNAL_ACCESS_TOKEN: 'authenticate/generate-access-token',
+    
     // SMS
     SEND_SMS: 'sms/send-message',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
     GENERATE_INTELLIGENT_OPTIONS: 'drugs/generate-intelligent-options',
     // Insurance
     INSURANCE_CARD_IMAGE: 'insurance-card-image',
+
     // Find Care APIs
-    GET_CARE_CATEGORY: 'find-care/get-care-categories',
     GET_CARE_CATEGORY_V2: 'find-care/get-care-categories-v2',
     GET_NEARBY_CARE_DETAILS: 'find-care/get-care-details',
-    GET_NEARBY_CARE: 'find-care/find-nearby-care',
     GET_NEARBY_CARE_V2: 'find-care/find-nearby-care-v2',
     SEARCH_PROVIDERS_BY_NAME: 'find-care/search-providers-by-name',
+
     // Appointment APIs
     GET_APPOINTMENTS: 'appointments/get-appointments',
     GET_APPOINTMENT_DETAILS: 'appointments/get-appointment-details',
     SYNC_APPOINTMENT: 'appointments/sync-appointment',
+    
     // Rx Savings APIs
     REQUEST_COPAY_CARD: 'rx-savings/sync-copay-card',
     REQUEST_INSURANCE_COST: 'rx-savings/sync-insurance-cost',
     GET_COPAY_REQUEST_DETAILS: 'rx-savings/get-copay-request-details',
     GET_INSURANCE_COST_REQUEST_DETAILS: 'rx-savings/get-insurance-cost-request-details',
+    
     // Tracking APIs
     CREATE_VISIT: 'tracking/create-visit',
     SYNC_TIMELINE: 'tracking/sync-timeline',
+    
     // Appointment and Copay APIs
     SYNC_COPAY_REQUEST: 'rx-savings/sync-copay-card',
+    
     // CRM User APIs
     GET_USER_JOURNEY: 'crm/users/get-user-journey',
     GET_USER_TIMELINE: 'crm/users/get-user-timeline',
     GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
     GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
     GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
+    
     // Approved Requests APIs
     GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',
+    
     // Pharmacy Stock Check APIs
     SYNC_PHARMACY_STOCK_CHECK: 'pharmacy-stock-checks/sync-pharmacy-stock-check',
 } as const;

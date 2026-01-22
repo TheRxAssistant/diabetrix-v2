@@ -111,45 +111,6 @@ export const useProviderSearch = () => {
     const [error, setError] = useState<string | null>(null);
     const abort_controller_ref = useRef<AbortController | null>(null);
 
-    const fetchSearchCategories = async (query: string): Promise<CategorySearchResults> => {
-        if (!query.trim()) {
-            return {
-                specialties: [],
-                conditions: [],
-                procedures: [],
-            };
-        }
-        
-        setIsLoading(true);
-        setError(null);
-        
-        try {
-            const result = await postAPI(CAPABILITIES_API_URLS.GET_CARE_CATEGORY, {
-                query: query.trim()
-            });
-            
-            if (result.statusCode !== 200) {
-                throw new Error(result.message || 'Network response was not ok');
-            }
-            
-            return result.data || {
-                specialties: [],
-                conditions: [],
-                procedures: [],
-            };
-        } catch (error) {
-            setError('Error fetching search categories');
-            console.error('Error fetching search categories:', error);
-            return {
-                specialties: [],
-                conditions: [],
-                procedures: [],
-            };
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleCategorySelection = useCallback(
         async (
             category: SearchCategory, 
@@ -290,7 +251,6 @@ export const useProviderSearch = () => {
         facilities,
         isLoading,
         error,
-        fetchSearchCategories,
         handleCategorySelection,
         fetchProviderCareDetails,
         enrichProviderWithCareDetails
