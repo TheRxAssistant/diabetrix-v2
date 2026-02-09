@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import avatarImage from '../../../assets/images/avatar.png';
 import { trackingService } from '../../../services/tracking/tracking-service';
-import { useAppointments } from '../../../services/healthcare/hooks-appointments';
 import { useProviderSearch } from '../../../services/provider-search/useProviderSearch';
+import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
+import { useAuthStore } from '../../../store/authStore';
 // Using inline styles instead of module import to avoid lint errors
 
 interface BookAppointmentModalProps {
@@ -18,7 +19,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState('');
     const [enrichedProvider, setEnrichedProvider] = useState<any>(provider);
-    const { create_appointment, is_loading } = useAppointments();
+    const [is_loading, set_is_loading] = useState(false);
     const { enrichProviderWithCareDetails } = useProviderSearch();
 
     // Fetch care details when modal opens for a provider with provider_id
@@ -48,12 +49,22 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
         }
 
         setIsSubmitting(true);
+        set_is_loading(true);
         setError('');
 
         try {
+            // Get user info from auth store
+            const authStore = useAuthStore.getState();
+            const user = authStore.user;
+            
+            if (!user || !user.userData) {
+                throw new Error('User not authenticated. Please log in to book an appointment.');
+            }
+
+            const userData = user.userData;
+            const user_id = userData.user_id;
             const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
             const isFacility = !!provider?.facility_name || !!provider?.facility_id;
-            const appointment_with = isFacility ? 'Facility' : 'Provider';
 
             // Extract zipcode from address if available
             let zipcode = '';
@@ -65,8 +76,8 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
                 }
             }
 
-            // Prepare appointment details
-            const appointment_details: any = {
+            // Prepare request JSON with appointment details
+            const request_json: any = {
                 appointment_notes: reason,
                 appointment_address: provider?.provider_address || provider?.address || '',
                 appointment_zipcode: zipcode || provider?.provider_zipcode || provider?.zipcode || '',
@@ -74,38 +85,53 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
             };
 
             if (isFacility) {
-                appointment_details.facility_name = providerName;
-                appointment_details.facility_phone = provider?.facility_phone || provider?.phone || '';
+                request_json.facility_name = providerName;
+                request_json.facility_phone = provider?.facility_phone || provider?.phone || '';
             } else {
-                appointment_details.doctor_name = providerName;
+                request_json.doctor_name = providerName;
                 // Use phone from enriched provider (from care details API) if available, otherwise fall back to original provider phone
-                appointment_details.doctor_phone = enrichedProvider?.provider_phone || enrichedProvider?.phone || provider?.provider_phone || provider?.phone || '';
-                appointment_details.provider_id = provider?.provider_id || provider?.id;
+                request_json.doctor_phone = enrichedProvider?.provider_phone || enrichedProvider?.phone || provider?.provider_phone || provider?.phone || '';
+                request_json.provider_id = provider?.provider_id || provider?.id;
             }
 
             if (availability) {
-                appointment_details.appointment_date_time = availability;
+                request_json.appointment_date_time = availability;
             }
 
-            // Create appointment via API
-            await create_appointment({
-                appointment_details,
-                appointment_with,
+            // Build request_details string
+            const address_str = request_json.appointment_address || 'Not specified';
+            const phone_str = request_json.doctor_phone || request_json.facility_phone || 'Not specified';
+            const request_details = `Provider: ${providerName}\nAddress: ${address_str}\nPhone: ${phone_str}\nReason: ${reason}${availability ? `\nAvailability: ${availability}` : ''}`;
+
+            // Create approved request via API
+            const response = await postAPI(CAPABILITIES_API_URLS.SYNC_APPROVED_REQUEST, {
+                domain: 'diabetrix',
+                task_type_name: 'doctor-appointment-booking',
+                user_id,
+                request_name: `Book Appointment with ${providerName}`,
+                request_details,
+                request_json,
+                is_source_request: true,
             });
 
-            setIsSubmitting(false);
-            setIsSuccess(true);
+            if (response.statusCode === 200) {
+                setIsSubmitting(false);
+                set_is_loading(false);
+                setIsSuccess(true);
 
-            
-
-            // Close modal after showing success message for 2 seconds
-            setTimeout(async () => {
-                await onRequestAppointment(provider, reason, availability);
-                onClose();
-            }, 2000);
+                // Close modal after showing success message for 2 seconds
+                setTimeout(async () => {
+                    await onRequestAppointment(provider, reason, availability);
+                    onClose();
+                }, 2000);
+            } else {
+                throw new Error(response.message || 'Failed to request appointment. Please try again.');
+            }
         } catch (err) {
-            setError('Failed to request appointment. Please try again.');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to request appointment. Please try again.';
+            setError(errorMessage);
             setIsSubmitting(false);
+            set_is_loading(false);
             console.error('Error booking appointment:', err);
         }
     };

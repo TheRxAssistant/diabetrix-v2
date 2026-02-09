@@ -52,6 +52,11 @@ interface ApiTimelineEntry {
     timeline_description: string;
     timeline_title: string | null;
     conversation_summary?: string[] | null;
+    request_id?: string | null;
+    // From JOIN with approved_requests
+    request_status?: number;
+    request_status_name?: string;
+    request_trigger_time?: Date | string;
     visit?: {
         visit_id: string;
         created_at: Date | string;
