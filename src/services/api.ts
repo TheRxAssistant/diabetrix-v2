@@ -288,6 +288,7 @@ export const CAPABILITIES_API_URLS = {
     GET_CORE_ENGINE_USERS: 'crm/users/get-core-engine-users',
     GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
     GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
+    GET_PATIENTS: 'crm/users/get-patients',
     
     // Approved Requests APIs
     GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',

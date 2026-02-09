@@ -24,6 +24,8 @@ interface Patient {
     identified: boolean;
     location: string;
     insuranceStatus: string;
+    original_user_id?: string | null;
+    original_anonymous_id?: string;
 }
 
 interface CoreEngineUser {
@@ -57,14 +59,30 @@ export default function AllPatients() {
         const fetchPatients = async () => {
             setLoading(true);
             try {
-                const response = await postAPI(CAPABILITIES_API_URLS.GET_CORE_ENGINE_USERS, {});
+                const response = await postAPI(CAPABILITIES_API_URLS.GET_PATIENTS, {});
                 if (response.statusCode === 200) {
-                    const apiUsers: CoreEngineUser[] = response.data?.users || [];
-                    
-                    const mappedPatients: Patient[] = apiUsers.map(user => {
-                        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-                        const isIdentified = fullName.length > 0 && fullName !== 'Anonymous User';
-                        
+                    const apiUsers: Array<{
+                        identifier: string;
+                        user_id: string | null;
+                        anonymous_id: string;
+                        name: string;
+                        phone_number: string | null;
+                        created_at: string;
+                        domain: string;
+                        email?: string;
+                        date_of_birth?: string;
+                        address?: {
+                            city: string;
+                            state: string;
+                        };
+                        insurance_details?: {
+                            provider: string;
+                        };
+                    }> = response.data?.users || [];
+
+                    const mappedPatients: Patient[] = apiUsers.map((user) => {
+                        const isIdentified = user.name !== 'Anonymous User';
+
                         // Calculate age if date_of_birth exists
                         let age = null;
                         if (user.date_of_birth) {
@@ -78,9 +96,9 @@ export default function AllPatients() {
                         }
 
                         return {
-                            user_id: user.user_id,
-                            phone_number: user.phone_number,
-                            name: isIdentified ? fullName : 'Anonymous User',
+                            user_id: user.identifier, // Use identifier for routing (user_id or anonymous_id)
+                            phone_number: user.phone_number || '', // Empty string if null
+                            name: user.name,
                             age: age,
                             status: 'Active', // Default to active
                             lastContact: new Date(user.created_at).toLocaleDateString(),
@@ -91,9 +109,12 @@ export default function AllPatients() {
                             identified: isIdentified,
                             location: user.address?.city ? `${user.address.city}, ${user.address.state || ''}` : 'Unknown',
                             insuranceStatus: user.insurance_details?.provider || 'Unknown',
+                            // Store original data for navigation
+                            original_user_id: user.user_id,
+                            original_anonymous_id: user.anonymous_id,
                         };
                     });
-                    
+
                     setPatients(mappedPatients);
                 } else {
                     throw new Error(response.message || 'Failed to fetch patients');
@@ -117,24 +138,22 @@ export default function AllPatients() {
     const columns = [
         {
             title: 'Patient',
-            dataIndex: 'name',
-            key: 'name',
-            render: (text: string, record: Patient) => (
+            render: (_: any, record: Patient) => (
                 <>
-                <Link to={`/crm/patients/${record.user_id}`} style={{ color: primaryColor }}>
-                    <span className="flex items-center gap-2">
-                        {text}
-                        {!record.identified && (
-                            <span className="text-gray-400" title="Anonymous User">
-                                <FaInfoCircle />
-                            </span>
-                        )}
-                    </span>
-                </Link>
-                        {/* show phone number */}
+                    {record.user_id !== null && record.user_id !== '' ? (
+                        <span className="flex items-center gap-2">{record.name}</span>
+                    ) : (
+                        <span className="text-gray-400" title="Anonymous User">
+                            {record.name}
+                        </span>
+                    )}
+
+                    {/* show phone number only if available */}
+                    {record.phone_number && record.phone_number.trim() !== '' && (
                         <span className="text-gray-400" title="Phone Number">
                             {record.phone_number}
                         </span>
+                    )}
                 </>
             ),
         },
@@ -246,13 +265,23 @@ export default function AllPatients() {
         {
             title: 'Action',
             key: 'action',
-            render: (_: any, record: Patient) => (
-                <Link to={`/crm/patients/${record.user_id}/journey`}>
-                    <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
-                        Journey
-                    </Button>
-                </Link>
-            ),
+            render: (_: any, record: Patient) => {
+                // Build query string based on whether we have user_id or anonymous_id
+                const params = new URLSearchParams();
+                if (record.original_user_id) {
+                    params.set('user_id', record.original_user_id);
+                } else if (record.original_anonymous_id) {
+                    params.set('anonymous_id', record.original_anonymous_id);
+                }
+
+                return (
+                    <Link to={`/crm/patients/journey?${params.toString()}`}>
+                        <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
+                            Journey
+                        </Button>
+                    </Link>
+                );
+            },
         },
     ];
 

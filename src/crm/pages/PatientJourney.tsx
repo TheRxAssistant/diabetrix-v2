@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaChevronUp, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner, FaFile, FaShieldAlt, FaEnvelope, FaMapMarkerAlt, FaBirthdayCake, FaIdCard } from 'react-icons/fa';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -89,12 +89,21 @@ interface Request {
 }
 
 export default function PatientJourney() {
-    const params = useParams<{ id: string }>();
-    const patientId = params.id || '1';
+    const [searchParams] = useSearchParams();
+    const user_id = searchParams.get('user_id');
+    const anonymous_id = searchParams.get('anonymous_id');
+    const patientId = user_id || anonymous_id || '';
+    
     const [lastEngagementExpanded, setLastEngagementExpanded] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [isTimelineLoading, setIsTimelineLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // Helper function to detect if identifier is UUID (user_id) or anonymous_id
+    const isUUID = (str: string): boolean => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(str);
+    };
     const [journeyStages, setJourneyStages] = useState<ApiJourneyStage[]>([]);
     const [journeyEvents, setJourneyEvents] = useState<JourneyEvent[]>([]);
     const [lastEngagement, setLastEngagement] = useState<JourneyEvent | null>(null);
@@ -311,18 +320,27 @@ export default function PatientJourney() {
     // Fetch journey data
     useEffect(() => {
         const fetchJourneyData = async () => {
-            if (!patientId) return;
+            if (!user_id && !anonymous_id) return;
 
             setLoading(true);
             setError(null);
 
             try {
-                // Fetch journey stages, timeline, and user details in parallel
-                const [journeyResponse, timelineResponse, userDetailsResponse] = await Promise.all([
-                    postAPI(CAPABILITIES_API_URLS.GET_USER_JOURNEY, { user_id: patientId }),
-                    postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, { user_id: patientId }),
-                    postAPI(CAPABILITIES_API_URLS.GET_USER_DETAILS_BY_ID, { user_id: patientId }),
-                ]);
+                // Use user_id and anonymous_id from query params
+                const timelineParams: any = {};
+                if (user_id) {
+                    timelineParams.user_id = user_id;
+                } else if (anonymous_id) {
+                    timelineParams.anonymous_id = anonymous_id;
+                }
+                
+                const apiCalls = [
+                    user_id ? postAPI(CAPABILITIES_API_URLS.GET_USER_JOURNEY, { user_id }) : Promise.resolve({ statusCode: 200, data: { journey_stages: [] } }),
+                    postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, timelineParams),
+                    user_id ? postAPI(CAPABILITIES_API_URLS.GET_USER_DETAILS_BY_ID, { user_id }) : Promise.resolve({ statusCode: 200, data: null }),
+                ];
+                
+                const [journeyResponse, timelineResponse, userDetailsResponse] = await Promise.all(apiCalls);
 
                 if (journeyResponse.statusCode !== 200) {
                     throw new Error(journeyResponse.message || 'Failed to fetch journey data');
@@ -427,10 +445,10 @@ export default function PatientJourney() {
                         email: userData.email || null,
                     });
                 } else {
-                    // Fallback to placeholder if user details not found
+                    // Fallback to placeholder if user details not found (for anonymous users or if not found)
                     setPatient({
                         id: patientId,
-                        name: 'Unknown User',
+                        name: anonymous_id ? 'Anonymous User' : 'Unknown User',
                         age: null,
                         location: 'Unknown',
                         insurance: 'Unknown',
@@ -447,18 +465,25 @@ export default function PatientJourney() {
         };
 
         fetchJourneyData();
-    }, [patientId]);
+    }, [user_id, anonymous_id]);
 
     // Poll for new timeline entries every 25 seconds
     useEffect(() => {
-        if (!patientId) return;
+        if (!user_id && !anonymous_id) return;
 
         const pollTimeline = async () => {
             try {
                 setIsTimelineLoading(true);
-                const timelineResponse = await postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, {
-                    user_id: patientId,
-                });
+                
+                // Use user_id and anonymous_id from query params
+                const timelineParams: any = {};
+                if (user_id) {
+                    timelineParams.user_id = user_id;
+                } else if (anonymous_id) {
+                    timelineParams.anonymous_id = anonymous_id;
+                }
+                
+                const timelineResponse = await postAPI(CAPABILITIES_API_URLS.GET_USER_TIMELINE, timelineParams);
 
                 if (timelineResponse.statusCode === 200) {
                     const timelineEntries: ApiTimelineEntry[] = timelineResponse.data?.timeline_entries || [];
@@ -529,7 +554,7 @@ export default function PatientJourney() {
 
         const interval = setInterval(pollTimeline, 10000); // Poll every 10 seconds
         return () => clearInterval(interval);
-    }, [patientId]);
+    }, [user_id, anonymous_id]);
 
     // Auto-scroll to bottom when new timeline entries are added
     useEffect(() => {
@@ -949,10 +974,15 @@ export default function PatientJourney() {
     // Fetch patient details for Details tab
     useEffect(() => {
         const fetchPatientDetails = async () => {
-            if (!patientId) return;
+            if (!user_id) {
+                // Anonymous user or no user_id - skip fetching details
+                setDetailsLoading(false);
+                return;
+            }
+            
             setDetailsLoading(true);
             try {
-                const response = await postAPI(CAPABILITIES_API_URLS.GET_CORE_ENGINE_USER_DETAILS, { user_id: patientId });
+                const response = await postAPI(CAPABILITIES_API_URLS.GET_CORE_ENGINE_USER_DETAILS, { user_id });
                 if (response.statusCode === 200) {
                     const data = response.data;
                     setPatientDetails({
@@ -971,7 +1001,7 @@ export default function PatientJourney() {
         };
 
         fetchPatientDetails();
-    }, [patientId]);
+    }, [user_id]);
 
     if (loading) {
         return (
@@ -1069,7 +1099,15 @@ export default function PatientJourney() {
             dataIndex: 'request_id',
             key: 'request_id',
             render: (reqId: string) => (
-                <button onClick={() => window.open(`${window.location.origin}/crm/patients/${patientId}/journey`, '_blank', 'noopener,noreferrer')} className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                <button onClick={() => {
+                    const params = new URLSearchParams();
+                    if (user_id) {
+                        params.set('user_id', user_id);
+                    } else if (anonymous_id) {
+                        params.set('anonymous_id', anonymous_id);
+                    }
+                    window.open(`${window.location.origin}/crm/patients/journey?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                }} className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
                     {reqId?.slice(0, 8)}...
                 </button>
             ),

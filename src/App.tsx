@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Home from './pages/Home';
 import BookAppointment from './pages/BookAppointment';
 import RequestCopay from './pages/RequestCopay';
@@ -12,11 +12,6 @@ import Patients from './crm/pages/Patients';
 import PatientJourney from './crm/pages/PatientJourney';
 import Analytics from './crm/pages/Analytics';
 import ProtectedRoute from './crm/components/ProtectedRoute';
-
-function PatientDetailsRedirect() {
-    const { id } = useParams<{ id: string }>();
-    return <Navigate to={`/crm/patients/${id}/journey`} replace />;
-}
 
 function App() {
     return (
@@ -35,8 +30,7 @@ function App() {
                     <Route path="marketing/campaigns" element={<Campaigns />} />
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="patients" element={<Patients />} />
-                    <Route path="patients/:id" element={<PatientDetailsRedirect />} />
-                    <Route path="patients/:id/journey" element={<PatientJourney />} />
+                    <Route path="patients/journey" element={<PatientJourney />} />
                 </Route>
             </Routes>
         </BrowserRouter>
