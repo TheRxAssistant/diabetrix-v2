@@ -343,11 +343,11 @@ export default function PatientJourney() {
                 const [journeyResponse, timelineResponse, userDetailsResponse] = await Promise.all(apiCalls);
 
                 if (journeyResponse.statusCode !== 200) {
-                    throw new Error(journeyResponse.message || 'Failed to fetch journey data');
+                    throw new Error('message' in journeyResponse ? journeyResponse.message : 'Failed to fetch journey data');
                 }
 
                 if (timelineResponse.statusCode !== 200) {
-                    throw new Error(timelineResponse.message || 'Failed to fetch timeline data');
+                    throw new Error('message' in timelineResponse ? timelineResponse.message : 'Failed to fetch timeline data');
                 }
 
                 // Process visits map from timeline entries (visit data is now included in timeline response)

@@ -138,6 +138,7 @@ export default function AllPatients() {
     const columns = [
         {
             title: 'Patient',
+            key: 'patient',
             render: (_: any, record: Patient) => (
                 <>
                     {record.user_id !== null && record.user_id !== '' ? (
