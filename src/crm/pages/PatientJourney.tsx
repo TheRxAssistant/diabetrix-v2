@@ -1422,7 +1422,7 @@ export default function PatientJourney() {
                                                     const isScheduledRequest = entry.tool_name === 'scheduled_request';
                                                     const cardBorderColor = isScheduledRequest ? 'border-purple-200' : isCompleted ? 'border-blue-100' : 'border-gray-200';
                                                     const cardBgColor = isScheduledRequest ? 'bg-gradient-to-br from-purple-50/50 to-white' : 'bg-white';
-                                                    
+
                                                     // Get status color for dot
                                                     const getStatusDotColor = (statusName?: string | null) => {
                                                         if (!statusName) return 'bg-gray-400';
@@ -1440,12 +1440,8 @@ export default function PatientJourney() {
                                                                 <div className="flex-1 min-w-0">
                                                                     {/* Title and Description */}
                                                                     <div className="mb-3">
-                                                                        {entry.timeline_title && (
-                                                                            <div className={`text-sm font-semibold leading-tight break-words mb-1.5 ${isScheduledRequest ? 'text-purple-900' : 'text-gray-900'}`}>
-                                                                                {entry.timeline_title}
-                                                                            </div>
-                                                                        )}
-                                                                        {/* Timeline Description */}
+                                                                        {entry.timeline_title && <div className={`text-sm font-semibold leading-tight break-words mb-1.5 ${isScheduledRequest ? 'text-purple-900' : 'text-gray-900'}`}>{entry.timeline_title}</div>}
+                                                                        {/* Conversation Summary - Show first if available */}
                                                                         {(() => {
                                                                             if (Array.isArray(entry.conversation_summary) && entry.conversation_summary.length > 0) {
                                                                                 return (
@@ -1455,28 +1451,24 @@ export default function PatientJourney() {
                                                                                                 <div className="flex-shrink-0 mt-1.5">
                                                                                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 group-hover:bg-blue-500 transition-colors"></div>
                                                                                                 </div>
-                                                                                                <p className="text-sm text-gray-600 leading-relaxed break-words flex-1 group-hover:text-gray-700 transition-colors">
-                                                                                                    {point}
-                                                                                                </p>
+                                                                                                <p className="text-sm text-gray-600 leading-relaxed break-words flex-1 group-hover:text-gray-700 transition-colors">{point}</p>
                                                                                             </div>
                                                                                         ))}
                                                                                     </div>
                                                                                 );
                                                                             }
-                                                                            if (entry.conversation_summary || entry.timeline_description) {
-                                                                                return (
-                                                                                    <div className="text-sm text-gray-600 leading-relaxed break-words">
-                                                                                        {typeof entry.conversation_summary === 'string' ? entry.conversation_summary : entry.timeline_description}
-                                                                                    </div>
-                                                                                );
+                                                                            if (entry.conversation_summary && typeof entry.conversation_summary === 'string') {
+                                                                                return <div className="text-sm text-gray-600 leading-relaxed break-words pt-1">{entry.conversation_summary}</div>;
                                                                             }
                                                                             return null;
                                                                         })()}
-                                                                        {!entry.timeline_title && !entry.timeline_description && (
-                                                                            <div className="text-sm font-semibold text-gray-900 leading-snug break-words">
-                                                                                {entry.tool_name.replace(/_/g, ' ')}
+                                                                        {/* Timeline Description - Show if no conversation summary or as additional info */}
+                                                                        {entry.timeline_description && (
+                                                                            <div className={`text-sm text-gray-600 leading-relaxed break-words ${entry.conversation_summary ? 'mt-2 pt-2 border-t border-gray-100' : 'pt-1'}`}>
+                                                                                {entry.timeline_description}
                                                                             </div>
                                                                         )}
+                                                                        {!entry.timeline_title && !entry.timeline_description && !entry.conversation_summary && <div className="text-sm font-semibold text-gray-900 leading-snug break-words">{entry.tool_name.replace(/_/g, ' ')}</div>}
                                                                     </div>
 
                                                                     {/* Status and Scheduled Time - Sleek inline display */}
@@ -1485,14 +1477,13 @@ export default function PatientJourney() {
                                                                             {entry.request_status_name && (
                                                                                 <div className="flex items-center gap-1.5">
                                                                                     <div className={`w-2 h-2 rounded-full ${getStatusDotColor(entry.request_status_name)}`}></div>
-                                                                                    <span className="text-xs font-medium text-gray-700">
-                                                                                        {entry.request_status_name}
-                                                                                    </span>
+                                                                                    <span className="text-xs font-medium text-gray-700">{entry.request_status_name}</span>
                                                                                 </div>
                                                                             )}
                                                                             {entry.request_trigger_time && (
                                                                                 <Tag className="text-[10px] px-2.5 py-1 border-0 bg-gray-100 text-gray-600 font-medium rounded-md">
-                                                                                    Scheduled time: {new Date(entry.request_trigger_time).toLocaleString('en-US', {
+                                                                                    Scheduled time:{' '}
+                                                                                    {new Date(entry.request_trigger_time).toLocaleString('en-US', {
                                                                                         month: 'short',
                                                                                         day: 'numeric',
                                                                                         year: 'numeric',
@@ -1504,7 +1495,7 @@ export default function PatientJourney() {
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                
+
                                                                 {/* Right side - Channel tag and expand button */}
                                                                 <div className="flex items-start gap-2 flex-shrink-0">
                                                                     {channelInfo && (
@@ -1525,11 +1516,7 @@ export default function PatientJourney() {
                                                                             }}
                                                                             className="p-1.5 rounded-md hover:bg-gray-100 transition-colors flex-shrink-0"
                                                                             title="Show details">
-                                                                            {expandedTimelineEntries.has(entry.timeline_id) ? (
-                                                                                <FaChevronUp className="text-gray-500 text-xs" />
-                                                                            ) : (
-                                                                                <FaChevronDown className="text-gray-500 text-xs" />
-                                                                            )}
+                                                                            {expandedTimelineEntries.has(entry.timeline_id) ? <FaChevronUp className="text-gray-500 text-xs" /> : <FaChevronDown className="text-gray-500 text-xs" />}
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -1537,185 +1524,182 @@ export default function PatientJourney() {
 
                                                             {/* Visit Attributes - Show only for first occurrence */}
                                                             {visitData && item.isFirstVisitOccurrence && (
-                                                                        <div className="mb-2.5 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                                                                            <div className="flex items-center justify-between mb-1">
-                                                                                <div className="text-xs font-semibold text-blue-900 flex items-center gap-1">
-                                                                                    <FaCalendar className="text-xs" />
-                                                                                    Visit Attribution
-                                                                                </div>
-                                                                                {/* Expand button for visit events */}
-                                                                                {entry.visit_id && (
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            const newExpanded = new Set(expandedVisits);
-                                                                                            if (newExpanded.has(entry.visit_id!)) {
-                                                                                                newExpanded.delete(entry.visit_id!);
-                                                                                            } else {
-                                                                                                newExpanded.add(entry.visit_id!);
-                                                                                            }
-                                                                                            setExpandedVisits(newExpanded);
-                                                                                        }}
-                                                                                        className="p-1 rounded hover:bg-blue-100 transition-colors">
-                                                                                        {expandedVisits.has(entry.visit_id!) ? <FaChevronUp className="text-blue-600 text-xs" /> : <FaChevronDown className="text-blue-600 text-xs" />}
-                                                                                    </button>
+                                                                <div className="mb-2.5 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <div className="text-xs font-semibold text-blue-900 flex items-center gap-1">
+                                                                            <FaCalendar className="text-xs" />
+                                                                            Visit Attribution
+                                                                        </div>
+                                                                        {/* Expand button for visit events */}
+                                                                        {entry.visit_id && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const newExpanded = new Set(expandedVisits);
+                                                                                    if (newExpanded.has(entry.visit_id!)) {
+                                                                                        newExpanded.delete(entry.visit_id!);
+                                                                                    } else {
+                                                                                        newExpanded.add(entry.visit_id!);
+                                                                                    }
+                                                                                    setExpandedVisits(newExpanded);
+                                                                                }}
+                                                                                className="p-1 rounded hover:bg-blue-100 transition-colors">
+                                                                                {expandedVisits.has(entry.visit_id!) ? <FaChevronUp className="text-blue-600 text-xs" /> : <FaChevronDown className="text-blue-600 text-xs" />}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                    {/* UTM Parameters - Always show if available */}
+                                                                    {visitData.utm_source || visitData.utm_medium || visitData.utm_campaign || visitData.utm_term || visitData.utm_content ? (
+                                                                        <div className="mb-2">
+                                                                            <div className="text-[11px] font-semibold text-gray-700 mb-1">UTM Parameters:</div>
+                                                                            <div className="flex flex-wrap gap-2 text-xs">
+                                                                                {visitData.utm_source && (
+                                                                                    <span className="text-gray-700">
+                                                                                        <strong>Source:</strong> {visitData.utm_source}
+                                                                                    </span>
+                                                                                )}
+                                                                                {visitData.utm_medium && (
+                                                                                    <span className="text-gray-700">
+                                                                                        <strong>Medium:</strong> {visitData.utm_medium}
+                                                                                    </span>
+                                                                                )}
+                                                                                {visitData.utm_campaign && (
+                                                                                    <span className="text-gray-700">
+                                                                                        <strong>Campaign:</strong> {visitData.utm_campaign}
+                                                                                    </span>
+                                                                                )}
+                                                                                {visitData.utm_term && (
+                                                                                    <span className="text-gray-700">
+                                                                                        <strong>Term:</strong> {visitData.utm_term}
+                                                                                    </span>
+                                                                                )}
+                                                                                {visitData.utm_content && (
+                                                                                    <span className="text-gray-700">
+                                                                                        <strong>Content:</strong> {visitData.utm_content}
+                                                                                    </span>
                                                                                 )}
                                                                             </div>
-                                                                            {/* UTM Parameters - Always show if available */}
-                                                                            {visitData.utm_source || visitData.utm_medium || visitData.utm_campaign || visitData.utm_term || visitData.utm_content ? (
-                                                                                <div className="mb-2">
-                                                                                    <div className="text-[11px] font-semibold text-gray-700 mb-1">UTM Parameters:</div>
-                                                                                    <div className="flex flex-wrap gap-2 text-xs">
-                                                                                        {visitData.utm_source && (
-                                                                                            <span className="text-gray-700">
-                                                                                                <strong>Source:</strong> {visitData.utm_source}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {visitData.utm_medium && (
-                                                                                            <span className="text-gray-700">
-                                                                                                <strong>Medium:</strong> {visitData.utm_medium}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {visitData.utm_campaign && (
-                                                                                            <span className="text-gray-700">
-                                                                                                <strong>Campaign:</strong> {visitData.utm_campaign}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {visitData.utm_term && (
-                                                                                            <span className="text-gray-700">
-                                                                                                <strong>Term:</strong> {visitData.utm_term}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        {visitData.utm_content && (
-                                                                                            <span className="text-gray-700">
-                                                                                                <strong>Content:</strong> {visitData.utm_content}
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="mb-2 text-xs text-gray-500">No UTM parameters available</div>
-                                                                            )}
-                                                                            <div className="flex flex-col gap-1 text-xs text-gray-600">
-                                                                                {visitData.landing_page && (
-                                                                                    <div className="flex items-center gap-1">
-                                                                                        <FaInfoCircle className="text-xs" />
-                                                                                        <span className="truncate" title={visitData.landing_page}>
-                                                                                            Landing: {visitData.landing_page.length > 50 ? visitData.landing_page.substring(0, 50) + '...' : visitData.landing_page}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                )}
-                                                                                {visitData.referrer && <div className="text-gray-500">Referrer: {visitData.referrer.length > 40 ? visitData.referrer.substring(0, 40) + '...' : visitData.referrer}</div>}
-                                                                                {visitData.device_type && <div className="text-gray-500">Device: {visitData.device_type}</div>}
-                                                                                {visitData.domain && <div className="text-gray-500">Domain: {visitData.domain}</div>}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="mb-2 text-xs text-gray-500">No UTM parameters available</div>
+                                                                    )}
+                                                                    <div className="flex flex-col gap-1 text-xs text-gray-600">
+                                                                        {visitData.landing_page && (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <FaInfoCircle className="text-xs" />
+                                                                                <span className="truncate" title={visitData.landing_page}>
+                                                                                    Landing: {visitData.landing_page.length > 50 ? visitData.landing_page.substring(0, 50) + '...' : visitData.landing_page}
+                                                                                </span>
                                                                             </div>
+                                                                        )}
+                                                                        {visitData.referrer && <div className="text-gray-500">Referrer: {visitData.referrer.length > 40 ? visitData.referrer.substring(0, 40) + '...' : visitData.referrer}</div>}
+                                                                        {visitData.device_type && <div className="text-gray-500">Device: {visitData.device_type}</div>}
+                                                                        {visitData.domain && <div className="text-gray-500">Domain: {visitData.domain}</div>}
+                                                                    </div>
 
-                                                                            {/* Expanded Visit Events */}
-                                                                            {entry.visit_id && expandedVisits.has(entry.visit_id) && (
-                                                                                <div className="mt-3 pt-3 border-t border-blue-200">
-                                                                                    <div className="text-xs font-semibold text-blue-900 mb-3">Related Events:</div>
-                                                                                    {allTimelineEntries
-                                                                                        .filter((e) => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id)
-                                                                                        .map((relatedEntry) => {
-                                                                                            const relatedTime = new Date(relatedEntry.created_at);
-                                                                                            const relatedChannelInfo = getChannelInfo(mapToolNameToChannel(relatedEntry.tool_name));
-                                                                                            return (
-                                                                                                <div key={relatedEntry.timeline_id} className="mb-3 p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
-                                                                                                    <div className="flex items-start gap-2 mb-2">
-                                                                                                        <div className="flex-1 min-w-0">
-                                                                                                            {relatedEntry.timeline_title && <div className="text-xs font-semibold text-gray-900 mb-1 break-words">{relatedEntry.timeline_title}</div>}
-                                                                                                            {relatedEntry.timeline_description && <div className="text-xs text-gray-700 leading-relaxed break-words">{relatedEntry.timeline_description}</div>}
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                                                        <Tag icon={getEventIcon(mapTimelineEntryToJourneyEvent(relatedEntry, 0))} className="text-[10px] px-2 py-0.5 border-0 bg-gray-500 text-white">
-                                                                                                            {relatedEntry.tool_name.replace(/_/g, ' ')}
-                                                                                                        </Tag>
-                                                                                                        {relatedChannelInfo && (
-                                                                                                            <Tag icon={relatedChannelInfo.icon} className="text-[10px] px-2 py-0.5 border" style={{ color: relatedChannelInfo.color, borderColor: `${relatedChannelInfo.color}30` }}>
-                                                                                                                {relatedChannelInfo.label}
-                                                                                                            </Tag>
-                                                                                                        )}
-                                                                                                        <span className="text-[10px] text-gray-500">
-                                                                                                            {relatedTime.toLocaleTimeString('en-US', {
-                                                                                                                hour: 'numeric',
-                                                                                                                minute: '2-digit',
-                                                                                                            })}
-                                                                                                        </span>
-                                                                                                    </div>
+                                                                    {/* Expanded Visit Events */}
+                                                                    {entry.visit_id && expandedVisits.has(entry.visit_id) && (
+                                                                        <div className="mt-3 pt-3 border-t border-blue-200">
+                                                                            <div className="text-xs font-semibold text-blue-900 mb-3">Related Events:</div>
+                                                                            {allTimelineEntries
+                                                                                .filter((e) => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id)
+                                                                                .map((relatedEntry) => {
+                                                                                    const relatedTime = new Date(relatedEntry.created_at);
+                                                                                    const relatedChannelInfo = getChannelInfo(mapToolNameToChannel(relatedEntry.tool_name));
+                                                                                    return (
+                                                                                        <div key={relatedEntry.timeline_id} className="mb-3 p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
+                                                                                            <div className="flex items-start gap-2 mb-2">
+                                                                                                <div className="flex-1 min-w-0">
+                                                                                                    {relatedEntry.timeline_title && <div className="text-xs font-semibold text-gray-900 mb-1 break-words">{relatedEntry.timeline_title}</div>}
+                                                                                                    {relatedEntry.timeline_description && <div className="text-xs text-gray-700 leading-relaxed break-words">{relatedEntry.timeline_description}</div>}
                                                                                                 </div>
-                                                                                            );
-                                                                                        })}
-                                                                                    {allTimelineEntries.filter((e) => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id).length === 0 && <div className="text-xs text-gray-500 italic">No other events for this visit</div>}
-                                                                                </div>
-                                                                            )}
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                                <Tag icon={getEventIcon(mapTimelineEntryToJourneyEvent(relatedEntry, 0))} className="text-[10px] px-2 py-0.5 border-0 bg-gray-500 text-white">
+                                                                                                    {relatedEntry.tool_name.replace(/_/g, ' ')}
+                                                                                                </Tag>
+                                                                                                {relatedChannelInfo && (
+                                                                                                    <Tag icon={relatedChannelInfo.icon} className="text-[10px] px-2 py-0.5 border" style={{ color: relatedChannelInfo.color, borderColor: `${relatedChannelInfo.color}30` }}>
+                                                                                                        {relatedChannelInfo.label}
+                                                                                                    </Tag>
+                                                                                                )}
+                                                                                                <span className="text-[10px] text-gray-500">
+                                                                                                    {relatedTime.toLocaleTimeString('en-US', {
+                                                                                                        hour: 'numeric',
+                                                                                                        minute: '2-digit',
+                                                                                                    })}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            {allTimelineEntries.filter((e) => e.visit_id === entry.visit_id && e.timeline_id !== entry.timeline_id).length === 0 && <div className="text-xs text-gray-500 italic">No other events for this visit</div>}
                                                                         </div>
                                                                     )}
+                                                                </div>
+                                                            )}
 
                                                             {/* Tool name chip and creation date - Sleek bottom bar */}
                                                             <div className="flex items-center gap-3 flex-wrap mt-4 pt-3 border-t border-gray-100">
-                                                                        <Tag
-                                                                            icon={getEventIcon(mapTimelineEntryToJourneyEvent(entry, index))}
-                                                                            className={`text-[10px] px-2.5 py-1 h-auto rounded-md font-medium border-0 text-white ${isScheduledRequest ? 'bg-purple-500' : ''}`}
-                                                                            style={isScheduledRequest ? {} : {
-                                                                                backgroundColor: primaryColor,
-                                                                                color: 'white',
-                                                                            }}>
-                                                                            {entry.tool_name.replace(/_/g, ' ')}
-                                                                        </Tag>
-                                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                                            <FaCalendar className="text-[10px]" />
-                                                                            <span className="whitespace-nowrap">
-                                                                                {new Date(entry.created_at).toLocaleDateString('en-US', {
-                                                                                    month: 'short',
-                                                                                    day: 'numeric',
-                                                                                    year: 'numeric',
-                                                                                })}
-                                                                            </span>
-                                                                            <span className="text-gray-400">•</span>
-                                                                            <span className="whitespace-nowrap">
-                                                                                {new Date(entry.created_at).toLocaleTimeString('en-US', {
-                                                                                    hour: 'numeric',
-                                                                                    minute: '2-digit',
-                                                                                })}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
+                                                                <Tag
+                                                                    icon={getEventIcon(mapTimelineEntryToJourneyEvent(entry, index))}
+                                                                    className={`text-[10px] px-2.5 py-1 h-auto rounded-md font-medium border-0 text-white ${isScheduledRequest ? 'bg-purple-500' : ''}`}
+                                                                    style={
+                                                                        isScheduledRequest
+                                                                            ? {}
+                                                                            : {
+                                                                                  backgroundColor: primaryColor,
+                                                                                  color: 'white',
+                                                                              }
+                                                                    }>
+                                                                    {entry.tool_name.replace(/_/g, ' ')}
+                                                                </Tag>
+                                                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                                    <FaCalendar className="text-[10px]" />
+                                                                    <span className="whitespace-nowrap">
+                                                                        {new Date(entry.created_at).toLocaleDateString('en-US', {
+                                                                            month: 'short',
+                                                                            day: 'numeric',
+                                                                            year: 'numeric',
+                                                                        })}
+                                                                    </span>
+                                                                    <span className="text-gray-400">•</span>
+                                                                    <span className="whitespace-nowrap">
+                                                                        {new Date(entry.created_at).toLocaleTimeString('en-US', {
+                                                                            hour: 'numeric',
+                                                                            minute: '2-digit',
+                                                                        })}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
 
                                                             {/* Expanded Details and Arguments */}
                                                             {expandedTimelineEntries.has(entry.timeline_id) && (
-                                                                        <div className="mt-3 space-y-3">
-                                                                            {/* Decision Summary */}
-                                                                            {entry.decision_summary && (
-                                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Outcome:</span>
-                                                                                    <Tag color="green" className="text-xs">
-                                                                                        {entry.decision_summary}
-                                                                                    </Tag>
-                                                                                </div>
-                                                                            )}
-                                                                            {/* Conversation Summary */}
-                                                                            {entry.conversation_summary && (
-                                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Conversation Summary:</span>
-                                                                                    <p className="text-xs text-gray-700 leading-relaxed break-words whitespace-pre-wrap">{entry.conversation_summary}</p>
-                                                                                </div>
-                                                                            )}
-                                                                            {/* Tool Result */}
-                                                                            {entry.tool_result && typeof entry.tool_result === 'object' && Object.keys(entry.tool_result).length > 0 && (
-                                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Details:</span>
-                                                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">{JSON.stringify(entry.tool_result, null, 2)}</pre>
-                                                                                </div>
-                                                                            )}
-                                                                            {/* Tool Arguments */}
-                                                                            {entry.tool_arguments && Object.keys(entry.tool_arguments).length > 0 && (
-                                                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                                                    <span className="text-xs font-semibold text-gray-700 block mb-1">Tool Arguments:</span>
-                                                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">{JSON.stringify(entry.tool_arguments, null, 2)}</pre>
-                                                                                </div>
-                                                                            )}
+                                                                <div className="mt-3 space-y-3">
+                                                                    {/* Decision Summary */}
+                                                                    {entry.decision_summary && (
+                                                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                            <span className="text-xs font-semibold text-gray-700 block mb-1">Outcome:</span>
+                                                                            <Tag color="green" className="text-xs">
+                                                                                {entry.decision_summary}
+                                                                            </Tag>
                                                                         </div>
                                                                     )}
+                                                                    {/* Tool Result */}
+                                                                    {entry.tool_result && typeof entry.tool_result === 'object' && Object.keys(entry.tool_result).length > 0 && (
+                                                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                            <span className="text-xs font-semibold text-gray-700 block mb-1">Details:</span>
+                                                                            <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">{JSON.stringify(entry.tool_result, null, 2)}</pre>
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Tool Arguments */}
+                                                                    {entry.tool_arguments && Object.keys(entry.tool_arguments).length > 0 && (
+                                                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                                            <span className="text-xs font-semibold text-gray-700 block mb-1">Tool Arguments:</span>
+                                                                            <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words bg-white p-2 rounded border border-gray-200">{JSON.stringify(entry.tool_arguments, null, 2)}</pre>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </Card>
                                                     );
                                                 })()}

@@ -322,11 +322,11 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
                 console.log('Copay card request submitted successfully');
                 // Send SMS notification as secondary
                 try {
-                    await sendCopayRequest(drugName);
+                    // await sendCopayRequest(drugName);
                     // Send copay card details after 1 second
                     setTimeout(async () => {
                         try {
-                            await sendCopayCardDetails(drugName);
+                            // await sendCopayCardDetails(drugName);
                         } catch (error) {
                             console.error('Failed to send copay card details SMS:', error);
                         }

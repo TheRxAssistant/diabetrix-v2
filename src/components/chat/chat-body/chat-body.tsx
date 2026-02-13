@@ -1,6 +1,9 @@
 import React, { RefObject, useEffect, useState } from 'react';
 import ChatMessage from './chat-message';
 import ChatLoader from './chat-loader';
+import MDEditor from '@uiw/react-md-editor';
+import { MediaRenderer } from '../media-renderer';
+import { isVideoUrl, isImageUrl, getYouTubeEmbedUrl, getVimeoEmbedUrl } from '../../../lib/media-utils';
 import './chat-body.scss';
 import ConnectingAnimation from '../../shared/connecting-animation/ConnectingAnimation';
 import NumericDialer from '../../shared/numeric-dialer/NumericDialer';
@@ -57,24 +60,43 @@ interface ChatBodyProps {
     show_input?: boolean;
 }
 
-const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting, messages_end_ref, handle_button_click, chat_mode = 'input', mcq_options = [], mcq_loading = false, on_mcq_select, streaming_message = '', is_streaming = false, intelligent_options = [], intelligent_input_fields = [], intelligent_action_link = null, intelligent_options_loading = false, intelligent_option_type = 'generic', on_intelligent_option_select, on_intelligent_input_submit, show_intelligent_options = false, show_start_again = false, on_start_again, show_input = true }) => {
+const ChatBody: React.FC<ChatBodyProps> = ({
+    messages,
+    loading,
+    is_reconnecting,
+    messages_end_ref,
+    handle_button_click,
+    chat_mode = 'input',
+    mcq_options = [],
+    mcq_loading = false,
+    on_mcq_select,
+    streaming_message = '',
+    is_streaming = false,
+    intelligent_options = [],
+    intelligent_input_fields = [],
+    intelligent_action_link = null,
+    intelligent_options_loading = false,
+    intelligent_option_type = 'generic',
+    on_intelligent_option_select,
+    on_intelligent_input_submit,
+    show_intelligent_options = false,
+    show_start_again = false,
+    on_start_again,
+    show_input = true,
+}) => {
     const [allow_chat, set_allow_chat] = useState(false);
     const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
     const [show_insurance_upload_modal, set_show_insurance_upload_modal] = useState(false);
-    
+
     // Check if the last assistant message contains "upload" and "insurance card"
     const shouldShowInsuranceUpload = React.useMemo(() => {
         if (messages.length === 0 && !streaming_message) return false;
-        
+
         // Check streaming message first if available
-        const contentToCheck = is_streaming && streaming_message 
-            ? streaming_message 
-            : messages.length > 0 
-                ? messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content || ''
-                : '';
-        
+        const contentToCheck = is_streaming && streaming_message ? streaming_message : messages.length > 0 ? messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.content || '' : '';
+
         if (!contentToCheck) return false;
-        
+
         const lowerContent = contentToCheck.toLowerCase();
         return lowerContent.includes('upload') && lowerContent.includes('insurance card');
     }, [messages, streaming_message, is_streaming]);
@@ -92,9 +114,9 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
     }, [intelligent_input_fields]);
 
     const handle_input_change = (field_key: string, value: string) => {
-        set_input_field_values(prev => ({
+        set_input_field_values((prev) => ({
             ...prev,
-            [field_key]: value
+            [field_key]: value,
         }));
     };
 
@@ -190,24 +212,40 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
             {allow_chat ? (
                 <>
                     {messages.map((message, index) => (
-                        <ChatMessage 
-                            key={message.id} 
-                            message={message} 
-                            handle_button_click={handle_button_click}
-                            chat_mode={chat_mode}
-                            show_input={show_input}
-                            is_first_message={index === 0 && messages.length === 1}
-                        />
+                        <ChatMessage key={message.id} message={message} handle_button_click={handle_button_click} chat_mode={chat_mode} show_input={show_input} is_first_message={index === 0 && messages.length === 1} />
                     ))}
 
                     {/* Streaming message */}
                     {is_streaming && streaming_message && (
                         <div className="message system-message">
                             <div className="message-content">
-                                <div className="md-content">
-                                    {streaming_message}
-                                    <span className="inline-block ml-0.5 animate-blink text-[#007aff] font-bold">|</span>
-                                </div>
+                                <MDEditor.Markdown
+                                    source={streaming_message}
+                                    components={{
+                                        a: (props: any) => {
+                                            const url = props.href || '';
+                                            // Check if it's a media URL
+                                            if (isVideoUrl(url) || isImageUrl(url) || getYouTubeEmbedUrl(url) || getVimeoEmbedUrl(url)) {
+                                                return <MediaRenderer key={url} url={url} />;
+                                            }
+                                            // Regular link
+                                            return <a {...props} target="_blank" rel="noopener noreferrer" />;
+                                        },
+                                        h1: (props: any) => <h1 {...props} style={{ fontSize: 20, marginBottom: '0.5rem' }} />,
+                                        h2: (props: any) => <h2 {...props} style={{ fontSize: 18, marginBottom: '0.5rem' }} />,
+                                        h3: (props: any) => <h3 {...props} style={{ fontSize: 16, marginBottom: '0.5rem' }} />,
+                                        p: (props: any) => (
+                                            <p {...props}>
+                                                {props.children}
+                                                <span className="inline-block ml-0.5 animate-blink text-[#007aff] font-bold">|</span>
+                                            </p>
+                                        ),
+                                        ul: (props: any) => <ul {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                        ol: (props: any) => <ol {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                        li: (props: any) => <li {...props} style={{ marginBottom: '0.25rem', listStyleType: 'disc' }} />,
+                                    }}
+                                    className="md-content"
+                                />
                             </div>
                         </div>
                     )}
@@ -263,12 +301,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                 ) : intelligent_action_link ? (
                                     /* Action Link for booking appointments or copay requests */
                                     <div className="intelligent-action-link-container">
-                                        <a
-                                            href={intelligent_action_link.url}
-                                            target={intelligent_action_link.open_in_new_tab ? '_blank' : '_self'}
-                                            rel="noopener noreferrer"
-                                            className="intelligent-action-link-button"
-                                        >
+                                        <a href={intelligent_action_link.url} target={intelligent_action_link.open_in_new_tab ? '_blank' : '_self'} rel="noopener noreferrer" className="intelligent-action-link-button">
                                             {intelligent_action_link.label}
                                             {intelligent_action_link.open_in_new_tab && (
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}>
@@ -287,12 +320,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                                 <label className="intelligent-input-label">{field.label}</label>
                                                 {field.field_type === 'zipcode' && chat_mode === 'mcq' ? (
                                                     /* Numeric Dialer for zipcode in MCQ mode */
-                                                    <NumericDialer
-                                                        value={input_field_values[`field_${index}`] || ''}
-                                                        onChange={(value) => handle_input_change(`field_${index}`, value)}
-                                                        maxLength={5}
-                                                        placeholder={field.placeholder}
-                                                    />
+                                                    <NumericDialer value={input_field_values[`field_${index}`] || ''} onChange={(value) => handle_input_change(`field_${index}`, value)} maxLength={5} placeholder={field.placeholder} />
                                                 ) : (
                                                     <input
                                                         type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
@@ -309,11 +337,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                                 )}
                                             </div>
                                         ))}
-                                        <button 
-                                            className="intelligent-input-submit"
-                                            onClick={handle_input_submit}
-                                            disabled={is_submit_disabled}
-                                        >
+                                        <button className="intelligent-input-submit" onClick={handle_input_submit} disabled={is_submit_disabled}>
                                             Submit
                                         </button>
                                     </div>
@@ -322,11 +346,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                     <>
                                         <div className={`mcq-options-list ${intelligent_option_type === 'consent' ? 'mcq-options-row' : ''}`}>
                                             {intelligent_options.map((option, index) => (
-                                                <button 
-                                                    key={`intelligent-option-${index}`} 
-                                                    onClick={() => on_intelligent_option_select && on_intelligent_option_select(option.text)} 
-                                                    className="mcq-option-button"
-                                                >
+                                                <button key={`intelligent-option-${index}`} onClick={() => on_intelligent_option_select && on_intelligent_option_select(option.text)} className="mcq-option-button">
                                                     {option.text}
                                                 </button>
                                             ))}
@@ -339,16 +359,11 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
 
                     {/* Insurance Card Upload Button - Right Side (when AI mentions upload and insurance card) */}
                     {/* Show only when no MCQ options or intelligent options are displayed */}
-                    {shouldShowInsuranceUpload && !is_streaming && !loading && 
-                     !(chat_mode === 'mcq' && mcq_options.length > 0) && 
-                     !(show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link)) && (
+                    {shouldShowInsuranceUpload && !is_streaming && !loading && !(chat_mode === 'mcq' && mcq_options.length > 0) && !(show_intelligent_options && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link)) && (
                         <div className="mcq-options-container mcq-right-side">
                             <div className="mcq-options-content">
                                 <div className="insurance-upload-button-container">
-                                    <button 
-                                        className="insurance-upload-button"
-                                        onClick={() => set_show_insurance_upload_modal(true)}
-                                    >
+                                    <button className="insurance-upload-button" onClick={() => set_show_insurance_upload_modal(true)}>
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
                                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                             <polyline points="17 8 12 3 7 8"></polyline>
@@ -364,17 +379,14 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                     {/* Start Again Button - shows when input is disabled */}
                     {show_start_again && !is_streaming && !loading && !intelligent_options_loading && (
                         <div className="start-again-container">
-                            <button 
-                                className="start-again-button"
-                                onClick={on_start_again}
-                            >
+                            <button className="start-again-button" onClick={on_start_again}>
                                 Start Again
                             </button>
                         </div>
                     )}
 
                     <div ref={messages_end_ref} />
-                    
+
                     {/* Insurance Card Scan Modal */}
                     {show_insurance_upload_modal && (
                         <InsuranceCardScanModal
@@ -390,12 +402,10 @@ const ChatBody: React.FC<ChatBodyProps> = ({ messages, loading, is_reconnecting,
                                     if (data.member_id) insuranceDetails.push(`Member ID: ${data.member_id}`);
                                     if (data.policy_number) insuranceDetails.push(`Policy Number: ${data.policy_number}`);
                                     if (data.group_number) insuranceDetails.push(`Group Number: ${data.group_number}`);
-                                    
+
                                     // Send formatted insurance data as user message
-                                    const insuranceMessage = insuranceDetails.length > 0 
-                                        ? insuranceDetails.join(', ')
-                                        : 'Insurance card uploaded successfully';
-                                    
+                                    const insuranceMessage = insuranceDetails.length > 0 ? insuranceDetails.join(', ') : 'Insurance card uploaded successfully';
+
                                     handle_button_click(insuranceMessage);
                                 }
                             }}

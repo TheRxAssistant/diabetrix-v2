@@ -1,6 +1,8 @@
 // ChatMessage.tsx
 import React, { useState, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
+import { MediaRenderer } from '../media-renderer';
+import { isVideoUrl, isImageUrl, getYouTubeEmbedUrl, getVimeoEmbedUrl, extractUrls } from '../../../lib/media-utils';
 import './chat-body.scss';
 
 interface Message_Props {
@@ -58,30 +60,32 @@ const ChatMessage: React.FC<Chat_Message_Props> = ({ message, handle_button_clic
                         <MDEditor.Markdown
                             source={message.content}
                             components={{
-                                a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                                h1: (props) => <h1 {...props} style={{ fontSize: 20, marginBottom: '0.5rem' }} />,
-                                h2: (props) => <h2 {...props} style={{ fontSize: 18, marginBottom: '0.5rem' }} />,
-                                h3: (props) => <h3 {...props} style={{ fontSize: 16, marginBottom: '0.5rem' }} />,
-                                p: (props) => <p {...props} />,
-                                ul: (props) => <ul {...props} style={{ paddingLeft: '1.2rem' }} />,
-                                ol: (props) => <ol {...props} style={{ paddingLeft: '1.2rem' }} />,
-                                li: (props) => <li {...props} style={{ marginBottom: '0.25rem', listStyleType: 'disc' }} />,
+                                a: (props: any) => {
+                                    const url = props.href || '';
+                                    // Check if it's a media URL
+                                    if (isVideoUrl(url) || isImageUrl(url) || getYouTubeEmbedUrl(url) || getVimeoEmbedUrl(url)) {
+                                        return <MediaRenderer key={url} url={url} />;
+                                    }
+                                    // Regular link
+                                    return <a {...props} target="_blank" rel="noopener noreferrer" />;
+                                },
+                                h1: (props: any) => <h1 {...props} style={{ fontSize: 20, marginBottom: '0.5rem' }} />,
+                                h2: (props: any) => <h2 {...props} style={{ fontSize: 18, marginBottom: '0.5rem' }} />,
+                                h3: (props: any) => <h3 {...props} style={{ fontSize: 16, marginBottom: '0.5rem' }} />,
+                                p: (props: any) => <p {...props} />,
+                                ul: (props: any) => <ul {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                ol: (props: any) => <ol {...props} style={{ paddingLeft: '1.2rem' }} />,
+                                li: (props: any) => <li {...props} style={{ marginBottom: '0.25rem', listStyleType: 'disc' }} />,
                             }}
                             className="md-content"
                         />
                         {/* Yes/No buttons for first AI message when input is enabled and not MCQ mode */}
                         {is_first_message && chat_mode === 'input' && show_input && (
                             <div className="yes-no-buttons-container">
-                                <button
-                                    className="yes-no-button yes-button"
-                                    onClick={() => handle_button_click('Yes')}
-                                >
+                                <button className="yes-no-button yes-button" onClick={() => handle_button_click('Yes')}>
                                     Yes
                                 </button>
-                                <button
-                                    className="yes-no-button no-button"
-                                    onClick={() => handle_button_click('No')}
-                                >
+                                <button className="yes-no-button no-button" onClick={() => handle_button_click('No')}>
                                     No
                                 </button>
                             </div>
