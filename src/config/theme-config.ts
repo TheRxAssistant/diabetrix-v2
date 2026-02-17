@@ -98,7 +98,7 @@ const goodrxTheme: ThemeConfig = {
 const onapgoTheme: ThemeConfig = {
     domain: 'onapgo',
     brand_name: 'Onapgo',
-    condition: 'Parkinsons',
+    condition: `Parkinson's Disease`,
     logo: 'https://www.onapgo.com/sites/g/files/othskp1891/files/ONAPGO_LOGO_2025_RGB-DarkSlate%20(2).png',
     bg_color: '#ffffff',
     bg_image: '/onapgo-bg.png',
