@@ -526,9 +526,6 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                             onCreateWebsocketConnection();
                                             onSetChatResetKey((k) => k + 1);
                                             onSetPendingMessages(['yes', item.question]);
-                                        }}
-                                        style={{
-                                            animationDelay: `${index * 100}ms`,
                                         }}>
                                         <div className={styles.learn_card_icon}>{item.icon}</div>
                                         <div className={styles.learn_card_content}>
