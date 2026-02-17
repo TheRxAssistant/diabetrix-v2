@@ -203,8 +203,14 @@ interface MessageAudioData {
 
 // Helper function to get greeting message based on domain and brand name
 const getGreetingMessage = (domain: string, brandName: string): MyUIMessage => {
-    const capitalizedBrandName = brandName.charAt(0).toUpperCase() + brandName.slice(1);
-    const greeting_text = `Hello! I'm your ${capitalizedBrandName} concierge. How can I assist you today?`;
+    let greeting_text: string;
+    
+    if (domain === 'onapgo') {
+        greeting_text = `Hi, I am your ONAPGO Concierge. Do you consent to our [Terms of Use](https://www.supernus.com/terms-of-use) and [Privacy Policy](https://www.supernus.com/privacy-policy)?`;
+    } else {
+        // Default to diabetrix greeting
+        greeting_text = `Hi, I am Alex your Diabetrix Concierge. Do you consent to our terms and conditions and privacy policy?`;
+    }
 
     return {
         id: `greeting-${Date.now()}`,
