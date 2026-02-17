@@ -145,6 +145,11 @@
     &.goodrx_theme {
         background: #f5f6f6;
     }
+
+    &.custom_theme {
+        // Custom theme styles applied via inline styles in components
+        // This class serves as a hook for theme-aware styling
+    }
 }
 
 .rx_header {
@@ -613,7 +618,7 @@
     min-height: 56px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
-    // GoodRx theme styles
+    // GoodRx theme styles (kept for backward compatibility)
     &.goodrx_actions_theme {
         background: #ffffff;
         color: #000000;
@@ -622,6 +627,16 @@
 
         &:hover {
             background: #f7fafc;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    // Custom theme styles - styles applied via inline styles in components
+    &.custom_actions_theme {
+        // Base styles for custom themed buttons
+        box-shadow: 1px 2px 10px 0px rgba(34, 34, 34, 0.15);
+
+        &:hover {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
     }
@@ -662,6 +677,21 @@
         i {
             font-size: 18px;
             color: #000000;
+        }
+    }
+
+    .custom_actions_theme_icon_container {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+
+        i {
+            font-size: 18px;
         }
     }
 
@@ -3542,6 +3572,11 @@
                     0 4px 12px rgba(0, 0, 0, 0.1);
             }
         }
+    }
+
+    &.custom_theme {
+        // Custom theme styles - background and other styles applied via inline styles
+        // This class serves as a hook for theme-aware styling
     }
 }
 

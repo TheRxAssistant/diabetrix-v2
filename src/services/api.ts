@@ -85,7 +85,14 @@ export const postAPI = async (url: string | keyof typeof CAPABILITIES_API_URLS |
     }
 
     // Add domain header if available (for core engine and capabilities APIs)
-    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    // Get domain dynamically from theme config
+    let domain = 'diabetrix';
+    if (typeof window !== 'undefined') {
+        const { getThemeConfig, getDomain } = await import('../config/theme-config');
+        const pathname = window.location.pathname;
+        const themeConfig = getThemeConfig(pathname);
+        domain = getDomain(themeConfig);
+    }
     if (url in CORE_ENGINE_API_URLS || Object.values(CORE_ENGINE_API_URLS).includes(url as any)) {
         headers['domain'] = domain;
     }
@@ -204,7 +211,14 @@ export const streamAPI = async (url: keyof typeof CORE_ENGINE_API_URLS, payload:
     }
 
     // Add domain header for core engine APIs
-    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    // Get domain dynamically from theme config
+    let domain = 'diabetrix';
+    if (typeof window !== 'undefined') {
+        const { getThemeConfig, getDomain } = await import('../config/theme-config');
+        const pathname = window.location.pathname;
+        const themeConfig = getThemeConfig(pathname);
+        domain = getDomain(themeConfig);
+    }
     headers['domain'] = domain;
 
     try {

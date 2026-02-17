@@ -4,6 +4,8 @@ import { trackingService } from '../../../services/tracking/tracking-service';
 import { useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
 import { useAuthStore } from '../../../store/authStore';
+import { useThemeConfig } from '../../../hooks/useThemeConfig';
+import { getDomain } from '../../../config/theme-config';
 // Using inline styles instead of module import to avoid lint errors
 
 interface BookAppointmentModalProps {
@@ -13,6 +15,7 @@ interface BookAppointmentModalProps {
 }
 
 const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, onClose, onRequestAppointment }) => {
+    const themeConfig = useThemeConfig();
     const [reason, setReason] = useState('');
     const [availability, setAvailability] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,7 +108,7 @@ const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, o
 
             // Create approved request via API
             const response = await postAPI(CAPABILITIES_API_URLS.SYNC_APPROVED_REQUEST, {
-                domain: 'diabetrix',
+                domain: getDomain(themeConfig),
                 task_type_name: 'doctor-appointment-booking',
                 user_id,
                 request_name: `Book Appointment with ${providerName}`,
