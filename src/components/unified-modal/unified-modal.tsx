@@ -1,15 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './unified-modal.module.scss';
 import { sendWelcomeMessage } from '@/services/smsService.ts';
-import { featuredPharmacies } from '../../data/pharmacies/pharmacies';
-import { AIService } from '../../services/ai-service';
-import { postAPI } from '../../services/api';
-import ChatHeader from '../chat/chat-header/chat-header';
-import ChatBody from '../chat/chat-body/chat-body';
-import ChatFooter from '../chat/chat-footer/chat-footer';
-import { useChat } from '../../services/chat/hooks-chat';
+import { featuredPharmacies } from '@/data/pharmacies/pharmacies.ts';
+import { AIService } from '@/services/ai-service.ts';
+import { CAPABILITIES_API_URLS, postAPI } from '@/services/api.ts';
+import { useChat } from '@/services/chat/hooks-chat.ts';
 import HomePage from './home-page/home-page';
-import MorePage from './more-page/more-page';
 import BottomNavigation from './bottom-navigation/bottom-navigation';
 import { serviceContents } from './service-contents';
 import { IntroStep } from './intro-step/intro-step';
@@ -24,19 +20,21 @@ import { HealthcareSearchStep } from './healthcare-search-step/healthcare-search
 import { InsuranceAssistanceStep } from './insurance-assistance-step/insurance-assistance-step';
 import { PharmacySelectStep } from './pharmacy-select-step/pharmacy-select-step';
 import { PharmacyCheckingStep } from './pharmacy-checking-step/pharmacy-checking-step';
-import { EmbeddedChatStep } from './embedded-chat-step/embedded-chat-step';
+import { VoiceChatStep } from './voice-chat-step/voice-chat-step';
+
 // Custom hooks
 import { useModalState } from './hooks/useModalState';
 import { useChatState } from './hooks/useChatState';
 import { usePharmacyState } from './hooks/usePharmacyState';
+
 // Utilities
-import { formatPhoneNumber, formatOtp, isValidPhoneNumber } from './utils/phone-utils';
+import { formatOtp, formatPhoneNumber } from './utils/phone-utils';
 import { SERVICE_TYPES } from './utils/constants';
-import { CAPABILITIES_API_URLS } from '../../services/api';
+
 // Services
-import { sendOtp, verifyOtp, verifyUserByVerified, generateAccessToken, syncUser, checkAuthSession } from './services/auth-service';
-import { trackingService } from '../../services/tracking/tracking-service';
-import { useAuthStore } from '../../store/authStore';
+import { checkAuthSession, generateAccessToken, syncUser, verifyOtp, verifyUserByVerified } from './services/auth-service';
+import { trackingService } from '@/services/tracking/tracking-service.ts';
+import { useAuthStore } from '@/store/authStore.ts';
 
 interface UnifiedModalProps {
     onClose: () => void;
@@ -111,37 +109,6 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
         },
         [conversation_id, createChatThread, setIsChatActive, setStep],
     );
-
-    // AI-powered follow-up replies generation
-    const getFollowUpReplies = useCallback(async (usedReply: string, messages: any[]): Promise<string[]> => {
-        try {
-            console.log('🔄 Generating AI follow-up replies for:', usedReply);
-            const aiReplies = await AIService.generateQuickReplies(messages);
-            return aiReplies.map((reply) => reply.text);
-        } catch (error) {
-            console.error('❌ Error generating follow-up replies:', error);
-            // Fallback to simple responses
-            return ['Tell me more', 'What else?', 'Any concerns?', 'Next steps?'];
-        }
-    }, []);
-
-    // AI-powered initial replies generation for topics
-    const getInitialRepliesForTopic = useCallback(async (topic: string, messages: any[]): Promise<string[]> => {
-        try {
-            console.log('🎯 Generating AI initial replies for topic:', topic);
-            const aiReplies = await AIService.generateQuickReplies(messages);
-            return aiReplies.map((reply) => reply.text);
-        } catch (error) {
-            console.error('❌ Error generating initial replies:', error);
-            switch (topic.toLowerCase()) {
-                case 'about diabetrix':
-                case 'side effects':
-                    return ['Tell me more', 'Any precautions?', 'How often?', 'What else should I know?'];
-                default:
-                    return ['Tell me more', 'How does this help?', "What's next?", 'Any concerns?'];
-            }
-        }
-    }, []);
 
     // AI-powered quick replies generation
     const generateQuickRepliesForTopic = useCallback(async (topic: string, messages: any[]): Promise<string[]> => {
@@ -736,42 +703,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} />;
 
-    const renderEmbeddedChatStep = () => (
-        <EmbeddedChatStep
-            chatResetKey={chatResetKey}
-            isChatActive={isChatActive}
-            isLearnFlow={isLearnFlow}
-            showLearnOverlay={showLearnOverlay}
-            showQuickReplies={showQuickReplies}
-            currentQuickReplies={currentQuickReplies}
-            inputMessage={input_message}
-            messages={messages}
-            loading={loading}
-            isReconnecting={is_reconnecting}
-            messagesEndRef={messages_end_ref}
-            isGoodRx={isGoodRx}
-            onClose={() => setStep('intro')}
-            onSetShowLearnOverlay={setShowLearnOverlay}
-            onSetIsChatActive={setIsChatActive}
-            onSetIsLearnFlow={setIsLearnFlow}
-            onSetLastLearnTopic={setLastLearnTopic}
-            onSetShowQuickReplies={setShowQuickReplies}
-            onSetCurrentQuickReplies={setCurrentQuickReplies}
-            onCreateWebsocketConnection={async () => {
-                if (!conversation_id) {
-                    await createChatThread();
-                }
-            }}
-            onSetChatResetKey={setChatResetKey}
-            onSetPendingMessages={setPendingMessages}
-            onSetUsedQuickReplies={setUsedQuickReplies}
-            onSetInputMessage={setInputMessage}
-            onSendMessage={sendChatMessage}
-            onSetMessages={setChatMessages}
-            streaming_message={streaming_message}
-            is_streaming={is_streaming}
-        />
-    );
+    const renderEmbeddedChatStep = () => <VoiceChatStep onClose={() => setStep('intro')} />;
 
     const pharmacies = featuredPharmacies;
 
@@ -936,9 +868,6 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
         ),
         [handleSetStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, conversation_id, createChatThread, messages, setUsedQuickReplies, isNewRoute, isExternalRoute],
     );
-
-    // Render More page using the imported component
-    const renderMorePage = useCallback(() => <MorePage setStep={handleSetStep} />, [handleSetStep]);
 
     // Logout function that clears all auth states
     const handleLogout = useCallback(async () => {
