@@ -264,7 +264,7 @@ export const CAPABILITIES_API_URLS = {
     VERIFY_OTP: 'authenticate/verify-otp',
     VERIFY_USER_BY_VERIFIED: 'authenticate/verify-user-by-verified',
     GENERATE_INTERNAL_ACCESS_TOKEN: 'authenticate/generate-access-token',
-    
+
     // SMS
     SEND_SMS: 'sms/send-message',
     GENERATE_QUICK_REPLIES: 'drugs/generate-quick-replies',
@@ -282,20 +282,20 @@ export const CAPABILITIES_API_URLS = {
     GET_APPOINTMENTS: 'appointments/get-appointments',
     GET_APPOINTMENT_DETAILS: 'appointments/get-appointment-details',
     SYNC_APPOINTMENT: 'appointments/sync-appointment',
-    
+
     // Rx Savings APIs
     REQUEST_COPAY_CARD: 'rx-savings/sync-copay-card',
     REQUEST_INSURANCE_COST: 'rx-savings/sync-insurance-cost',
     GET_COPAY_REQUEST_DETAILS: 'rx-savings/get-copay-request-details',
     GET_INSURANCE_COST_REQUEST_DETAILS: 'rx-savings/get-insurance-cost-request-details',
-    
+
     // Tracking APIs
     CREATE_VISIT: 'tracking/create-visit',
     SYNC_TIMELINE: 'tracking/sync-timeline',
-    
+
     // Appointment and Copay APIs
     SYNC_COPAY_REQUEST: 'rx-savings/sync-copay-card',
-    
+
     // CRM User APIs
     GET_USER_JOURNEY: 'crm/users/get-user-journey',
     GET_USER_TIMELINE: 'crm/users/get-user-timeline',
@@ -303,14 +303,199 @@ export const CAPABILITIES_API_URLS = {
     GET_CORE_ENGINE_USER_DETAILS: 'crm/users/get-core-engine-user-details',
     GET_USER_DETAILS_BY_ID: 'crm/users/get-core-engine-user-details',
     GET_PATIENTS: 'crm/users/get-patients',
-    
+
     // Approved Requests APIs
     GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',
     SYNC_APPROVED_REQUEST: 'crm/approved-requests/sync-approved-request',
-    
+
     // Pharmacy Stock Check APIs
     SYNC_PHARMACY_STOCK_CHECK: 'pharmacy-stock-checks/sync-pharmacy-stock-check',
 } as const;
+
+/**
+ * Get Core Engine base URL
+ */
+export const BASE_URL = (): string => {
+    return getBaseUrl('CORE_ENGINE');
+};
+
+/**
+ * Get WebSocket base URL for Core Engine
+ */
+export const WS_BASE_URL = (): string => {
+    const base_url = getBaseUrl('CORE_ENGINE');
+    return base_url.replace(/^http/, 'ws');
+};
+
+/**
+ * Transcription result interface
+ */
+export interface TranscriptionResult {
+    text: string;
+    segments: Array<{
+        text: string;
+        startSecond: number;
+        endSecond: number;
+    }>;
+    language?: string;
+    durationInSeconds?: number;
+}
+
+/**
+ * Speech result interface
+ */
+export interface SpeechResult {
+    audio: {
+        base64: string;
+        mediaType: string;
+    };
+}
+
+/**
+ * Speech generation options
+ */
+export interface SpeechOptions {
+    voice?: string;
+    language?: string;
+}
+
+/**
+ * Transcribe audio blob to text
+ */
+export const transcribeAudio = async (audioBlob: Blob): Promise<TranscriptionResult> => {
+    // Import auth store to get tokens
+    const { useAuthStore } = await import('../store/authStore');
+    const authStore = useAuthStore.getState();
+
+    const apiPath = CORE_ENGINE_API_URLS.TRANSCRIBE_AUDIO;
+    const baseUrl = getBaseUrl('CORE_ENGINE');
+
+    // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanApiPath = apiPath.replace(/^\//, '');
+    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
+
+    // Build headers
+    const headers: Record<string, string> = {};
+
+    // Get tokens from auth store
+    const authToken = authStore.getAuthToken();
+    const accessToken = authStore.getAccessToken();
+
+    // Add auth tokens to headers if available
+    if (authToken) {
+        headers['auth-token'] = authToken;
+    }
+    if (accessToken) {
+        headers['access-token'] = accessToken;
+    }
+
+    // Add domain header for core engine APIs
+    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    headers['domain'] = domain;
+
+    try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'audio.webm');
+
+        const response = await fetch(finalUrl, {
+            method: 'POST',
+            headers,
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Handle different response formats
+        if (result.statusCode !== undefined) {
+            if (result.statusCode !== 200) {
+                throw new Error(result.message || 'Failed to transcribe audio');
+            }
+            return result.data;
+        }
+
+        // If response doesn't have statusCode, assume success
+        return result;
+    } catch (error) {
+        console.error('Error in transcribeAudio:', error);
+        throw error;
+    }
+};
+
+/**
+ * Generate speech from text
+ */
+export const generateSpeech = async (text: string, options?: SpeechOptions): Promise<SpeechResult> => {
+    // Import auth store to get tokens
+    const { useAuthStore } = await import('../store/authStore');
+    const authStore = useAuthStore.getState();
+
+    const apiPath = CORE_ENGINE_API_URLS.GENERATE_SPEECH;
+    const baseUrl = getBaseUrl('CORE_ENGINE');
+
+    // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanApiPath = apiPath.replace(/^\//, '');
+    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
+
+    // Build headers
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    // Get tokens from auth store
+    const authToken = authStore.getAuthToken();
+    const accessToken = authStore.getAccessToken();
+
+    // Add auth tokens to headers if available
+    if (authToken) {
+        headers['auth-token'] = authToken;
+    }
+    if (accessToken) {
+        headers['access-token'] = accessToken;
+    }
+
+    // Add domain header for core engine APIs
+    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    headers['domain'] = domain;
+
+    try {
+        const response = await fetch(finalUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                text,
+                voice: options?.voice || 'aura-2-helena-en', // Deepgram voice model (voice and language embedded in model ID)
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Handle different response formats
+        if (result.statusCode !== undefined) {
+            if (result.statusCode !== 200) {
+                throw new Error(result.message || 'Failed to generate speech');
+            }
+            return result.data;
+        }
+
+        // If response doesn't have statusCode, assume success
+        return result;
+    } catch (error) {
+        console.error('Error in generateSpeech:', error);
+        throw error;
+    }
+};
 
 // Core Engine API endpoints
 export const CORE_ENGINE_API_URLS = {
@@ -319,4 +504,7 @@ export const CORE_ENGINE_API_URLS = {
     GET_CHAT_THREADS: 'conversation/get-conversations',
     GET_CHAT_MESSAGES: 'conversation/get-messages',
     STREAM_CHAT_MESSAGE: 'conversation/stream-message',
+    STREAM_CHAT_MESSAGE_V2: 'conversation/stream-message/v2',
+    TRANSCRIBE_AUDIO: 'conversation/transcribe',
+    GENERATE_SPEECH: 'conversation/speech',
 } as const;
