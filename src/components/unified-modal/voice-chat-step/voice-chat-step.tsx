@@ -12,6 +12,8 @@ import { AudioPlayer, AudioPlayerControlBar, AudioPlayerDurationDisplay, AudioPl
 import { BASE_URL, generateSpeech, transcribeAudio } from '@/services/api';
 import type { MessageMetadata } from '@/services/types/chat/message-metadata';
 import { useSpeechWebSocket } from '@/hooks/use-speech-websocket';
+import { useThemeConfig } from '@/hooks/useThemeConfig';
+import { getDomain, getBrandName } from '@/config/theme-config';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -199,15 +201,10 @@ interface MessageAudioData {
     };
 }
 
-// Helper function to get greeting message based on domain
-const getGreetingMessage = (domain: string): MyUIMessage => {
-    let greeting_text = "Hello! I'm your benefits concierge. How can I assist you today?";
-
-    if (domain === 'diabetrix') {
-        greeting_text = "Hello! I'm your Diabetrix concierge. How can I assist you with your diabetes medication today?";
-    } else if (domain === 'onapgo') {
-        greeting_text = "Hello! I'm your Onapgo concierge. How can I help you today?";
-    }
+// Helper function to get greeting message based on domain and brand name
+const getGreetingMessage = (domain: string, brandName: string): MyUIMessage => {
+    const capitalizedBrandName = brandName.charAt(0).toUpperCase() + brandName.slice(1);
+    const greeting_text = `Hello! I'm your ${capitalizedBrandName} concierge. How can I assist you today?`;
 
     return {
         id: `greeting-${Date.now()}`,
@@ -221,7 +218,9 @@ const getGreetingMessage = (domain: string): MyUIMessage => {
 };
 
 export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
-    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    const themeConfig = useThemeConfig();
+    const domain = getDomain(themeConfig);
+    const brandName = getBrandName(themeConfig);
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
@@ -231,7 +230,7 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
                 domain,
             },
         }),
-        messages: [getGreetingMessage(domain)],
+        messages: [getGreetingMessage(domain, brandName)],
     });
 
     const is_streaming = status === 'streaming' || status === 'submitted';

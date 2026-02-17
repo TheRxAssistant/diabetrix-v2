@@ -391,7 +391,14 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<TranscriptionRes
     }
 
     // Add domain header for core engine APIs
-    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    // Get domain dynamically from theme config
+    let domain = 'diabetrix';
+    if (typeof window !== 'undefined') {
+        const { getThemeConfig, getDomain } = await import('../config/theme-config');
+        const pathname = window.location.pathname;
+        const themeConfig = getThemeConfig(pathname);
+        domain = getDomain(themeConfig);
+    }
     headers['domain'] = domain;
 
     try {
@@ -461,7 +468,14 @@ export const generateSpeech = async (text: string, options?: SpeechOptions): Pro
     }
 
     // Add domain header for core engine APIs
-    const domain = 'diabetrix'; // Default domain for diabetrix-v2
+    // Get domain dynamically from theme config
+    let domain = 'diabetrix';
+    if (typeof window !== 'undefined') {
+        const { getThemeConfig, getDomain } = await import('../config/theme-config');
+        const pathname = window.location.pathname;
+        const themeConfig = getThemeConfig(pathname);
+        domain = getDomain(themeConfig);
+    }
     headers['domain'] = domain;
 
     try {
