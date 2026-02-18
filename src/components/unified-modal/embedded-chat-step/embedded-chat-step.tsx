@@ -4,6 +4,7 @@ import ChatHeader from '../../chat/chat-header/chat-header';
 import ChatBody from '../../chat/chat-body/chat-body';
 import ChatFooter from '../../chat/chat-footer/chat-footer';
 import { AIService } from '../../../services/ai-service';
+import { ThemeConfig } from '../../../config/theme-config';
 
 interface EmbeddedChatStepProps {
     chatResetKey: number;
@@ -17,7 +18,7 @@ interface EmbeddedChatStepProps {
     loading: boolean;
     isReconnecting: boolean;
     messagesEndRef: RefObject<HTMLDivElement | null>;
-    isGoodRx: boolean;
+    themeConfig: ThemeConfig;
     onClose: () => void;
     onSetShowLearnOverlay: (show: boolean) => void;
     onSetIsChatActive: (active: boolean) => void;
@@ -48,7 +49,7 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
     loading,
     isReconnecting,
     messagesEndRef,
-    isGoodRx,
+    themeConfig,
     onClose,
     onSetShowLearnOverlay,
     onSetIsChatActive,
@@ -450,13 +451,26 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                     overflow: 'hidden',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
-                <ChatHeader onClose={onClose} chat_mode={chat_mode} on_mode_change={set_chat_mode} show_input={show_input} on_toggle_input={set_show_input} />
+                <ChatHeader onClose={onClose} chat_mode={chat_mode} on_mode_change={set_chat_mode} show_input={show_input} on_toggle_input={set_show_input} themeConfig={themeConfig} />
                 <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
                     {isChatActive ? <ChatBody key={chatResetKey} messages={isLearnFlow && messages.length > 2 ? messages.slice(2) : messages} loading={loading} is_reconnecting={isReconnecting} messages_end_ref={messagesEndRef as any} handle_button_click={(t: string) => onSendMessage(t)} chat_mode={chat_mode} mcq_options={mcq_options} mcq_loading={mcq_loading} on_mcq_select={handle_mcq_select} streaming_message={streaming_message} is_streaming={is_streaming} intelligent_options={intelligent_options} intelligent_input_fields={intelligent_input_fields} intelligent_action_link={intelligent_action_link} intelligent_options_loading={intelligent_options_loading} intelligent_option_type={intelligent_option_type} on_intelligent_option_select={(option) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); onSendMessage(option); }} on_intelligent_input_submit={(values) => { set_intelligent_options([]); set_intelligent_input_fields([]); set_intelligent_action_link(null); const message = Object.values(values).join(', '); onSendMessage(message); }} show_intelligent_options={(!show_input || chat_mode === 'mcq') && !is_streaming} show_start_again={!show_input && !is_streaming && messages.length > 4} on_start_again={handle_start_again} show_input={show_input} /> : null}
                     {showLearnOverlay && (
-                        <div className={`${styles.learn_overlay} ${isGoodRx ? styles.goodrx_theme : ''}`}>
+                        <div 
+                            className={`${styles.learn_overlay} ${themeConfig.domain !== 'default' ? styles.custom_theme : ''}`}
+                            style={themeConfig.domain !== 'default' ? {
+                                background: themeConfig.learn_overlay_bg,
+                            } : undefined}
+                        >
                             <div className={styles.learn_overlay_header}>
-                                <h3 className={styles.learn_overlay_title}>💡 Learn About Diabetrix®</h3>
+                                <h3 
+                                    className={styles.learn_overlay_title}
+                                    style={themeConfig.domain !== 'default' ? {
+                                        background: themeConfig.learn_overlay_title_gradient,
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        backgroundClip: 'text',
+                                    } : undefined}
+                                >💡 Learn About Diabetrix®</h3>
                             </div>
 
                             <div className={styles.learn_questions_grid}>
@@ -485,6 +499,22 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                     <button
                                         key={item.question}
                                         className={`${styles.learn_question_card} ${styles[`learn_card_${item.color}`]}`}
+                                        style={themeConfig.domain !== 'default' ? {
+                                            border: `1px solid ${themeConfig.learn_question_card_border}`,
+                                            boxShadow: themeConfig.learn_question_card_shadow,
+                                        } : undefined}
+                                        onMouseEnter={(e) => {
+                                            if (themeConfig.domain !== 'default') {
+                                                e.currentTarget.style.borderColor = themeConfig.learn_question_card_border.replace('0.3', '0.5');
+                                                e.currentTarget.style.boxShadow = `0 12px 40px ${themeConfig.learn_question_card_border.replace('0.3', '0.2')}, 0 4px 12px rgba(0, 0, 0, 0.1)`;
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (themeConfig.domain !== 'default') {
+                                                e.currentTarget.style.borderColor = themeConfig.learn_question_card_border;
+                                                e.currentTarget.style.boxShadow = themeConfig.learn_question_card_shadow;
+                                            }
+                                        }}
                                         onClick={() => {
                                             onSetShowLearnOverlay(false);
                                             onSetIsChatActive(true);
@@ -496,9 +526,6 @@ export const EmbeddedChatStep: React.FC<EmbeddedChatStepProps> = ({
                                             onCreateWebsocketConnection();
                                             onSetChatResetKey((k) => k + 1);
                                             onSetPendingMessages(['yes', item.question]);
-                                        }}
-                                        style={{
-                                            animationDelay: `${index * 100}ms`,
                                         }}>
                                         <div className={styles.learn_card_icon}>{item.icon}</div>
                                         <div className={styles.learn_card_content}>

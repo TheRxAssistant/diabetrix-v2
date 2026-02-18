@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaArrowLeft, FaCalendar, FaCheckCircle, FaChevronDown, FaChevronUp, FaClock, FaComment, FaFacebook, FaGoogle, FaInfoCircle, FaPhone, FaPills, FaRobot, FaSearch, FaShoppingCart, FaUser, FaSpinner, FaFile, FaShieldAlt, FaEnvelope, FaMapMarkerAlt, FaBirthdayCake, FaIdCard } from 'react-icons/fa';
 import { Link, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import { useDomainPrefix } from '../../hooks/useDomainPrefix';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -94,6 +95,7 @@ interface Request {
 }
 
 export default function PatientJourney() {
+    const domainPrefix = useDomainPrefix();
     const [searchParams] = useSearchParams();
     const user_id = searchParams.get('user_id');
     const anonymous_id = searchParams.get('anonymous_id');
@@ -1120,7 +1122,7 @@ export default function PatientJourney() {
                         } else if (anonymous_id) {
                             params.set('anonymous_id', anonymous_id);
                         }
-                        window.open(`${window.location.origin}/crm/patients/journey?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                        window.open(`${window.location.origin}${domainPrefix}/crm/patients/journey?${params.toString()}`, '_blank', 'noopener,noreferrer');
                     }}
                     className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
                     {reqId?.slice(0, 8)}...
@@ -1134,7 +1136,7 @@ export default function PatientJourney() {
             <div className="p-6 bg-gray-50 min-h-screen overflow-x-hidden">
                 {/* Header */}
                 <div className="mb-5">
-                    <Link to="/crm/patients">
+                    <Link to={`${domainPrefix}/crm/patients`}>
                         <Button type="link" icon={<FaArrowLeft />} className="pl-0 mb-3 text-sm h-auto text-[#0078D4]">
                             Back to Patients
                         </Button>
@@ -1463,11 +1465,7 @@ export default function PatientJourney() {
                                                                             return null;
                                                                         })()}
                                                                         {/* Timeline Description - Show if no conversation summary or as additional info */}
-                                                                        {entry.timeline_description && (
-                                                                            <div className={`text-sm text-gray-600 leading-relaxed break-words ${entry.conversation_summary ? 'mt-2 pt-2 border-t border-gray-100' : 'pt-1'}`}>
-                                                                                {entry.timeline_description}
-                                                                            </div>
-                                                                        )}
+                                                                        {entry.timeline_description && <div className={`text-sm text-gray-600 leading-relaxed break-words ${entry.conversation_summary ? 'mt-2 pt-2 border-t border-gray-100' : 'pt-1'}`}>{entry.timeline_description}</div>}
                                                                         {!entry.timeline_title && !entry.timeline_description && !entry.conversation_summary && <div className="text-sm font-semibold text-gray-900 leading-snug break-words">{entry.tool_name.replace(/_/g, ' ')}</div>}
                                                                     </div>
 

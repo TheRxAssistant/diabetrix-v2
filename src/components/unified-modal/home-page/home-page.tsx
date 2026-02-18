@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import diabetrixLogo from '../../../assets/images/diabetrix_logo_2.png';
 import { ArrowRight, BookOpen, DollarSign, MapPin, Pill, Search, Stethoscope, Syringe } from 'lucide-react';
 import RecentRequests from './recent-requests';
 import { useApprovedRequests } from '../../../services/crm/hooks-approved-requests';
 import { useAuthStore } from '../../../store/authStore';
 import { ApprovedRequest } from '../../../services/crm/types-approved-requests';
+import { useThemeConfig } from '../../../hooks/useThemeConfig';
+import { getBrandName, getCondition, getLogo } from '../../../config/theme-config';
 
 interface Request {
     id: string;
@@ -35,6 +36,11 @@ interface HomePageProps {
 }
 
 const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsChatActive, setIsLearnFlow, setLastLearnTopic, setShowQuickReplies, setCurrentQuickReplies, setChatResetKey, create_websocket_connection, messages, is_reconnecting, setUsedQuickReplies, isNewRoute = false, isExternalRoute = false }: HomePageProps) => {
+    const themeConfig = useThemeConfig();
+    const brandName = getBrandName(themeConfig);
+    const capitalizedBrandName = brandName.charAt(0).toUpperCase() + brandName.slice(1);
+    const condition = getCondition(themeConfig);
+    const logo = getLogo(themeConfig);
     const [searchQuery, setSearchQuery] = useState('');
     const [loadingRequestId, setLoadingRequestId] = useState<string | null>(null);
 
@@ -277,9 +283,9 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             <div className="px-6 py-6 bg-white border-b border-gray-200 mb-4">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center text-left">
-                        <img src={diabetrixLogo} alt="Diabetrix" className="h-8 w-auto rounded-md mr-3 object-contain" />
+                        <img src={logo} alt={capitalizedBrandName} className="h-8 w-auto rounded-md mr-3 object-contain" />
                         <div className="flex flex-col">
-                            <h1 className="text-lg font-semibold text-gray-900 leading-tight mb-0.5">Diabetrix® Care</h1>
+                            <h1 className="text-lg font-semibold text-gray-900 leading-tight mb-0.5">{capitalizedBrandName}® Care</h1>
                             <p className="text-xs text-gray-600 font-normal m-0">Your health companion</p>
                         </div>
                     </div>
@@ -344,7 +350,7 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
             <div className="mb-6 px-5">
                 <div className="flex items-center bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-2xl py-3 px-4 transition-all duration-300 shadow-md shadow-gray-100/50 focus-within:border-blue-400/60 focus-within:shadow-xl focus-within:shadow-blue-100/50 focus-within:bg-white">
                     <Search className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                    <input type="text" placeholder="Ask about your diabetes treatment..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-1 px-2 border-none outline-none text-sm bg-transparent placeholder:text-gray-400 text-gray-900 font-medium" />
+                    <input type="text" placeholder={`Ask about your ${condition} treatment...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={handleSearchKeyPress} className="flex-1 py-1 px-2 border-none outline-none text-sm bg-transparent placeholder:text-gray-400 text-gray-900 font-medium" />
                     <button className="flex items-center justify-center p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-xl cursor-pointer transition-all duration-300 ml-2 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-200/50 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none" onClick={handleSearch} disabled={!searchQuery.trim()}>
                         <ArrowRight className="w-4 h-4" />
                     </button>
@@ -356,21 +362,21 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
 
             {/* Healthcare Options Grid */}
             <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white/80 backdrop-blur-sm rounded-t-3xl border-t border-gray-200/60 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-purple-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-purple-100/50 hover:border-purple-300/80 hover:bg-gradient-to-br hover:from-purple-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-purple-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-purple-100/50 hover:border-purple-300/80 hover:bg-gradient-to-br hover:from-purple-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Schedule and dosage', `About ${brandName}`)}>
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/0 to-purple-600/0 group-hover:from-purple-500/8 group-hover:via-purple-500/4 group-hover:to-purple-600/8 transition-all duration-500"></div>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-50 via-purple-100/70 to-purple-50 rounded-2xl mb-2.5 text-purple-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:via-purple-600 group-hover:to-purple-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-purple-200/50 relative z-10">
                         <Pill className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-purple-700 transition-colors duration-300">About diabetrix</h4>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-purple-700 transition-colors duration-300">About {brandName}</h4>
                     <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Schedule and dosage</p>
                 </button>
 
-                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-indigo-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-indigo-100/50 hover:border-indigo-300/80 hover:bg-gradient-to-br hover:from-indigo-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('About diabetes', 'About diabetes')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-indigo-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-indigo-100/50 hover:border-indigo-300/80 hover:bg-gradient-to-br hover:from-indigo-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage(`About ${condition}`, `About ${condition}`)}>
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 via-indigo-500/0 to-indigo-600/0 group-hover:from-indigo-500/8 group-hover:via-indigo-500/4 group-hover:to-indigo-600/8 transition-all duration-500"></div>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-50 via-indigo-100/70 to-indigo-50 rounded-2xl mb-2.5 text-indigo-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:via-indigo-600 group-hover:to-indigo-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-indigo-200/50 relative z-10">
                         <BookOpen className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-indigo-700 transition-colors duration-300">About diabetes</h4>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-indigo-700 transition-colors duration-300">About {condition}</h4>
                     <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Education & info</p>
                 </button>
 

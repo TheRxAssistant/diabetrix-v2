@@ -7,12 +7,26 @@ import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/componen
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { SpeechInput } from '@/components/ai-elements/speech-input';
 import { Transcription, TranscriptionSegment } from '@/components/ai-elements/transcription';
-import { AudioPlayer, AudioPlayerControlBar, AudioPlayerDurationDisplay, AudioPlayerElement, AudioPlayerMuteButton, AudioPlayerPlayButton, AudioPlayerSeekBackwardButton, AudioPlayerSeekForwardButton, AudioPlayerTimeDisplay, AudioPlayerTimeRange, AudioPlayerVolumeRange } from '@/components/ai-elements/audio-player';
+import {
+    AudioPlayer,
+    AudioPlayerControlBar,
+    AudioPlayerDurationDisplay,
+    AudioPlayerElement,
+    AudioPlayerMuteButton,
+    AudioPlayerPlayButton,
+    AudioPlayerSeekBackwardButton,
+    AudioPlayerSeekForwardButton,
+    AudioPlayerTimeDisplay,
+    AudioPlayerTimeRange,
+    AudioPlayerVolumeRange
+} from '@/components/ai-elements/audio-player';
 import { BASE_URL, CORE_ENGINE_API_URLS, postAPI } from '@/services/api';
 import { generateSpeech } from '@/services/voice/speech';
 import { transcribeAudio } from '@/services/voice/transcribe';
 import type { MessageMetadata } from '@/services/types/chat/message-metadata';
 import { useSpeechWebSocket } from '@/hooks/use-speech-websocket';
+import { useThemeConfig } from '@/hooks/useThemeConfig';
+import { getBrandName, getDomain } from '@/config/theme-config';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -627,7 +641,9 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
 
 // Wrapper: create conversation, load messages, then render inner
 export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
-    const domain = 'diabetrix';
+    const themeConfig = useThemeConfig();
+    const domain = getDomain(themeConfig);
+    const brandName = getBrandName(themeConfig);
     const [conversation_id, set_conversation_id] = useState<string | null>(null);
     const [initial_messages, set_initial_messages] = useState<MyUIMessage[] | null>(null);
 
@@ -699,12 +715,5 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
         );
     }
 
-    return (
-        <VoiceChatStepInner
-            initial_messages={initial_messages ?? []}
-            domain={domain}
-            conversation_id={conversation_id ?? ''}
-            onClose={onClose}
-        />
-    );
+    return <VoiceChatStepInner initial_messages={initial_messages ?? []} domain={domain} conversation_id={conversation_id ?? ''} onClose={onClose} />;
 };

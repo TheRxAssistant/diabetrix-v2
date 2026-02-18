@@ -35,6 +35,8 @@ import { SERVICE_TYPES } from './utils/constants';
 import { checkAuthSession, generateAccessToken, syncUser, verifyOtp, verifyUserByVerified } from './services/auth-service';
 import { trackingService } from '@/services/tracking/tracking-service.ts';
 import { useAuthStore } from '@/store/authStore.ts';
+import { useThemeConfig } from '../../hooks/useThemeConfig';
+import { getDomain, getBrandName, getCondition } from '../../config/theme-config';
 
 interface UnifiedModalProps {
     onClose: () => void;
@@ -44,7 +46,9 @@ interface UnifiedModalProps {
 }
 
 export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVerificationComplete }: UnifiedModalProps) => {
-    const isGoodRx = useMemo(() => window.location.pathname.includes('goodrx'), []);
+    const themeConfig = useThemeConfig();
+    const brandName = getBrandName(themeConfig);
+    const condition = getCondition(themeConfig);
 
     // Create a wrapper for onClose that removes the session storage item
     const handleClose = useCallback(() => {
@@ -475,7 +479,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
         setPendingExternalUrl('');
     };
 
-    const renderIntroStep = () => <IntroStep isTyping={isTyping} isGoodRx={isGoodRx} onServiceSelect={handleServiceSelect} />;
+    const renderIntroStep = () => <IntroStep isTyping={isTyping} themeConfig={themeConfig} onServiceSelect={handleServiceSelect} />;
 
     const renderServiceDetailStep = () => {
         const service = serviceContents[selectedService] || serviceContents.doctor;
@@ -737,7 +741,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
             const drug_brand_name = drugName || userData?.drug_name || 'Diabetrix';
             const drug_strength = userData?.drug_strength || userData?.strength || '';
             const drug_quantity = userData?.drug_quantity || userData?.quantity || '1';
-            const domain = 'diabetrix';
+            const domain = getDomain(themeConfig);
 
             if (user_id && user_phone) {
                 await postAPI(CAPABILITIES_API_URLS.SYNC_PHARMACY_STOCK_CHECK, {

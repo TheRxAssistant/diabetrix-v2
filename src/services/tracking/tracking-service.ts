@@ -1,6 +1,7 @@
 import { CreateVisitParams, SyncTimelineParams, Visit } from './types';
 import { useAuthStore } from '../../store/authStore';
 import { postAPI } from '../api';
+import { getThemeConfig, getDomain } from '../../config/theme-config';
 
 // ========================================
 // CONSTANTS
@@ -8,7 +9,6 @@ import { postAPI } from '../api';
 
 const VISIT_ID_KEY = 'diabetrix_visit_id';
 const ANONYMOUS_ID_KEY = 'diabetrix_anonymous_id';
-const DOMAIN = 'diabetrix'; // Default domain for diabetrix-v2
 
 // ========================================
 // HELPER FUNCTIONS
@@ -143,6 +143,11 @@ class TrackingService {
             // Create new visit
             const utmParams = extractUTMParams();
             const existingAnonymousId = getAnonymousId();
+            
+            // Get domain dynamically from theme config
+            const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+            const themeConfig = getThemeConfig(pathname);
+            const domain = getDomain(themeConfig);
 
             // Only include user_id if it's a valid non-empty string
             const visitParams: CreateVisitParams = {
@@ -150,7 +155,7 @@ class TrackingService {
                 ...utmParams,
                 landing_page: window.location.href,
                 referrer: document.referrer || undefined,
-                domain: DOMAIN,
+                domain: domain,
                 device_type: getDeviceType(),
                 user_agent: navigator.userAgent,
                 // Only include user_id if it's a valid non-empty string
