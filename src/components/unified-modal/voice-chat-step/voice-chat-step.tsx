@@ -3,13 +3,14 @@ import { DefaultChatTransport, getToolName, UIMessage } from 'ai';
 import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from '@/components/ai-elements/conversation';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { PromptInput, PromptInputBody, PromptInputFooter, PromptInputProvider, PromptInputSubmit, PromptInputTextarea, usePromptInputController } from '@/components/ai-elements/prompt-input';
-import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning';
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/components/ai-elements/tool';
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { SpeechInput } from '@/components/ai-elements/speech-input';
 import { Transcription, TranscriptionSegment } from '@/components/ai-elements/transcription';
 import { AudioPlayer, AudioPlayerControlBar, AudioPlayerDurationDisplay, AudioPlayerElement, AudioPlayerMuteButton, AudioPlayerPlayButton, AudioPlayerSeekBackwardButton, AudioPlayerSeekForwardButton, AudioPlayerTimeDisplay, AudioPlayerTimeRange, AudioPlayerVolumeRange } from '@/components/ai-elements/audio-player';
-import { BASE_URL, generateSpeech, transcribeAudio } from '@/services/api';
+import { BASE_URL, CORE_ENGINE_API_URLS, postAPI } from '@/services/api';
+import { generateSpeech } from '@/services/voice/speech';
+import { transcribeAudio } from '@/services/voice/transcribe';
 import type { MessageMetadata } from '@/services/types/chat/message-metadata';
 import { useSpeechWebSocket } from '@/hooks/use-speech-websocket';
 import { useThemeConfig } from '@/hooks/useThemeConfig';
@@ -110,13 +111,7 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
     }
 
     if (part.type === 'reasoning') {
-        const is_reasoning_streaming = is_streaming && is_last_part;
-        return (
-            <Reasoning key={`${message_id}-reasoning-${part_index}`} isStreaming={is_reasoning_streaming} defaultOpen={is_reasoning_streaming}>
-                <ReasoningTrigger />
-                <ReasoningContent>{part.text || part.reasoning || ''}</ReasoningContent>
-            </Reasoning>
-        );
+        return null;
     }
 
     if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
@@ -201,42 +196,28 @@ interface MessageAudioData {
     };
 }
 
-// Helper function to get greeting message based on domain and brand name
-const getGreetingMessage = (domain: string, brandName: string): MyUIMessage => {
-    let greeting_text: string;
-    
-    if (domain === 'onapgo') {
-        greeting_text = `Hi, I am your ONAPGO Concierge. Do you consent to our [Terms of Use](https://www.supernus.com/terms-of-use) and [Privacy Policy](https://www.supernus.com/privacy-policy)?`;
-    } else {
-        // Default to diabetrix greeting
-        greeting_text = `Hi, I am Alex your Diabetrix Concierge. Do you consent to our terms and conditions and privacy policy?`;
-    }
+interface VoiceChatStepInnerProps {
+    initial_messages: MyUIMessage[];
+    domain: string;
+    conversation_id: string;
+    onClose: () => void;
+}
 
-    return {
-        id: `greeting-${Date.now()}`,
-        role: 'assistant',
-        parts: [{ type: 'text', text: greeting_text }],
-        metadata: {
-            created_at: Date.now(),
-            model: 'greeting',
-        },
-    };
-};
-
-export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
-    const themeConfig = useThemeConfig();
-    const domain = getDomain(themeConfig);
-    const brandName = getBrandName(themeConfig);
+const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose }) => {
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
+        id: conversation_id,
         transport: new DefaultChatTransport({
             api: api_url,
+            prepareSendMessagesRequest({ messages }) {
+                return { body: { message: messages[messages.length - 1], conversation_id } };
+            },
             headers: {
-                domain,
+                domain: domain || '',
             },
         }),
-        messages: [getGreetingMessage(domain, brandName)],
+        messages: initial_messages,
     });
 
     const is_streaming = status === 'streaming' || status === 'submitted';
@@ -643,5 +624,89 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
                 </PromptInputProvider>
             </div>
         </div>
+    );
+};
+
+// Wrapper: create conversation, load messages, then render inner
+export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
+    const domain = 'diabetrix';
+    const [conversation_id, set_conversation_id] = useState<string | null>(null);
+    const [initial_messages, set_initial_messages] = useState<MyUIMessage[] | null>(null);
+
+    // Create conversation on mount
+    useEffect(() => {
+        postAPI(CORE_ENGINE_API_URLS.SYNC_CHAT_THREAD, {}).then((res) => {
+            if (res.statusCode === 200 && res.data?.conversation_id) {
+                set_conversation_id(res.data.conversation_id);
+            }
+        });
+    }, []);
+
+    // Load messages when conversation_id exists
+    useEffect(() => {
+        if (!conversation_id) return;
+        const load_messages = async () => {
+            const res = await postAPI(CORE_ENGINE_API_URLS.GET_CHAT_MESSAGES, { conversation_id });
+            if (res.statusCode === 200 && res.data) {
+                const ui_messages = res.data.filter((row: any) => row.ui_message).map((row: any) => row.ui_message as MyUIMessage);
+                set_initial_messages(ui_messages);
+            } else {
+                set_initial_messages([]);
+            }
+        };
+        load_messages();
+    }, [conversation_id]);
+
+    const show_loading = !conversation_id || initial_messages === null;
+
+    if (show_loading) {
+        return (
+            <div className={styles.healthcare_search_step}>
+                <div
+                    className="embedded-chat"
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '100%',
+                        background: '#fff',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    }}>
+                    <div style={{ padding: '16px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Voice Chat</h3>
+                        <button
+                            onClick={onClose}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '20px',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                color: '#666',
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.background = '#f0f0f0')}
+                            onMouseOut={(e) => (e.currentTarget.style.background = 'none')}>
+                            ×
+                        </button>
+                    </div>
+                    <Conversation className="flex-1 overflow-hidden">
+                        <ConversationContent>
+                            <ConversationEmptyState title="Loading conversation..." description="Please wait" />
+                        </ConversationContent>
+                    </Conversation>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <VoiceChatStepInner
+            initial_messages={initial_messages ?? []}
+            domain={domain}
+            conversation_id={conversation_id ?? ''}
+            onClose={onClose}
+        />
     );
 };

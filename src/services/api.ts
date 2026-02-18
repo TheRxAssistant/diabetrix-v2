@@ -184,6 +184,96 @@ export const postAPI = async (url: string | keyof typeof CAPABILITIES_API_URLS |
 };
 
 /**
+ * POST API with FormData (for multipart uploads, e.g. audio).
+ * Same auth/domain as postAPI; do not set Content-Type (browser sets multipart boundary).
+ */
+export const postAPIForm = async (url: keyof typeof CORE_ENGINE_API_URLS, formData: FormData, abortSignal?: AbortSignal): Promise<{ statusCode: number; message: string; data: any }> => {
+    const { useAuthStore } = await import('../store/authStore');
+    const authStore = useAuthStore.getState();
+
+    const apiPath = CORE_ENGINE_API_URLS[url];
+    const baseUrl = getBaseUrl('CORE_ENGINE');
+    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+    const cleanApiPath = apiPath.replace(/^\//, '');
+    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
+
+    const headers: Record<string, string> = {};
+    const authToken = authStore.getAuthToken();
+    const accessToken = authStore.getAccessToken();
+    if (authToken) headers['auth-token'] = authToken;
+    if (accessToken) headers['access-token'] = accessToken;
+
+    let domain = 'diabetrix';
+    if (typeof window !== 'undefined') {
+        const { getThemeConfig, getDomain } = await import('../config/theme-config');
+        const pathname = window.location.pathname;
+        const themeConfig = getThemeConfig(pathname);
+        domain = getDomain(themeConfig);
+    }
+    headers['domain'] = domain;
+
+    try {
+        const response = await fetch(finalUrl, {
+            method: 'POST',
+            headers,
+            body: formData,
+            signal: abortSignal,
+        });
+
+        if (!response.ok) {
+            let errorMessage = 'Something went wrong';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch {
+                // ignore
+            }
+            if (response.status === 403) {
+                sessionStorage.removeItem('diabetrix_auth_tokens');
+                sessionStorage.removeItem('diabetrix_auth_session');
+                authStore.clear();
+            }
+            return {
+                statusCode: response.status,
+                message: errorMessage,
+                data: {},
+            };
+        }
+
+        const responseData = await response.json();
+        let statusCode: number;
+        let message: string;
+        let data: any;
+        if (responseData.statusCode !== undefined) {
+            statusCode = responseData.statusCode;
+            message = responseData.message || 'Success';
+            data = responseData.data || responseData;
+        } else {
+            statusCode = 200;
+            message = 'Success';
+            data = responseData;
+        }
+
+        if (statusCode === 403) {
+            sessionStorage.removeItem('diabetrix_auth_tokens');
+            sessionStorage.removeItem('diabetrix_auth_session');
+            authStore.clear();
+        }
+        if (data?.auth_token) authStore.updateAuthToken(data.auth_token);
+        if (data?.access_token) authStore.updateAccessToken(data.access_token);
+
+        return { statusCode, message, data };
+    } catch (error) {
+        console.error('Error in postAPIForm:', error);
+        return {
+            statusCode: 500,
+            message: error instanceof Error ? error.message : 'Network error. Please check your connection and try again.',
+            data: {},
+        };
+    }
+};
+
+/**
  * Stream API function for handling streaming responses
  */
 export const streamAPI = async (url: keyof typeof CORE_ENGINE_API_URLS, payload: any = {}, onChunk: (chunk: string) => void): Promise<void> => {
@@ -325,190 +415,6 @@ export const BASE_URL = (): string => {
 export const WS_BASE_URL = (): string => {
     const base_url = getBaseUrl('CORE_ENGINE');
     return base_url.replace(/^http/, 'ws');
-};
-
-/**
- * Transcription result interface
- */
-export interface TranscriptionResult {
-    text: string;
-    segments: Array<{
-        text: string;
-        startSecond: number;
-        endSecond: number;
-    }>;
-    language?: string;
-    durationInSeconds?: number;
-}
-
-/**
- * Speech result interface
- */
-export interface SpeechResult {
-    audio: {
-        base64: string;
-        mediaType: string;
-    };
-}
-
-/**
- * Speech generation options
- */
-export interface SpeechOptions {
-    voice?: string;
-    language?: string;
-}
-
-/**
- * Transcribe audio blob to text
- */
-export const transcribeAudio = async (audioBlob: Blob): Promise<TranscriptionResult> => {
-    // Import auth store to get tokens
-    const { useAuthStore } = await import('../store/authStore');
-    const authStore = useAuthStore.getState();
-
-    const apiPath = CORE_ENGINE_API_URLS.TRANSCRIBE_AUDIO;
-    const baseUrl = getBaseUrl('CORE_ENGINE');
-
-    // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
-    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-    const cleanApiPath = apiPath.replace(/^\//, '');
-    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
-
-    // Build headers
-    const headers: Record<string, string> = {};
-
-    // Get tokens from auth store
-    const authToken = authStore.getAuthToken();
-    const accessToken = authStore.getAccessToken();
-
-    // Add auth tokens to headers if available
-    if (authToken) {
-        headers['auth-token'] = authToken;
-    }
-    if (accessToken) {
-        headers['access-token'] = accessToken;
-    }
-
-    // Add domain header for core engine APIs
-    // Get domain dynamically from theme config
-    let domain = 'diabetrix';
-    if (typeof window !== 'undefined') {
-        const { getThemeConfig, getDomain } = await import('../config/theme-config');
-        const pathname = window.location.pathname;
-        const themeConfig = getThemeConfig(pathname);
-        domain = getDomain(themeConfig);
-    }
-    headers['domain'] = domain;
-
-    try {
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'audio.webm');
-
-        const response = await fetch(finalUrl, {
-            method: 'POST',
-            headers,
-            body: formData,
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        // Handle different response formats
-        if (result.statusCode !== undefined) {
-            if (result.statusCode !== 200) {
-                throw new Error(result.message || 'Failed to transcribe audio');
-            }
-            return result.data;
-        }
-
-        // If response doesn't have statusCode, assume success
-        return result;
-    } catch (error) {
-        console.error('Error in transcribeAudio:', error);
-        throw error;
-    }
-};
-
-/**
- * Generate speech from text
- */
-export const generateSpeech = async (text: string, options?: SpeechOptions): Promise<SpeechResult> => {
-    // Import auth store to get tokens
-    const { useAuthStore } = await import('../store/authStore');
-    const authStore = useAuthStore.getState();
-
-    const apiPath = CORE_ENGINE_API_URLS.GENERATE_SPEECH;
-    const baseUrl = getBaseUrl('CORE_ENGINE');
-
-    // Ensure baseUrl doesn't end with / and apiPath doesn't start with /
-    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-    const cleanApiPath = apiPath.replace(/^\//, '');
-    const finalUrl = `${cleanBaseUrl}/${cleanApiPath}`;
-
-    // Build headers
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    };
-
-    // Get tokens from auth store
-    const authToken = authStore.getAuthToken();
-    const accessToken = authStore.getAccessToken();
-
-    // Add auth tokens to headers if available
-    if (authToken) {
-        headers['auth-token'] = authToken;
-    }
-    if (accessToken) {
-        headers['access-token'] = accessToken;
-    }
-
-    // Add domain header for core engine APIs
-    // Get domain dynamically from theme config
-    let domain = 'diabetrix';
-    if (typeof window !== 'undefined') {
-        const { getThemeConfig, getDomain } = await import('../config/theme-config');
-        const pathname = window.location.pathname;
-        const themeConfig = getThemeConfig(pathname);
-        domain = getDomain(themeConfig);
-    }
-    headers['domain'] = domain;
-
-    try {
-        const response = await fetch(finalUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                text,
-                voice: options?.voice || 'aura-2-helena-en', // Deepgram voice model (voice and language embedded in model ID)
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        // Handle different response formats
-        if (result.statusCode !== undefined) {
-            if (result.statusCode !== 200) {
-                throw new Error(result.message || 'Failed to generate speech');
-            }
-            return result.data;
-        }
-
-        // If response doesn't have statusCode, assume success
-        return result;
-    } catch (error) {
-        console.error('Error in generateSpeech:', error);
-        throw error;
-    }
 };
 
 // Core Engine API endpoints
