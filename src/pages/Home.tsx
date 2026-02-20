@@ -5,6 +5,8 @@ import { ArrowRightIcon, ChartBarIcon, BeakerIcon, HeartIcon, AcademicCapIcon } 
 // import { ClockIcon } from '@heroicons/react/24/outline';
 import ChatButton from '../components/chat/chat-button/chat-button';
 import { UnifiedModal } from '../components/unified-modal/unified-modal';
+import AuthModal from '../crm/components/ui/AuthModal';
+import { isAuthenticated, setAuthenticated } from '../store/authStore';
 // import { useApprovedRequests } from '../services/crm/hooks-approved-requests';
 // import { useAuthStore } from '../store/authStore';
 
@@ -12,11 +14,20 @@ const Home = () => {
     const [showChat, setShowChat] = useState(false);
     const [showUnifiedModal, setShowUnifiedModal] = useState(false);
     const [unifiedModalInitialStep, setUnifiedModalInitialStep] = useState<'intro' | 'service_selection' | 'home'>('intro');
+    const [is_authenticated, setIsAuthenticated] = useState(false);
+    const [show_auth_modal, setShowAuthModal] = useState(false);
 
     // const { approved_requests, is_loading, error, fetch_approved_requests } = useApprovedRequests();
 
     useEffect(() => {
-        // Automatically open UnifiedModal after 1 second
+        const authenticated = isAuthenticated();
+        setIsAuthenticated(authenticated);
+        setShowAuthModal(!authenticated);
+    }, []);
+
+    useEffect(() => {
+        if (!is_authenticated) return;
+        // Automatically open UnifiedModal after 1 second when authenticated
         const timer = setTimeout(() => {
             setShowUnifiedModal(true);
             setUnifiedModalInitialStep('intro');
@@ -25,7 +36,13 @@ const Home = () => {
         return () => {
             clearTimeout(timer);
         };
-    }, []);
+    }, [is_authenticated]);
+
+    const handleAuthSuccess = () => {
+        setAuthenticated(true);
+        setIsAuthenticated(true);
+        setShowAuthModal(false);
+    };
 
     // Fetch approved requests when component mounts if user is authenticated
     // useEffect(() => {
@@ -42,6 +59,10 @@ const Home = () => {
         // Keep modal open and it will show chat
         // The UnifiedModal handles the chat step internally
     };
+
+    if (!is_authenticated) {
+        return <AuthModal isOpen={show_auth_modal} onSuccess={handleAuthSuccess} />;
+    }
 
     return (
         <main>
