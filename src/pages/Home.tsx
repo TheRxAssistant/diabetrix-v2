@@ -75,7 +75,7 @@ const Home = () => {
                             Scheduling Appointment
                         </a>
                         <a 
-                            href="https://drive.google.com/drive/u/0/folders/1Ax4GPGjtEeaez3LIhZyrBE-9Et37P8dP" 
+                            href="https://drive.google.com/file/d/1HB9heWTV9oPJoTTpVmZ5Lm-QsQ8avD92/view" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
