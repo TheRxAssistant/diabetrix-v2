@@ -75,8 +75,7 @@ export function useLabFinder(): UseLabFinderResult {
 
             if (result.statusCode === 200) {
                 const results = (result.data as FindNearbyCareResultItem[] | undefined) ?? [];
-                const filteredResults = results.filter(result => result?.description?.toLowerCase() === 'lab');
-                const facilitiesList = filteredResults.map(mapResultToFacility);
+                const facilitiesList = results.map(mapResultToFacility);
                 setFacilities(facilitiesList);
             } else if (result.statusCode !== 499) {
                 setError(result.message || 'Failed to search for labs');
