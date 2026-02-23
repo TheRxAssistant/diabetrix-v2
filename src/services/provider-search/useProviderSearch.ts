@@ -65,6 +65,7 @@ export interface Provider {
 
 export interface Facility {
     facility_id?: string;
+    facility_description?: string;
     facility_name?: string;
     facility_address?: string;
     facility_phone?: string;

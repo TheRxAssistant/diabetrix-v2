@@ -10,6 +10,8 @@ interface ProviderMapProps {
   list: Provider[] | Facility[];
   on_provider_select?: (provider: Provider) => void;
   selected_id?: string;
+  /** When true, map fills container height (100%) instead of 100vh. Use when embedding in a fixed-height layout. */
+  fillContainer?: boolean;
 }
 
 // Function to create an info window for a provider
@@ -130,20 +132,34 @@ const create_info_window = (
   return null; // Return null to fix React rendering issue
 };
 
+const MOBILE_MAX_WIDTH = 1023; // matches Tailwind lg breakpoint
+
 const PlotMap: React.FC<ProviderMapProps> = ({
   list,
   on_provider_select,
   selected_id,
+  fillContainer = false,
 }) => {
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: MAPS_API_KEY || "",
     libraries: ["marker"],
   });
 
+  const [is_mobile, set_is_mobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX_WIDTH
+  );
   const [selected_marker, set_selected_marker] = useState<Provider | null>(
     null
   );
   const map_container_ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_MAX_WIDTH}px)`);
+    const handle = () => set_is_mobile(mql.matches);
+    mql.addEventListener("change", handle);
+    set_is_mobile(mql.matches);
+    return () => mql.removeEventListener("change", handle);
+  }, []);
   const map_instance_ref = useRef<google.maps.Map | null>(null);
   const markers_ref = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const info_windows_ref = useRef<google.maps.InfoWindow[]>([]);
@@ -362,20 +378,28 @@ const PlotMap: React.FC<ProviderMapProps> = ({
       </div>
     );
 
+  const containerHeight =
+    fillContainer && is_mobile
+      ? "400px"
+      : fillContainer
+        ? "100%"
+        : "100vh";
+  const containerMinHeight = fillContainer && is_mobile ? 400 : fillContainer ? 0 : 600;
+
   return (
     <div
       style={{
-        height: "100vh", // Use viewport height for full height
+        height: containerHeight,
         width: "100%",
         borderRadius: "8px",
         overflow: "hidden",
         border: "1px solid #e2e8f0",
         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        minHeight: "600px", // Increased minimum height
-        flex: "1 1 auto", // Flex grow, shrink, and basis auto
+        minHeight: containerMinHeight,
+        flex: "1 1 auto",
         display: "flex",
         flexDirection: "column",
-        position: "relative", // Ensure proper stacking context
+        position: "relative",
       }}
     >
       <div
@@ -383,7 +407,7 @@ const PlotMap: React.FC<ProviderMapProps> = ({
         style={{
           width: "100%",
           height: "100%",
-          minHeight: "600px",
+          minHeight: containerMinHeight,
           flex: "1 1 auto",
           position: "absolute",
           top: 0,
