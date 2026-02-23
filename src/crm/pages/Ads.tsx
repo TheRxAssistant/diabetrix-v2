@@ -83,7 +83,7 @@ export default function AdsPage() {
                     {/* Ad 2: Learn more */}
                     <button
                         type="button"
-                        onClick={() => handleAdClick(urlWithChatClosed)}
+                        onClick={() => handleAdClick(urlWithChatOpen)}
                         className="group w-full text-left bg-white rounded-2xl overflow-hidden shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/8 hover:-translate-y-1 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#98482E]/40 focus-visible:ring-offset-2"
                     >
                         <div className="aspect-[4/3] min-h-[320px] md:min-h-[380px] bg-neutral-100 flex items-center justify-center overflow-hidden">
