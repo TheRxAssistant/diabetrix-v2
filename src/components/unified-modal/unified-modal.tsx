@@ -701,7 +701,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     const renderHealthcareSearchStep = () => <HealthcareSearchStep onBack={() => setStep('home')} />;
 
-    const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} />;
+    const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} onChatOpen={() => setStep('embedded_chat')} />;
 
     const renderEmbeddedChatStep = () => <VoiceChatStep onClose={() => setStep('intro')} />;
 

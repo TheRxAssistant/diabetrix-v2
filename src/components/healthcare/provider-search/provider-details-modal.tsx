@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Star, MapPin, Phone, Calendar } from 'lucide-react';
 import { Provider, Facility } from '../../../services/provider-search/useProviderSearch';
 import { MAPS_API_KEY } from '../../../services/types/healthcare/types';
+import BookAppointmentModal from './book-appointment';
 
 interface LegacyProvider {
     id: string;
@@ -13,6 +14,7 @@ interface LegacyProvider {
     address: string;
     distance: string;
     avatar: string;
+    phone?: string;
     topConditions: Array<{
         condition: string;
         percentage: string;
@@ -29,6 +31,7 @@ interface LegacyProvider {
 interface ProviderDetailsModalProps {
     provider: Provider | Facility | LegacyProvider | null;
     onClose: () => void;
+    fetchProviderCareDetails?: (providerId: number | string) => Promise<string | null>;
 }
 
 const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, onClose }) => {
@@ -48,12 +51,9 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
             console.log('API Provider name:', name);
         } else if (isFacility) {
             name = (provider as Facility).facility_name || '';
-            console.log('Facility name:', name);
         } else if (isLegacyProvider) {
             name = (provider as LegacyProvider).name;
-            console.log('Legacy provider name:', name);
         }
-        console.log('Final extracted name:', name);
         return name || '';
     };
 
@@ -85,11 +85,6 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
         return '';
     };
 
-    const getPhone = () => {
-        if (isApiProvider) return (provider as Provider).provider_phone;
-        if (isFacility) return (provider as Facility).facility_phone;
-        return '';
-    };
 
     const getLanguages = () => {
         if (isApiProvider) return (provider as Provider).provider_languages || 'English';
@@ -116,7 +111,6 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
     const rating = getRating();
     const reviewCount = getReviewCount();
     const address = getAddress();
-    const phone = getPhone();
     const languages = getLanguages();
     const image = getImage();
 
@@ -162,7 +156,7 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
 
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-[60] flex items-center justify-center p-4"
             style={{
                 backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -214,12 +208,12 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                                         </div>
                                     )}
 
-                                    {phone && (
+                                    {/* {displayPhone && (
                                         <div className="flex items-center mt-1 text-gray-500">
                                             <Phone size={16} className="mr-1" />
-                                            <span className="text-sm">{phone}</span>
+                                            <span className="text-sm">{displayPhone}</span>
                                         </div>
-                                    )}
+                                    )} */}
 
                                     <div className="flex items-center mt-1 text-gray-500">
                                         <Star size={16} className="mr-1 text-yellow-400" fill="currentColor" />
@@ -286,24 +280,24 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                                                 const conditionText = typeof condition === 'string' ? condition : (condition as any).condition || '';
                                                 const conditionPercent = typeof condition === 'string' ? `${Math.floor(Math.random() * 15 + 10)}.${Math.floor(Math.random() * 99)}%` : (condition as any).percentage || `${Math.floor(Math.random() * 15 + 10)}.${Math.floor(Math.random() * 99)}%`;
                                                 return (
-                                                <div key={`condition-${index}`} className="mb-4 bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                                                    <div className="flex justify-between text-sm mb-2">
-                                                        <span className="text-gray-700 font-medium truncate pr-2" title={conditionText}>{conditionText}</span>
-                                                        <span className="text-blue-600 font-semibold whitespace-nowrap">{conditionPercent}</span>
+                                                    <div key={`condition-${index}`} className="mb-4 bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                                                        <div className="flex justify-between text-sm mb-2">
+                                                            <span className="text-gray-700 font-medium truncate pr-2" title={conditionText}>{conditionText}</span>
+                                                            <span className="text-blue-600 font-semibold whitespace-nowrap">{conditionPercent}</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                                            <div
+                                                                className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                                                                style={{ width: `${Math.floor(Math.random() * 80 + 20)}%` }}
+                                                            ></div>
+                                                        </div>
                                                     </div>
-                                                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                                        <div 
-                                                            className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
-                                                            style={{ width: `${Math.floor(Math.random() * 80 + 20)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {/* Top Procedures Performed */}
                                 <div className="lg:flex-1 p-2 rounded-xl">
                                     <div>
@@ -318,18 +312,18 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                                                 const procedureText = typeof procedure === 'string' ? procedure : (procedure as any).procedure || '';
                                                 const procedurePercent = typeof procedure === 'string' ? `${Math.floor(Math.random() * 15 + 10)}.${Math.floor(Math.random() * 99)}%` : (procedure as any).percentage || `${Math.floor(Math.random() * 15 + 10)}.${Math.floor(Math.random() * 99)}%`;
                                                 return (
-                                                <div key={`procedure-${index}`} className="mb-4 bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                                                    <div className="flex justify-between text-sm mb-2">
-                                                        <span className="text-gray-700 font-medium truncate pr-2" title={procedureText}>{procedureText}</span>
-                                                        <span className="text-green-600 font-semibold whitespace-nowrap">{procedurePercent}</span>
+                                                    <div key={`procedure-${index}`} className="mb-4 bg-white p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                                                        <div className="flex justify-between text-sm mb-2">
+                                                            <span className="text-gray-700 font-medium truncate pr-2" title={procedureText}>{procedureText}</span>
+                                                            <span className="text-green-600 font-semibold whitespace-nowrap">{procedurePercent}</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                                            <div
+                                                                className="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                                                                style={{ width: `${Math.floor(Math.random() * 80 + 20)}%` }}
+                                                            ></div>
+                                                        </div>
                                                     </div>
-                                                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                                        <div 
-                                                            className="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
-                                                            style={{ width: `${Math.floor(Math.random() * 80 + 20)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
                                                 );
                                             })}
                                         </div>
@@ -343,7 +337,11 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                     <div className="space-y-6">
                         {/* Action Buttons */}
                         <div className="space-y-3">
-                            <button className="w-full py-4 rounded-lg font-medium hover:opacity-80 transition-colors flex items-center justify-center space-x-2 font-nav bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white">
+                            <button
+                                type="button"
+                                // onClick={() => set_show_booking_modal(true)}
+                                className="w-full py-4 rounded-lg font-medium hover:opacity-80 transition-colors flex items-center justify-center space-x-2 font-nav bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white"
+                            >
                                 <Calendar size={20} />
                                 <span>Book Appointment</span>
                             </button>
@@ -365,7 +363,17 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                                         </div>
                                     </div>
                                 )}
-                                <button className="bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2 w-full">
+                                <button
+                                    type="button"
+                                    disabled={!address}
+                                    onClick={() => {
+                                        if (address) {
+                                            const maps_url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                                            window.open(maps_url, '_blank', 'noopener,noreferrer');
+                                        }
+                                    }}
+                                    className="bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2 w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                                     <MapPin size={18} />
                                     <span>Navigate</span>
                                 </button>
@@ -376,14 +384,14 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
                             <h2 className="text-lg lg:text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
                             <div className="space-y-3">
-                                {phone && (
+                                {/* {displayPhone && (
                                     <div className="flex items-center">
                                         <Phone size={18} className="text-gray-500 mr-3" />
-                                        <a href={`tel:${phone}`} className="text-blue-600 hover:underline">
-                                            {phone}
+                                        <a href={`tel:${displayPhone}`} className="text-blue-600 hover:underline">
+                                            {displayPhone}
                                         </a>
                                     </div>
-                                )}
+                                )} */}
                                 {address && (
                                     <div className="flex items-start">
                                         <MapPin size={18} className="text-gray-500 mr-3 mt-0.5" />
@@ -395,6 +403,14 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                     </div>
                 </div>
             </div>
+
+            {/* {show_booking_modal && (
+                <BookAppointmentModal
+                    provider={provider}
+                    onClose={() => set_show_booking_modal(false)}
+                    onRequestAppointment={() => set_show_booking_modal(false)}
+                />
+            )} */}
         </div>
     );
 };

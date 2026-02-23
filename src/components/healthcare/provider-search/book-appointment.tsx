@@ -1,243 +1,331 @@
 import React, { useState, useEffect } from 'react';
-import avatarImage from '../../../assets/images/avatar.png';
-import { trackingService } from '../../../services/tracking/tracking-service';
-import { useProviderSearch } from '../../../services/provider-search/useProviderSearch';
-import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
-import { useAuthStore } from '../../../store/authStore';
-// Using inline styles instead of module import to avoid lint errors
+import { ExternalLink, MessageCircle, X } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useAppointments } from '../../../services/healthcare/hooks-appointments';
+import { Textarea } from '../../../components/ui/textarea';
+import { Button } from '../../../components/ui/button';
+import { Provider, Facility } from '../../../services/provider-search/useProviderSearch';
 
-interface BookAppointmentModalProps {
-    provider: any;
-    onClose: () => void;
-    onRequestAppointment: (provider: any, reason: string, availability: string) => any;
+/** Normalized provider shape for booking modal (Provider | Facility | LegacyProvider). */
+interface NormalizedProvider {
+    name: string;
+    image: string | undefined;
+    description: string;
+    address: string;
+    phone: string;
+    zipcode: string;
+    booking_links?: Array< { url: string; serviceProvider: string } >;
+    is_facility: boolean;
 }
 
-const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({ provider, onClose, onRequestAppointment }) => {
-    const [reason, setReason] = useState('');
-    const [availability, setAvailability] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [error, setError] = useState('');
-    const [enrichedProvider, setEnrichedProvider] = useState<any>(provider);
-    const [is_loading, set_is_loading] = useState(false);
-    const { enrichProviderWithCareDetails } = useProviderSearch();
+function cleanServiceProviderName(service_provider: string): string {
+    if (!service_provider) return '';
+    return service_provider
+        .replace(/&[^;]+;/g, '')
+        .replace(/[^\w\s\-.,()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 
-    // Fetch care details when modal opens for a provider with provider_id
+function normalizeProvider(provider: Provider | Facility | Record<string, unknown> | null): NormalizedProvider | null {
+    if (!provider) return null;
+    const p = provider as Record<string, unknown>;
+    const name =
+        (p.provider_name as string) ||
+        (p.facility_name as string) ||
+        (p.name as string) ||
+        '';
+    const image =
+        (p.provider_image as string) ||
+        (p.facility_image as string) ||
+        (p.image as string) ||
+        (p.avatar as string) ||
+        undefined;
+    const description =
+        (p.provider_specialty as string) ||
+        (p.facility_type as string) ||
+        (p.description as string) ||
+        (p.specialty as string) ||
+        '';
+    const address =
+        (p.provider_address as string) ||
+        (p.facility_address as string) ||
+        (p.address as string) ||
+        '';
+    const phone =
+        (p.provider_phone as string) ||
+        (p.facility_phone as string) ||
+        (p.phone as string) ||
+        '';
+    let zipcode = (p.zipcode as string) || (p.provider_zipcode as string) || '';
+    if (!zipcode && address) {
+        const match = address.match(/\b\d{5}\b/);
+        if (match) zipcode = match[0];
+    }
+    const booking_links = (p.booking_links as Array<{ url: string; serviceProvider: string }>) || undefined;
+    const is_facility = !!(p.facility_name || p.facility_id);
+
+    return {
+        name,
+        image,
+        description,
+        address,
+        phone,
+        zipcode,
+        booking_links: booking_links?.length ? booking_links : undefined,
+        is_facility,
+    };
+}
+
+export interface BookingFormData {
+    reason_for_visit: string;
+    availability: string;
+    provider_id: string;
+}
+
+interface BookAppointmentModalProps {
+    provider: Provider | Facility | Record<string, unknown> | null;
+    is_open?: boolean;
+    onClose: () => void;
+    onRequestAppointment?: (provider: unknown, reason: string, availability: string) => void;
+}
+
+const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
+    provider,
+    is_open = true,
+    onClose,
+    onRequestAppointment,
+}) => {
+    const { create_appointment, is_loading } = useAppointments();
+    const [form_data, set_form_data] = useState<BookingFormData>({
+        reason_for_visit: '',
+        availability: '',
+        provider_id: '',
+    });
+    const [sms_status, set_sms_status] = useState<'idle' | 'sending' | 'sent'>('idle');
+    const [image_error, set_image_error] = useState(false);
+
+    const normalized = normalizeProvider(provider);
+    const provider_id = normalized?.name ?? '';
+
     useEffect(() => {
-        const fetchCareDetails = async () => {
-            if (!provider?.provider_id) {
-                setEnrichedProvider(provider);
-                return;
-            }
+        set_form_data((prev) => ({
+            ...prev,
+            provider_id,
+        }));
+    }, [provider_id]);
 
-            try {
-                const enriched = await enrichProviderWithCareDetails(provider);
-                setEnrichedProvider(enriched);
-            } catch (error) {
-                console.error('Error fetching care details:', error);
-                setEnrichedProvider(provider);
-            }
-        };
+    useEffect(() => {
+        if (is_open) {
+            set_image_error(false);
+        }
+    }, [normalized?.image, is_open]);
 
-        fetchCareDetails();
-    }, []);
+    const handle_change = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        set_form_data((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
 
-    const handleSubmit = async () => {
-        if (!reason.trim()) {
-            setError('Please provide a reason for your visit');
+    const handle_submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!form_data.availability || !form_data.reason_for_visit || !normalized) {
+            toast.error('Please fill in all fields');
             return;
         }
 
-        setIsSubmitting(true);
-        set_is_loading(true);
-        setError('');
-
         try {
-            // Get user info from auth store
-            const authStore = useAuthStore.getState();
-            const user = authStore.user;
-            
-            if (!user || !user.userData) {
-                throw new Error('User not authenticated. Please log in to book an appointment.');
-            }
+            set_sms_status('sending');
 
-            const userData = user.userData;
-            const user_id = userData.user_id;
-            const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
-            const isFacility = !!provider?.facility_name || !!provider?.facility_id;
-
-            // Extract zipcode from address if available
-            let zipcode = '';
-            if (provider?.provider_address || provider?.address) {
-                const address = provider?.provider_address || provider?.address;
-                const zipcodeMatch = address.match(/\b\d{5}\b/);
-                if (zipcodeMatch) {
-                    zipcode = zipcodeMatch[0];
-                }
-            }
-
-            // Prepare request JSON with appointment details
-            const request_json: any = {
-                appointment_notes: reason,
-                appointment_address: provider?.provider_address || provider?.address || '',
-                appointment_zipcode: zipcode || provider?.provider_zipcode || provider?.zipcode || '',
-                appointment_status: 'Requested',
-            };
-
-            if (isFacility) {
-                request_json.facility_name = providerName;
-                request_json.facility_phone = provider?.facility_phone || provider?.phone || '';
-            } else {
-                request_json.doctor_name = providerName;
-                // Use phone from enriched provider (from care details API) if available, otherwise fall back to original provider phone
-                request_json.doctor_phone = enrichedProvider?.provider_phone || enrichedProvider?.phone || provider?.provider_phone || provider?.phone || '';
-                request_json.provider_id = provider?.provider_id || provider?.id;
-            }
-
-            if (availability) {
-                request_json.appointment_date_time = availability;
-            }
-
-            // Build request_details string
-            const address_str = request_json.appointment_address || 'Not specified';
-            const phone_str = request_json.doctor_phone || request_json.facility_phone || 'Not specified';
-            const request_details = `Provider: ${providerName}\nAddress: ${address_str}\nPhone: ${phone_str}\nReason: ${reason}${availability ? `\nAvailability: ${availability}` : ''}`;
-
-            // Create approved request via API
-            const response = await postAPI(CAPABILITIES_API_URLS.SYNC_APPROVED_REQUEST, {
-                domain: 'diabetrix',
-                task_type_name: 'doctor-appointment-booking',
-                user_id,
-                request_name: `Book Appointment with ${providerName}`,
-                request_details,
-                request_json,
-                is_source_request: true,
+            await create_appointment({
+                appointment_details: {
+                    appointment_date_time: form_data.availability,
+                    appointment_notes: form_data.reason_for_visit,
+                    appointment_address: normalized.address,
+                    doctor_name: normalized.name,
+                    doctor_phone: normalized.phone,
+                    appointment_zipcode: normalized.zipcode,
+                },
+                appointment_with: normalized.is_facility ? 'Facility' : 'Provider',
             });
 
-            if (response.statusCode === 200) {
-                setIsSubmitting(false);
-                set_is_loading(false);
-                setIsSuccess(true);
+            set_sms_status('sent');
 
-                // Close modal after showing success message for 2 seconds
-                setTimeout(async () => {
-                    await onRequestAppointment(provider, reason, availability);
-                    onClose();
-                }, 2000);
-            } else {
-                throw new Error(response.message || 'Failed to request appointment. Please try again.');
-            }
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to request appointment. Please try again.';
-            setError(errorMessage);
-            setIsSubmitting(false);
-            set_is_loading(false);
-            console.error('Error booking appointment:', err);
+            setTimeout(() => {
+                toast.success('Appointment Requested successfully!');
+                onRequestAppointment?.(provider, form_data.reason_for_visit, form_data.availability);
+                onClose();
+            }, 1500);
+        } catch {
+            set_sms_status('idle');
+            toast.error('Failed to request appointment');
         }
     };
 
-    const providerName = provider?.provider_name || provider?.facility_name || 'Provider';
-    const providerSpecialty = provider?.provider_specialty || provider?.facility_type || 'Healthcare Provider';
+    if (!is_open || !normalized) return null;
 
     return (
-        <div onClick={onClose} className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg w-full max-w-lg shadow-xl relative flex flex-col max-h-[90vh] overflow-hidden">
-                <div className="flex-shrink-0 p-6 pb-4 border-b border-gray-200">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl z-10">
-                        ×
-                    </button>
-                    <h2 className="text-xl font-semibold mt-0 mb-0 pr-8">{isSuccess ? 'Appointment Requested' : 'Book Appointment'}</h2>
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="book-appointment-title"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            style={{ zIndex: 9999 }}
+        >
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-4 border-b">
+                    <h2 id="book-appointment-title" className="text-lg font-semibold text-gray-800">
+                        Book Appointment
+                    </h2>
+                    <Button
+                        onClick={onClose}
+                        variant="ghost"
+                        size="icon"
+                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                        <X size={20} />
+                    </Button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 pt-4">
-
-                {isSuccess ? (
-                    <div className="text-center mb-6">
-                        <div className="w-15 h-15 rounded-full bg-green-500 text-white flex items-center justify-center text-2xl mx-auto mb-4">✓</div>
-                        <h3 className="text-lg font-medium mb-4">Request Successful!</h3>
-                        <p className="mb-4 text-gray-600 text-sm">Your appointment request with {providerName} has been submitted.</p>
-                        <p className="mb-6 text-gray-600 text-sm">We will contact you shortly with confirmation details.</p>
-                    </div>
-                ) : (
-                    <div className="border border-gray-200 rounded-lg p-4 mb-6 bg-gray-50">
-                        <div className="flex items-center">
-                            <div
-                                className="w-12 h-12 min-w-[3rem] min-h-[3rem] rounded-full bg-gray-200 mr-4 bg-cover bg-center bg-no-repeat"
-                                style={{
-                                    backgroundImage: `url(${provider?.provider_image || avatarImage})`,
-                                }}
-                                aria-label={`${providerName} avatar`}
-                            />
-                            <div>
-                                <h3 className="text-base font-medium text-gray-900 m-0">{providerName}</h3>
-                                <p className="text-sm text-gray-600 mt-1 m-0">{providerSpecialty}</p>
+                <div className="p-4 relative">
+                    {(is_loading || sms_status !== 'idle') && (
+                        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+                            <div className="flex flex-col items-center">
+                                {sms_status === 'sending' && (
+                                    <>
+                                        <div className="relative mb-4">
+                                            <MessageCircle size={48} className="text-blue-600 animate-pulse" />
+                                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-ping" />
+                                        </div>
+                                        <span className="text-blue-600 font-medium">Sending SMS...</span>
+                                        <span className="text-gray-500 text-sm mt-1">Adding your appointment</span>
+                                    </>
+                                )}
+                                {sms_status === 'sent' && (
+                                    <>
+                                        <div className="relative mb-4">
+                                            <MessageCircle size={48} className="text-green-600" />
+                                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                                <span className="text-white text-xs">✓</span>
+                                            </div>
+                                        </div>
+                                        <span className="text-green-600 font-medium">SMS Sent!</span>
+                                        <span className="text-gray-500 text-sm mt-1">Booking request sent</span>
+                                    </>
+                                )}
+                                {is_loading && sms_status === 'idle' && (
+                                    <>
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-2" />
+                                        <span className="text-blue-600 font-medium">Booking appointment...</span>
+                                    </>
+                                )}
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {!isSuccess && (
-                    <>
-                        <div className="mb-4">
-                            <label htmlFor="reason" className="block mb-2 text-sm font-medium text-gray-700">
-                                Reason for visit
-                            </label>
-                            <textarea
-                                id="reason"
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="Please describe your symptoms or reason for the appointment"
-                                className="w-full p-3 border border-gray-300 rounded-md min-h-[100px] resize-vertical text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                disabled={isSubmitting}
+                    )}
+                    <div className="flex items-center mb-4">
+                        {normalized.image && !image_error ? (
+                            <img
+                                src={normalized.image}
+                                alt={normalized.name}
+                                className="w-12 h-12 rounded-full object-cover mr-3"
+                                onError={() => set_image_error(true)}
                             />
-                        </div>
-
-                        <div className="mb-6">
-                            <label htmlFor="availability" className="block mb-2 text-sm font-medium text-gray-700">
-                                Availability
-                            </label>
-                            <textarea
-                                id="availability"
-                                value={availability}
-                                onChange={(e) => setAvailability(e.target.value)}
-                                placeholder="Tell us about your availability"
-                                className="w-full p-3 border border-gray-300 rounded-md min-h-[100px] resize-vertical text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    </>
-                )}
-
-                {error && <div className="text-red-700 mb-4 p-2 bg-red-50 rounded text-sm">{error}</div>}
-                
-                </div>
-
-                <div className="flex-shrink-0 p-6 pt-4 border-t border-gray-200">
-                    <div className={`flex gap-3 ${isSuccess ? 'flex-row justify-center' : 'flex-col'}`}>
-                        {(isSubmitting || is_loading) && (
-                            <div className="text-center w-full">
-                                <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full mx-auto mb-4 animate-spin" />
-                                <p className="m-0 text-gray-600 text-sm">Processing your request...</p>
+                        ) : (
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-blue-600 font-semibold">
+                                    {normalized.name
+                                        .split(' ')
+                                        .map((n) => n[0])
+                                        .join('')
+                                        .substring(0, 2)
+                                        .toUpperCase()}
+                                </span>
                             </div>
                         )}
+                        <div>
+                            <h3 className="font-medium text-gray-900">{normalized.name}</h3>
+                            <p className="text-sm text-gray-600">{normalized.description}</p>
+                        </div>
+                    </div>
 
-                        {!isSubmitting && !is_loading && !isSuccess && (
-                            <>
-                                <button onClick={onClose} className="w-full py-3 px-4 rounded-lg border border-gray-300 bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 text-sm">
+                    {normalized.booking_links && normalized.booking_links.length > 0 ? (
+                        <div>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Book your appointment through one of the following platforms:
+                            </p>
+                            <div className="space-y-3">
+                                {normalized.booking_links.map((link, index) => (
+                                    <a
+                                        key={index}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                                        onClick={() => onClose()}
+                                    >
+                                        <div className="flex items-center">
+                                            <ExternalLink size={16} className="text-blue-600 mr-2" />
+                                            <span className="text-sm font-medium text-gray-900">
+                                                Book with {cleanServiceProviderName(link.serviceProvider)}
+                                            </span>
+                                        </div>
+                                        <span className="text-blue-600 text-sm">→</span>
+                                    </a>
+                                ))}
+                            </div>
+                            <div className="flex justify-end mt-6">
+                                <Button type="button" onClick={onClose} variant="secondary">
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <form onSubmit={handle_submit}>
+                            <div className="mb-4">
+                                <label
+                                    htmlFor="reason_for_visit"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
+                                    Reason for visit
+                                </label>
+                                <Textarea
+                                    id="reason_for_visit"
+                                    name="reason_for_visit"
+                                    value={form_data.reason_for_visit}
+                                    onChange={handle_change}
+                                    required
+                                    className="focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    rows={3}
+                                    placeholder="Please describe your symptoms or reason for the appointment"
+                                />
+                            </div>
+
+                            <div className="mb-4">
+                                <label htmlFor="availability" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Availability
+                                </label>
+                                <Textarea
+                                    id="availability"
+                                    name="availability"
+                                    value={form_data.availability}
+                                    onChange={handle_change}
+                                    className="focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    rows={2}
+                                    placeholder="Tell us about your availability"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex justify-end space-x-3 mt-6">
+                                <Button type="button" onClick={onClose} variant="secondary">
                                     Cancel
-                                </button>
-                                <button onClick={handleSubmit} disabled={isSubmitting || is_loading} className="w-full py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Place Request
-                                </button>
-                            </>
-                        )}
-
-                        {isSuccess && (
-                            <button onClick={onClose} className="py-3 px-4 text-white font-medium rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 border-none hover:shadow-lg transition-all duration-200 shadow-sm w-full max-w-[200px] text-sm">
-                                Close
-                            </button>
-                        )}
-                    </div>
+                                </Button>
+                                <Button type="submit">Request Appointment</Button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

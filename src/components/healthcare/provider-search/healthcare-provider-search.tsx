@@ -47,7 +47,7 @@ interface HealthcareProviderSearchProps {
 }
 
 export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinology', embedded = false }) => {
-    const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection } = useProviderSearch();
+    const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection, fetchProviderCareDetails } = useProviderSearch();
 
     // Legacy state for backward compatibility
     const [legacyProviders] = useState<LegacyProvider[]>([]);
@@ -795,6 +795,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         setShowProviderDetailsModal(false);
                         setSelectedProviderForDetails(null);
                     }}
+                    fetchProviderCareDetails={fetchProviderCareDetails}
                 />
             )}
 

@@ -1,5 +1,6 @@
 import { Camera, CreditCard, Hospital, Microscope, Search, Stethoscope, Syringe, User2, X } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { SearchCategory, useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 import { InsuranceCardScanModal } from '../../insurance/insurance-card-scan/insurance-card-scan-modal';
 import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
@@ -212,6 +213,13 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
 
             onClose();
         }
+    };
+
+    // Handle "I'm paying for myself" — proceed with Self Pay and close
+    const handlePayingMyself = () => {
+        if (!selectedSpecialty) return;
+        onCategoryClick(selectedSpecialty, { plan_name: 'Self Pay', payer_name: 'Self Pay' });
+        onClose();
     };
 
     // Go back to previous step
@@ -495,6 +503,13 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                         </button>
 
                         {!selectedInsurance && !scannedInsuranceData && <p className="text-xs text-gray-500 text-center mt-2">Please select an insurance provider or scan your card to continue</p>}
+                    </div>
+
+                    {/* I'm paying for myself */}
+                    <div className="pt-4 border-t border-gray-200">
+                        <Button onClick={handlePayingMyself} variant="link" disabled={!selectedSpecialty} className="w-full text-center text-sm font-medium">
+                            I'm paying for myself
+                        </Button>
                     </div>
                 </div>
             </div>
