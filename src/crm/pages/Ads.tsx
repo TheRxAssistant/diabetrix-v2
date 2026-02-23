@@ -6,16 +6,28 @@ const XDEMVY_LOCALHOST_URL = 'http://localhost:5173';
 
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
 
+const DEFAULT_UTM = {
+    utm_source: 'google',
+    utm_medium: 'cpc',
+    utm_campaign: 'promo_cmp',
+    utm_content: 'ad_variant_a',
+} as const;
+
 function getXdemvyBaseUrl(): string {
     const envUrl = import.meta.env.VITE_XDEMVY_EMBED_URL;
     if (envUrl) return envUrl;
     return window.location.hostname === 'localhost' ? XDEMVY_LOCALHOST_URL : XDEMVY_STAGE_URL;
 }
 
-function getXdemvyRedirectUrl(isChatOpen: boolean, currentSearch: string): string {
+function getXdemvyRedirectUrl(isChatOpen: boolean, utmTerm: string, currentSearch: string): string {
     const baseUrl = getXdemvyBaseUrl();
     const params = new URLSearchParams();
     params.set('is_chat_open', isChatOpen ? 'true' : 'false');
+    params.set('utm_source', DEFAULT_UTM.utm_source);
+    params.set('utm_medium', DEFAULT_UTM.utm_medium);
+    params.set('utm_campaign', DEFAULT_UTM.utm_campaign);
+    params.set('utm_term', utmTerm);
+    params.set('utm_content', DEFAULT_UTM.utm_content);
 
     const currentParams = new URLSearchParams(currentSearch);
     UTM_KEYS.forEach((key) => {
@@ -31,8 +43,8 @@ export default function AdsPage() {
     const [searchParams] = useSearchParams();
     const currentSearch = window.location.search || (searchParams.toString() ? `?${searchParams.toString()}` : '');
 
-    const urlWithChatOpen = getXdemvyRedirectUrl(true, currentSearch);
-    const urlWithChatClosed = getXdemvyRedirectUrl(false, currentSearch);
+    const urlWithChatOpen = getXdemvyRedirectUrl(true, 'chat', currentSearch);
+    const urlWithChatClosed = getXdemvyRedirectUrl(false, 'learn more', currentSearch);
 
     const handleAdClick = (url: string) => {
         window.open(url, '_blank', 'noopener,noreferrer');
