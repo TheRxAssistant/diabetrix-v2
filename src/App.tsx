@@ -12,6 +12,7 @@ import Campaigns from './crm/pages/Campaigns';
 import Patients from './crm/pages/Patients';
 import PatientJourney from './crm/pages/PatientJourney';
 import Analytics from './crm/pages/Analytics';
+import EscalatedRequests from './crm/pages/EscalatedRequests';
 import ProtectedRoute from './crm/components/ProtectedRoute';
 import { useThemeConfig } from './hooks/useThemeConfig';
 import { getBrandName } from './config/theme-config';
@@ -192,6 +193,7 @@ function AppRoutes() {
                         <Route path="analytics" element={<Analytics />} />
                         <Route path="patients" element={<Patients />} />
                         <Route path="patients/journey" element={<PatientJourney />} />
+                        <Route path="escalated-requests" element={<EscalatedRequests />} />
                     </Route>
                     <Route index element={<Home />} />
                 </Route>
@@ -211,6 +213,7 @@ function AppRoutes() {
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="patients" element={<Patients />} />
                     <Route path="patients/journey" element={<PatientJourney />} />
+                    <Route path="escalated-requests" element={<EscalatedRequests />} />
                 </Route>
             </Routes>
         </>
