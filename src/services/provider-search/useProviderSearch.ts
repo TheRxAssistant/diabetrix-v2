@@ -75,7 +75,7 @@ export interface Facility {
     facility_image?: string;
     facility_rating?: number;
     facility_distance?: number;
-    facility_review_count?: number;
+    facility_review_count?: number | string;
     facility_specialty?: string[];
     facility_full_address_obj?: IAddress;
     reward_amount?: number;

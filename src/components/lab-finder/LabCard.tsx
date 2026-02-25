@@ -62,13 +62,13 @@ export function LabCard({
                             </a>
                         </p>
                     )}
-                    {(rating != null || (reviewCount != null && reviewCount !== 0)) && (
+                    {(rating != null || (reviewCount != null && reviewCount !== 0 && reviewCount !== "")) && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-sm text-gray-500">
                             <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
                             {rating != null && <span>{rating}</span>}
-                            {reviewCount != null && reviewCount !== 0 && (
+                            {reviewCount != null && reviewCount !== 0 && reviewCount !== "" ? (
                                 <span>({reviewCount} reviews)</span>
-                            )}
+                            ) : null}
                         </div>
                     )}
                     <div className="flex flex-wrap gap-1.5 mt-3">
