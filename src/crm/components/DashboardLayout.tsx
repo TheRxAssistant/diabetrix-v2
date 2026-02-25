@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaUser, FaChartLine, FaChartBar, FaExclamationTriangle } from 'react-icons/fa';
+import { FaUser, FaChartLine, FaChartBar, FaHeadset } from 'react-icons/fa';
 import Avatar from './ui/Avatar';
 import avatarImage from '../../assets/images/avatar.png';
 import DiabetrixIcon from './ui/DiabetrixIcon';
@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const menuItems = [
         { key: '2', icon: <FaUser />, label: 'Patient Journeys', path: `${domainPrefix}/crm/patients` },
-        { key: '3', icon: <FaExclamationTriangle />, label: 'Escalated Requests', path: `${domainPrefix}/crm/escalated-requests` },
+        { key: '3', icon: <FaHeadset />, label: 'User Support', path: `${domainPrefix}/crm/escalated-requests` },
         { key: '5', icon: <FaChartLine />, label: 'Marketing', path: `${domainPrefix}/crm/marketing/campaigns` },
         { key: '6', icon: <FaChartBar />, label: 'Analytics', path: `${domainPrefix}/crm/analytics` },
     ];

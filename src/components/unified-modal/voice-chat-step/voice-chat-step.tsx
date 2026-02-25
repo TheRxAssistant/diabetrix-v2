@@ -33,13 +33,15 @@ import remarkGfm from 'remark-gfm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'react-toastify';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import styles from '../unified-modal.module.scss';
 
 type MyUIMessage = UIMessage<MessageMetadata>;
 
 interface VoiceChatStepProps {
     onClose: () => void;
+    initialMessageToSend?: string;
+    onInitialMessageSent?: () => void;
 }
 
 const renderMessagePart = (part: any, part_index: number, message_id: string, is_streaming: boolean, is_last_part?: boolean): React.ReactNode => {
@@ -213,9 +215,11 @@ interface VoiceChatStepInnerProps {
     domain: string;
     conversation_id: string;
     onClose: () => void;
+    initialMessageToSend?: string;
+    onInitialMessageSent?: () => void;
 }
 
-const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose }) => {
+const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose, initialMessageToSend, onInitialMessageSent }) => {
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
@@ -233,6 +237,16 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
     });
 
     const is_streaming = status === 'streaming' || status === 'submitted';
+    const initial_message_sent_ref = useRef(false);
+
+    // Send initial message (e.g. from learn question) when chat is ready
+    useEffect(() => {
+        if (initialMessageToSend?.trim() && !initial_message_sent_ref.current && status !== 'streaming' && status !== 'submitted') {
+            initial_message_sent_ref.current = true;
+            sendMessage({ text: initialMessageToSend.trim() });
+            onInitialMessageSent?.();
+        }
+    }, [initialMessageToSend, status, sendMessage, onInitialMessageSent]);
 
     // State for audio data per message
     const [message_audio_data, set_message_audio_data] = useState<Record<string, MessageAudioData>>({});
@@ -406,10 +420,10 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
         });
     }, [message_audio_data, messages, is_speech_enabled]);
 
-    const handle_submit = async (message: { text: string; files: any[] }) => {
+    const handle_submit = (message: { text: string; files: any[] }) => {
         if (!message.text.trim() || is_streaming) return;
 
-        await sendMessage({ text: message.text });
+        void sendMessage({ text: message.text });
     };
 
     // Handle streaming transcript updates
@@ -640,7 +654,7 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
 };
 
 // Wrapper: create conversation, load messages, then render inner
-export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
+export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose, initialMessageToSend, onInitialMessageSent }) => {
     const themeConfig = useThemeConfig();
     const domain = getDomain(themeConfig);
     const brandName = getBrandName(themeConfig);
@@ -707,7 +721,11 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
                     </div>
                     <Conversation className="flex-1 overflow-hidden">
                         <ConversationContent>
-                            <ConversationEmptyState title="Loading conversation..." description="Please wait" />
+                            <ConversationEmptyState
+                                icon={<Loader2 className="size-10 animate-spin text-blue-500" />}
+                                title="Initializing agent"
+                                description="Setting up your conversation..."
+                            />
                         </ConversationContent>
                     </Conversation>
                 </div>
@@ -715,5 +733,14 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
         );
     }
 
-    return <VoiceChatStepInner initial_messages={initial_messages ?? []} domain={domain} conversation_id={conversation_id ?? ''} onClose={onClose} />;
+    return (
+        <VoiceChatStepInner
+            initial_messages={initial_messages ?? []}
+            domain={domain}
+            conversation_id={conversation_id ?? ''}
+            onClose={onClose}
+            initialMessageToSend={initialMessageToSend}
+            onInitialMessageSent={onInitialMessageSent}
+        />
+    );
 };

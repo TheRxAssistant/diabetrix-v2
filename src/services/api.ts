@@ -398,6 +398,7 @@ export const CAPABILITIES_API_URLS = {
     GET_APPROVED_REQUESTS: 'crm/approved-requests/get-approved-requests',
     SYNC_APPROVED_REQUEST: 'crm/approved-requests/sync-approved-request',
     SEND_SMS_TO_USER: 'crm/approved-requests/send-sms-to-user',
+    GET_ESCALATED_REQUEST_MESSAGES: 'crm/approved-requests/get-escalated-request-messages',
 
     // Pharmacy Stock Check APIs
     SYNC_PHARMACY_STOCK_CHECK: 'pharmacy-stock-checks/sync-pharmacy-stock-check',
