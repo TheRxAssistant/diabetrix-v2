@@ -119,7 +119,7 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
 
         return (
             <Tool key={`${message_id}-tool-${part_index}`}>
-                <ToolHeader type={part.type} state={part.state} toolName={tool_name} title={tool_name} />
+                <ToolHeader type={part.type} state={part.state} preliminary={part.preliminary} toolName={tool_name} title={tool_name} />
                 <ToolContent>
                     {part.input && <ToolInput input={part.input} />}
                     {part.output !== undefined && (
