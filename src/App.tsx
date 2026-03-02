@@ -12,6 +12,7 @@ import Campaigns from './crm/pages/Campaigns';
 import Patients from './crm/pages/Patients';
 import PatientJourney from './crm/pages/PatientJourney';
 import Analytics from './crm/pages/Analytics';
+import Ads from './crm/pages/Ads';
 import EscalatedRequests from './crm/pages/EscalatedRequests';
 import ProtectedRoute from './crm/components/ProtectedRoute';
 import { useThemeConfig } from './hooks/useThemeConfig';
@@ -41,10 +42,10 @@ function BackgroundImageHandler() {
             // Inject CSS with !important to override Tailwind and any other styles
             // Apply to both html and body to ensure it shows
             // Use a more specific selector to ensure it persists
-            const imageUrl = themeConfig.bg_image.startsWith('/') 
-                ? themeConfig.bg_image 
+            const imageUrl = themeConfig.bg_image.startsWith('/')
+                ? themeConfig.bg_image
                 : `/${themeConfig.bg_image}`;
-            
+
             const css = `
                 html {
                     background-image: url(${imageUrl}) !important;
@@ -76,7 +77,7 @@ function BackgroundImageHandler() {
             styleElement.textContent = css;
             console.log('BackgroundImageHandler - Style tag created with CSS:', css);
             console.log('BackgroundImageHandler - Image URL:', imageUrl);
-            
+
             // Also set inline styles as backup (though style tag should work)
             // Use requestAnimationFrame to ensure DOM is ready
             requestAnimationFrame(() => {
@@ -86,13 +87,13 @@ function BackgroundImageHandler() {
                 document.body.style.setProperty('background-repeat', 'no-repeat', 'important');
                 document.body.style.setProperty('background-attachment', 'fixed', 'important');
                 console.log('BackgroundImageHandler - Inline styles applied');
-                
+
                 // Check computed styles
                 const computedStyle = window.getComputedStyle(document.body);
                 console.log('BackgroundImageHandler - Computed background-image:', computedStyle.backgroundImage);
                 console.log('BackgroundImageHandler - Computed background-size:', computedStyle.backgroundSize);
                 console.log('BackgroundImageHandler - Computed background-color:', computedStyle.backgroundColor);
-                
+
                 // Verify image exists
                 const img = new Image();
                 img.onload = () => console.log('BackgroundImageHandler - Image loaded successfully:', imageUrl);
@@ -214,6 +215,9 @@ function AppRoutes() {
                     <Route path="patients" element={<Patients />} />
                     <Route path="patients/journey" element={<PatientJourney />} />
                     <Route path="escalated-requests" element={<EscalatedRequests />} />
+                </Route>
+                <Route path="/ads" element={<ProtectedRoute />}>
+                    <Route index element={<Ads />} />
                 </Route>
             </Routes>
         </>

@@ -271,7 +271,7 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                         {/* Focus Areas Section */}
                         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-2 lg:p-2 mt-2 transition-all duration-300 hover:shadow-lg">
                             {/* Responsive container for both sections */}
-                            <div className="flex flex-col lg:flex-row lg:gap-2">
+                            <div className="flex flex-col lg:flex-col lg:gap-2">
                                 {/* Top Conditions Treated */}
                                 <div className="lg:flex-1 mb-2 lg:mb-0 p-2 rounded-xl">
                                     <div>
