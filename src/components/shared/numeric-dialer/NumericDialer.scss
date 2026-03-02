@@ -120,6 +120,42 @@
     }
 }
 
+// Compact size variant
+.numeric-dialer-compact {
+    gap: 0.5rem;
+
+    .numeric-dialer-input {
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        min-height: 40px;
+        border-radius: 0.5rem;
+    }
+
+    .numeric-dialer-keypad {
+        gap: 0.4rem;
+    }
+
+    .numeric-dialer-row {
+        gap: 0.4rem;
+    }
+
+    .numeric-dialer-key {
+        padding: 0.5rem;
+        font-size: 1rem;
+        min-height: 36px;
+        border-radius: 0.5rem;
+
+        svg {
+            width: 14px;
+            height: 14px;
+        }
+    }
+
+    .numeric-dialer-key-clear {
+        font-size: 0.75rem;
+    }
+}
+
 @media (max-width: $mobile_breakpoint) {
     .numeric-dialer-key {
         min-height: 60px;

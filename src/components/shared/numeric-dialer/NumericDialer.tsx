@@ -6,13 +6,15 @@ interface NumericDialerProps {
     onChange: (value: string) => void;
     maxLength?: number;
     placeholder?: string;
+    size?: 'default' | 'compact';
 }
 
 const NumericDialer: React.FC<NumericDialerProps> = ({
     value,
     onChange,
     maxLength = 5,
-    placeholder = 'Enter zipcode'
+    placeholder = 'Enter zipcode',
+    size = 'default',
 }) => {
     const handleNumberClick = (num: string) => {
         if (value.length < maxLength) {
@@ -29,7 +31,7 @@ const NumericDialer: React.FC<NumericDialerProps> = ({
     };
 
     return (
-        <div className="numeric-dialer-container">
+        <div className={`numeric-dialer-container ${size === 'compact' ? 'numeric-dialer-compact' : ''}`}>
             <div className="numeric-dialer-display">
                 <input
                     type="text"
