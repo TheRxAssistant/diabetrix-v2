@@ -9,6 +9,7 @@ import { SpeechInput } from '@/components/ai-elements/speech-input';
 import { Transcription, TranscriptionSegment } from '@/components/ai-elements/transcription';
 import { AudioPlayer, AudioPlayerControlBar, AudioPlayerDurationDisplay, AudioPlayerElement, AudioPlayerMuteButton, AudioPlayerPlayButton, AudioPlayerSeekBackwardButton, AudioPlayerSeekForwardButton, AudioPlayerTimeDisplay, AudioPlayerTimeRange, AudioPlayerVolumeRange } from '@/components/ai-elements/audio-player';
 import { BASE_URL, CORE_ENGINE_API_URLS, postAPI } from '@/services/api';
+import { AIService } from '@/services/ai-service';
 import { generateSpeech } from '@/services/voice/speech';
 import { transcribeAudio } from '@/services/voice/transcribe';
 import type { MessageMetadata } from '@/services/types/chat/message-metadata';
@@ -20,6 +21,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { toast } from 'react-toastify';
 import { Volume2, VolumeX } from 'lucide-react';
+import ChatHeader from '../../chat/chat-header/chat-header';
+import NumericDialer from '../../shared/numeric-dialer/NumericDialer';
+import '@/components/chat/chat-body/chat-body.scss';
 import styles from '../unified-modal.module.scss';
 
 type MyUIMessage = UIMessage<MessageMetadata>;
@@ -284,6 +288,17 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
     // Ref to expose setInput function for transcription updates
     const set_transcription_input_ref = useRef<((text: string) => void) | null>(null);
 
+    // Input visibility - always show unless user clicks "input disabled" in header
+    const [show_input, set_show_input] = useState<boolean>(true);
+
+    // Intelligent options state (for when input is disabled - show options on right side)
+    const [intelligent_options, set_intelligent_options] = useState<{ text: string; type?: string }[]>([]);
+    const [intelligent_input_fields, set_intelligent_input_fields] = useState<{ field_type: string; label: string; placeholder: string }[]>([]);
+    const [intelligent_action_link, set_intelligent_action_link] = useState<{ url: string; label: string; open_in_new_tab: boolean } | null>(null);
+    const [intelligent_options_loading, set_intelligent_options_loading] = useState(false);
+    const intelligentOptionsGeneratedRef = useRef<boolean>(false);
+    const lastMessageCountForIntelligentOptions = useRef<number>(0);
+
     // WebSocket for real-time speech recognition
     const { connect, disconnect, send_audio_chunk, is_connected, set_on_transcript, set_on_error } = useSpeechWebSocket();
 
@@ -457,6 +472,44 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
         await sendMessage({ text: message.text });
     };
 
+    // When input is disabled (showing options), send selected option and clear options
+    const handle_intelligent_option_select = useCallback(
+        async (option: string) => {
+            set_intelligent_options([]);
+            set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
+            intelligentOptionsGeneratedRef.current = false;
+            clear_input_ref.current?.();
+            await sendMessage({ text: option });
+        },
+        [sendMessage],
+    );
+
+    // Input field values for intelligent_input_fields
+    const [input_field_values, set_input_field_values] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (intelligent_input_fields.length > 0) {
+            const initial: Record<string, string> = {};
+            intelligent_input_fields.forEach((_, i) => {
+                initial[`field_${i}`] = '';
+            });
+            set_input_field_values(initial);
+        }
+    }, [intelligent_input_fields]);
+
+    const handle_intelligent_input_submit = useCallback(async () => {
+        const all_filled = intelligent_input_fields.every((_, i) => input_field_values[`field_${i}`]?.trim());
+        if (!all_filled) return;
+        const message = Object.values(input_field_values).join(', ');
+        set_intelligent_options([]);
+        set_intelligent_input_fields([]);
+        set_intelligent_action_link(null);
+        intelligentOptionsGeneratedRef.current = false;
+        clear_input_ref.current?.();
+        await sendMessage({ text: message });
+    }, [intelligent_input_fields, input_field_values, sendMessage]);
+
     // Handle streaming transcript updates
     const handle_streaming_transcript = useCallback(
         (text: string, is_final: boolean) => {
@@ -491,6 +544,80 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
         set_on_transcript(handle_streaming_transcript);
         set_on_error(handle_websocket_error);
     }, [set_on_transcript, set_on_error, handle_streaming_transcript, handle_websocket_error]);
+
+    // Generate intelligent options whenever stream ends
+    useEffect(() => {
+        const shouldGenerateOptions = !is_streaming && messages.length > 0;
+
+        if (shouldGenerateOptions) {
+            const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
+            const lastContent = (lastAssistantMessage?.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ') || '').toLowerCase();
+            const shouldSkipIntelligentOptions = lastContent.includes('upload') && lastContent.includes('insurance card');
+
+            if (shouldSkipIntelligentOptions) {
+                intelligentOptionsGeneratedRef.current = true;
+                lastMessageCountForIntelligentOptions.current = messages.length;
+                set_intelligent_options([]);
+                set_intelligent_input_fields([]);
+                set_intelligent_action_link(null);
+                set_intelligent_options_loading(false);
+                return;
+            }
+
+            const currentMessageCount = messages.length;
+            const needsRegeneration = !intelligentOptionsGeneratedRef.current || lastMessageCountForIntelligentOptions.current !== currentMessageCount;
+
+            if (needsRegeneration) {
+                intelligentOptionsGeneratedRef.current = true;
+                lastMessageCountForIntelligentOptions.current = currentMessageCount;
+
+                const generateIntelligentOptions = async () => {
+                    try {
+                        set_intelligent_options_loading(true);
+
+                        // Convert voice chat messages to API format { role, content }
+                        const api_messages = messages.map((m) => {
+                            const text_parts = m.parts?.filter((p: any) => p.type === 'text') || [];
+                            const content = text_parts.map((p: any) => p.text || '').join(' ').trim();
+                            return { role: m.role, content };
+                        });
+
+                        const lastContent = lastAssistantMessage?.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text || '').join(' ').trim() || '';
+
+                        if (!lastAssistantMessage || !lastContent) {
+                            set_intelligent_options_loading(false);
+                            return;
+                        }
+
+                        const result = await AIService.generateIntelligentOptions(api_messages, lastContent);
+
+                        set_intelligent_options(result.options);
+                        set_intelligent_input_fields(result.input_fields || []);
+                        set_intelligent_action_link(result.action_link || null);
+                    } catch (error) {
+                        console.error('Error generating intelligent options:', error);
+                        set_intelligent_options([
+                            { text: 'Yes', type: 'action' },
+                            { text: 'No', type: 'action' },
+                            { text: 'Tell me more', type: 'question' },
+                            { text: 'Skip', type: 'action' },
+                        ]);
+                        set_intelligent_input_fields([]);
+                        set_intelligent_action_link(null);
+                    } finally {
+                        set_intelligent_options_loading(false);
+                    }
+                };
+
+                generateIntelligentOptions();
+            }
+        } else if (is_streaming) {
+            intelligentOptionsGeneratedRef.current = false;
+            set_intelligent_options([]);
+            set_intelligent_input_fields([]);
+            set_intelligent_action_link(null);
+        }
+    }, [is_streaming, messages.length, messages]);
 
     // Connect WebSocket on mount
     useEffect(() => {
@@ -567,25 +694,7 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                     overflow: 'hidden',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
-                {/* Header with close button */}
-                <div style={{ padding: '16px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Voice Chat</h3>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '20px',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            color: '#666',
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.background = '#f0f0f0')}
-                        onMouseOut={(e) => (e.currentTarget.style.background = 'none')}>
-                        ×
-                    </button>
-                </div>
+                <ChatHeader onClose={onClose} show_input={show_input} on_toggle_input={set_show_input} />
 
                 <Conversation className="flex-1 overflow-hidden">
                     <ConversationContent>
@@ -678,6 +787,73 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                                 </MessageContent>
                             </Message>
                         )}
+
+                        {/* Intelligent options on right side - only when input disabled via header toggle */}
+                        {!show_input && !is_streaming && (intelligent_options.length > 0 || intelligent_input_fields.length > 0 || intelligent_action_link || intelligent_options_loading) && (
+                            <div className="mcq-options-container mcq-right-side">
+                                <div className="mcq-options-content">
+                                    {intelligent_options_loading ? (
+                                        <div className="mcq-loading">
+                                            <div className="mcq-loading-indicator">
+                                                <span className="mcq-loading-dot" />
+                                                <span className="mcq-loading-dot" />
+                                                <span className="mcq-loading-dot" />
+                                            </div>
+                                            <span className="mcq-loading-text">Loading options...</span>
+                                        </div>
+                                    ) : intelligent_action_link ? (
+                                        <div className="intelligent-action-link-container">
+                                            <a href={intelligent_action_link.url} target={intelligent_action_link.open_in_new_tab ? '_blank' : '_self'} rel="noopener noreferrer" className="intelligent-action-link-button">
+                                                {intelligent_action_link.label}
+                                                {intelligent_action_link.open_in_new_tab && (
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: '8px' }}>
+                                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                                        <polyline points="15 3 21 3 21 9" />
+                                                        <line x1="10" y1="14" x2="21" y2="3" />
+                                                    </svg>
+                                                )}
+                                            </a>
+                                        </div>
+                                    ) : intelligent_input_fields.length > 0 ? (
+                                        <div className="intelligent-input-fields">
+                                            {intelligent_input_fields.map((field, index) => (
+                                                <div key={index} className="intelligent-input-group">
+                                                    <label className="intelligent-input-label">{field.label}</label>
+                                                    {field.field_type === 'zipcode' ? (
+                                                        <NumericDialer
+                                                            value={input_field_values[`field_${index}`] || ''}
+                                                            onChange={(value) => set_input_field_values((prev) => ({ ...prev, [`field_${index}`]: value }))}
+                                                            maxLength={5}
+                                                            placeholder={field.placeholder}
+                                                            size="compact"
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
+                                                            className="intelligent-input-field"
+                                                            placeholder={field.placeholder}
+                                                            value={input_field_values[`field_${index}`] || ''}
+                                                            onChange={(e) => set_input_field_values((prev) => ({ ...prev, [`field_${index}`]: e.target.value }))}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button className="intelligent-input-submit" onClick={handle_intelligent_input_submit} disabled={!intelligent_input_fields.every((_, i) => input_field_values[`field_${i}`]?.trim())}>
+                                                Submit
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="mcq-options-list">
+                                            {intelligent_options.map((option, index) => (
+                                                <button key={index} className="mcq-option-button" onClick={() => handle_intelligent_option_select(option.text)}>
+                                                    {option.text}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </ConversationContent>
                     <ConversationScrollButton />
                 </Conversation>
@@ -686,22 +862,25 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                     <AutoSubmitWatcher sendMessage={sendMessage} is_streaming={is_streaming} voice_input_ref={voice_input_ref} />
                     <InputClearBridge clear_input_ref={clear_input_ref} />
                     <TranscriptionInputBridge set_transcription_input_ref={set_transcription_input_ref} />
-                    <div className="border-t bg-background p-4">
-                        <PromptInput onSubmit={handle_submit}>
-                            <PromptInputBody>
-                                <PromptInputTextarea placeholder="What would you like to know?" />
-                            </PromptInputBody>
-                            <PromptInputFooter>
-                                <div className="flex items-center gap-1">
-                                    <SpeechInput onAudioRecorded={handle_audio_recorded} onTranscriptionChange={handle_transcription_change} onStreamingTranscript={handle_streaming_transcript} sendAudioChunk={is_connected ? send_audio_chunk : undefined} lang="en-US" size="icon-sm" variant="ghost" />
-                                    <Button size="icon-sm" variant="ghost" onClick={() => set_is_speech_enabled(!is_speech_enabled)} className={is_speech_enabled ? 'text-primary' : 'text-muted-foreground'} aria-label={is_speech_enabled ? 'Disable speech output' : 'Enable speech output'}>
-                                        {is_speech_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-                                    </Button>
-                                </div>
-                                <PromptInputSubmit status={status} onStop={stop} />
-                            </PromptInputFooter>
-                        </PromptInput>
-                    </div>
+                    {/* Always show input unless user clicked "input disabled" in header */}
+                    {show_input && (
+                        <div className="border-t bg-background p-4">
+                            <PromptInput onSubmit={handle_submit}>
+                                <PromptInputBody>
+                                    <PromptInputTextarea placeholder="What would you like to know?" />
+                                </PromptInputBody>
+                                <PromptInputFooter>
+                                    <div className="flex items-center gap-1">
+                                        <SpeechInput onAudioRecorded={handle_audio_recorded} onTranscriptionChange={handle_transcription_change} onStreamingTranscript={handle_streaming_transcript} sendAudioChunk={is_connected ? send_audio_chunk : undefined} lang="en-US" size="icon-sm" variant="ghost" />
+                                        <Button size="icon-sm" variant="ghost" onClick={() => set_is_speech_enabled(!is_speech_enabled)} className={is_speech_enabled ? 'text-primary' : 'text-muted-foreground'} aria-label={is_speech_enabled ? 'Disable speech output' : 'Enable speech output'}>
+                                            {is_speech_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                                        </Button>
+                                    </div>
+                                    <PromptInputSubmit status={status} onStop={stop} />
+                                </PromptInputFooter>
+                            </PromptInput>
+                        </div>
+                    )}
                 </PromptInputProvider>
             </div>
         </div>

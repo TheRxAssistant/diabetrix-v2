@@ -320,7 +320,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({
                                                 <label className="intelligent-input-label">{field.label}</label>
                                                 {field.field_type === 'zipcode' && chat_mode === 'mcq' ? (
                                                     /* Numeric Dialer for zipcode in MCQ mode */
-                                                    <NumericDialer value={input_field_values[`field_${index}`] || ''} onChange={(value) => handle_input_change(`field_${index}`, value)} maxLength={5} placeholder={field.placeholder} />
+                                                    <NumericDialer value={input_field_values[`field_${index}`] || ''} onChange={(value) => handle_input_change(`field_${index}`, value)} maxLength={5} placeholder={field.placeholder} size="compact" />
                                                 ) : (
                                                     <input
                                                         type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : 'text'}
