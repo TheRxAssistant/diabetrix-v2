@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaSearch, FaSpinner, FaRobot, FaUser, FaHeadset, FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
+import { FaSearch, FaSpinner, FaRobot, FaUser, FaHeadset, FaPaperPlane, FaCheckCircle, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import DashboardLayout from '../components/DashboardLayout';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Textarea } from '../../components/ui/textarea';
@@ -43,9 +43,8 @@ interface RequestCardProps {
 const RequestCard: React.FC<RequestCardProps> = ({ request, is_selected, onClick }) => (
     <button
         onClick={onClick}
-        className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50 focus:outline-none ${
-            is_selected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
-        }`}
+        className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors hover:bg-gray-50 focus:outline-none ${is_selected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
+            }`}
     >
         <div className="flex items-start justify-between gap-2 mb-1">
             <span className="font-medium text-sm text-gray-900 truncate max-w-[160px]">{getUserName(request)}</span>
@@ -55,11 +54,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, is_selected, onClick
         <div className="flex items-center gap-1.5">
             <Badge
                 variant="outline"
-                className={`text-[10px] px-1.5 py-0 ${
-                    request.request_status_name === 'Requested'
-                        ? 'border-orange-300 text-orange-600 bg-orange-50'
-                        : 'border-green-300 text-green-600 bg-green-50'
-                }`}
+                className={`text-[10px] px-1.5 py-0 ${request.request_status_name === 'Requested'
+                    ? 'border-orange-300 text-orange-600 bg-orange-50'
+                    : 'border-green-300 text-green-600 bg-green-50'
+                    }`}
             >
                 {request.request_status_name}
             </Badge>
@@ -133,12 +131,23 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ msg }) => {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+// Status filter options based on SQL schema
+const STATUS_FILTERS = [
+    { id: 1, name: 'Requested' },
+    { id: 2, name: 'In Progress' },
+    { id: 3, name: 'Completed' },
+    { id: 4, name: 'Failed' },
+    { id: 5, name: 'Retry' },
+] as const;
+
 export default function EscalatedRequests() {
     const themeConfig = useThemeConfig();
     const [search_text, set_search_text] = useState('');
     const [reply_text, set_reply_text] = useState('');
     const [send_error, set_send_error] = useState<string | null>(null);
     const [is_resolving, set_is_resolving] = useState(false);
+    const [expanded_groups, set_expanded_groups] = useState<Set<string>>(new Set());
+    const [selected_status_filter, set_selected_status_filter] = useState<number | undefined>(undefined);
     const messages_bottom_ref = useRef<HTMLDivElement>(null);
 
     const {
@@ -153,13 +162,29 @@ export default function EscalatedRequests() {
         fetch_escalated_requests,
         send_crm_reply,
         select_request,
+        clear_selected_request,
         stop_polling,
     } = useEscalatedChat();
 
     useEffect(() => {
-        fetch_escalated_requests();
+        fetch_escalated_requests(selected_status_filter);
         return () => stop_polling();
-    }, [fetch_escalated_requests, stop_polling]);
+    }, [fetch_escalated_requests, stop_polling, selected_status_filter]);
+
+    // Auto-expand group when a request is selected
+    useEffect(() => {
+        if (selected_request) {
+            const phone_number = getPhoneNumber(selected_request);
+            set_expanded_groups((prev) => {
+                if (!prev.has(phone_number)) {
+                    const next = new Set(prev);
+                    next.add(phone_number);
+                    return next;
+                }
+                return prev;
+            });
+        }
+    }, [selected_request]);
 
     // Auto-scroll to latest message
     useEffect(() => {
@@ -176,6 +201,41 @@ export default function EscalatedRequests() {
             getPhoneNumber(r).includes(search_text)
         );
     });
+    // console.log(filtered_requests);
+
+    // Group requests by phone number
+    const grouped_requests = filtered_requests.reduce((acc, request) => {
+        const phone_number = getPhoneNumber(request);
+        if (!acc[phone_number]) {
+            acc[phone_number] = [];
+        }
+        acc[phone_number].push(request);
+        return acc;
+    }, {} as Record<string, ApprovedRequest[]>);
+    // console.log('grouped_requests', grouped_requests);
+    // Sort groups by most recent request first, then sort requests within each group
+    const sorted_groups = Object.entries(grouped_requests)
+        .map(([phone_number, requests]) => ({
+            phone_number,
+            requests: requests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+        }))
+        .sort((a, b) => {
+            const a_latest = new Date(a.requests[0].created_at).getTime();
+            const b_latest = new Date(b.requests[0].created_at).getTime();
+            return b_latest - a_latest;
+        });
+
+    const toggle_group = (phone_number: string) => {
+        set_expanded_groups((prev) => {
+            const next = new Set(prev);
+            if (next.has(phone_number)) {
+                next.delete(phone_number);
+            } else {
+                next.add(phone_number);
+            }
+            return next;
+        });
+    };
 
     const handleSendReply = useCallback(async () => {
         if (!selected_request || !reply_text.trim() || is_sending) return;
@@ -199,15 +259,25 @@ export default function EscalatedRequests() {
         if (!selected_request) return;
         set_is_resolving(true);
         try {
-            await postAPI(CAPABILITIES_API_URLS.SYNC_APPROVED_REQUEST, {
+            const response = await postAPI(CAPABILITIES_API_URLS.SYNC_APPROVED_REQUEST, {
                 request_id: selected_request.request_id,
-                request_status: 2,
+                request_status: 3,
                 is_assigned_to_human: false,
             });
-            await fetch_escalated_requests();
-            stop_polling();
-        } catch {
-            // silently ignore — reload will reflect the current state
+
+            // The API response contains the updated request with request_status_name: "Resolved"
+            if (response.statusCode === 200 && response.data?.approved_request) {
+                // Refetch to update the UI with the latest data
+                await fetch_escalated_requests(selected_status_filter);
+                // Close the chat window by clearing the selected request
+                clear_selected_request();
+            } else {
+                throw new Error(response.message || 'Failed to mark request as resolved');
+            }
+        } catch (error) {
+            console.error('Error marking request as resolved:', error);
+            // Refetch on error to ensure UI consistency
+            await fetch_escalated_requests(selected_status_filter);
         } finally {
             set_is_resolving(false);
         }
@@ -227,7 +297,7 @@ export default function EscalatedRequests() {
                                 {filtered_requests.length}
                             </span>
                         </div>
-                        <div className="relative">
+                        <div className="relative mb-3">
                             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
                             <input
                                 type="text"
@@ -237,10 +307,34 @@ export default function EscalatedRequests() {
                                 className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50"
                             />
                         </div>
+                        {/* Status Filter */}
+                        <div className="flex flex-wrap gap-1.5">
+                            <button
+                                onClick={() => set_selected_status_filter(undefined)}
+                                className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${selected_status_filter === undefined
+                                    ? 'bg-blue-500 text-white border-blue-500'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                    }`}
+                            >
+                                All
+                            </button>
+                            {STATUS_FILTERS.map((status) => (
+                                <button
+                                    key={status.id}
+                                    onClick={() => set_selected_status_filter(status.id)}
+                                    className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${selected_status_filter === status.id
+                                        ? 'bg-blue-500 text-white border-blue-500'
+                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {status.name}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* List */}
-                    <ScrollArea className="flex-1">
+                    <ScrollArea className="flex-1 overflow-y-scroll">
                         {is_loading_requests ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                 <FaSpinner className="animate-spin text-2xl mb-2 text-blue-400" />
@@ -251,14 +345,43 @@ export default function EscalatedRequests() {
                         ) : filtered_requests.length === 0 ? (
                             <div className="px-4 py-12 text-center text-sm text-gray-400">No user queries found</div>
                         ) : (
-                            filtered_requests.map((req) => (
-                                <RequestCard
-                                    key={req.request_id}
-                                    request={req}
-                                    is_selected={selected_request?.request_id === req.request_id}
-                                    onClick={() => select_request(req)}
-                                />
-                            ))
+                            sorted_groups.map((group) => {
+                                const is_expanded = expanded_groups.has(group.phone_number);
+                                return (
+                                    <div key={group.phone_number} className="border-b border-gray-200 last:border-b-0">
+                                        <button
+                                            onClick={() => toggle_group(group.phone_number)}
+                                            className="w-full px-4 py-2 bg-gray-50 border-b border-gray-100 hover:bg-gray-100 transition-colors flex items-center justify-between cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {is_expanded ? (
+                                                    <FaChevronDown className="text-gray-400 text-xs" />
+                                                ) : (
+                                                    <FaChevronRight className="text-gray-400 text-xs" />
+                                                )}
+                                                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                                    {group.phone_number}
+                                                </span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-400">
+                                                {group.requests.length} {group.requests.length === 1 ? 'request' : 'requests'}
+                                            </span>
+                                        </button>
+                                        {is_expanded && (
+                                            <>
+                                                {group.requests.map((req) => (
+                                                    <RequestCard
+                                                        key={req.request_id}
+                                                        request={req}
+                                                        is_selected={selected_request?.request_id === req.request_id}
+                                                        onClick={() => select_request(req)}
+                                                    />
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })
                         )}
                     </ScrollArea>
                 </div>
@@ -287,11 +410,10 @@ export default function EscalatedRequests() {
                             <div className="flex items-center gap-2 shrink-0">
                                 <Badge
                                     variant="outline"
-                                    className={`text-xs ${
-                                        selected_request.request_status_name === 'Requested'
-                                            ? 'border-orange-300 text-orange-600 bg-orange-50'
-                                            : 'border-green-300 text-green-600 bg-green-50'
-                                    }`}
+                                    className={`text-xs ${selected_request.request_status_name === 'Requested'
+                                        ? 'border-orange-300 text-orange-600 bg-orange-50'
+                                        : 'border-green-300 text-green-600 bg-green-50'
+                                        }`}
                                 >
                                     {selected_request.request_status_name}
                                 </Badge>
@@ -300,14 +422,14 @@ export default function EscalatedRequests() {
                                     variant="outline"
                                     className="text-xs gap-1.5 border-green-300 text-green-700 hover:bg-green-50"
                                     onClick={handleMarkResolved}
-                                    disabled={is_resolving}
+                                    disabled={is_resolving || selected_request.request_status_name === 'Completed'}
                                 >
                                     {is_resolving ? (
                                         <FaSpinner className="animate-spin w-3 h-3" />
                                     ) : (
                                         <FaCheckCircle className="w-3 h-3" />
                                     )}
-                                    Mark Resolved
+                                    {selected_request.request_status_name === 'Completed' ? 'Resolved' : 'Mark Resolved'}
                                 </Button>
                             </div>
                         </div>
@@ -321,12 +443,7 @@ export default function EscalatedRequests() {
 
                         {/* Messages Thread */}
                         <ScrollArea className="flex-1 px-5 py-2">
-                            {is_loading_messages ? (
-                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                                    <FaSpinner className="animate-spin text-2xl mb-2 text-blue-400" />
-                                    <span className="text-sm">Loading messages...</span>
-                                </div>
-                            ) : messages_error ? (
+                            {messages_error ? (
                                 <div className="text-center py-8 text-sm text-red-500">{messages_error}</div>
                             ) : messages.length === 0 ? (
                                 <div className="text-center py-12 text-sm text-gray-400">

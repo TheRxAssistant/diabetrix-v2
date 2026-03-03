@@ -31,19 +31,29 @@ export const useEscalatedChat = () => {
     const [messages_error, set_messages_error] = useState<string | null>(null);
     const polling_interval_ref = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const fetch_escalated_requests = useCallback(async () => {
+    const fetch_escalated_requests = useCallback(async (request_status?: number | string) => {
         set_is_loading_requests(true);
         set_requests_error(null);
 
         try {
             const domain = getDomain(themeConfig);
-            const response = await postAPI(CAPABILITIES_API_URLS.GET_APPROVED_REQUESTS, {
+            const request_params: Record<string, any> = {
                 task_type_name: 'user_query',
-                is_assigned_to_human: true,
                 domain,
                 limit: 100,
                 offset: 0,
-            });
+            };
+
+            // Only include request_status if provided
+            if (request_status !== undefined && request_status !== null) {
+                request_params.request_status = request_status;
+                // When filtering by status, don't filter by is_assigned_to_human
+                // (completed requests have is_assigned_to_human: false)
+            }
+            // When no request_status is provided (user selected "All"), return all requests
+            // without filtering by is_assigned_to_human or request_status
+
+            const response = await postAPI(CAPABILITIES_API_URLS.GET_APPROVED_REQUESTS, request_params);
 
             if (response.statusCode === 200 && response.data) {
                 const result = response.data as GetAllApprovedRequestsResult;
@@ -132,6 +142,12 @@ export const useEscalatedChat = () => {
         start_polling(request.request_id);
     }, [fetch_request_messages, start_polling, stop_polling]);
 
+    const clear_selected_request = useCallback(() => {
+        set_selected_request(null);
+        set_messages([]);
+        stop_polling();
+    }, [stop_polling]);
+
     return {
         escalated_requests,
         selected_request,
@@ -145,6 +161,7 @@ export const useEscalatedChat = () => {
         fetch_request_messages,
         send_crm_reply,
         select_request,
+        clear_selected_request,
         stop_polling,
     };
 };

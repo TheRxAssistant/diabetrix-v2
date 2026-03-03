@@ -476,7 +476,7 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
         });
     }, [message_audio_data, messages, is_speech_enabled]);
 
-    const handle_submit = (message: { text: string; files: any[] }) => {
+    const handle_submit = async (message: { text: string; files: any[] }) => {
         if (!message.text.trim() || is_streaming) return;
 
         voice_input_ref.current = '';
