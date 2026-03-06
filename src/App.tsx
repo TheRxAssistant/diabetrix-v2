@@ -4,6 +4,7 @@ import BookAppointment from './pages/BookAppointment';
 import RequestCopay from './pages/RequestCopay';
 import SavingsAssistance from './pages/SavingsAssistance';
 import FindDoctor from './pages/FindDoctor';
+import FindLab from './pages/FindLab';
 import MedicationInfo from './pages/MedicationInfo';
 import PatientSupport from './pages/PatientSupport';
 import Quiz from './pages/Quiz';
@@ -23,6 +24,7 @@ function App() {
                 <Route path="/request-copay" element={<RequestCopay />} />
                 <Route path="/savings-assistance" element={<SavingsAssistance />} />
                 <Route path="/find-doctor" element={<FindDoctor />} />
+                <Route path="/find-lab" element={<FindLab />} />
                 <Route path="/medication-info" element={<MedicationInfo />} />
                 <Route path="/patient-support" element={<PatientSupport />} />
                 <Route path="/quiz" element={<Quiz />} />

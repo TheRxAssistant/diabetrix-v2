@@ -52,3 +52,32 @@ export interface Facility {
     bundle_median_price?: number;
 }
 
+/** Response item from find-care/find-nearby-care-v2 API (e.g. labs). */
+export interface FindNearbyCareResultItem {
+    provider_id?: string;
+    facility_id?: string;
+    address?: string;
+    city?: string;
+    description?: string;
+    email?: string;
+    image?: string;
+    insurance_accepted?: string[] | unknown[];
+    is_provider_facility?: boolean;
+    languages?: string[] | unknown[];
+    latitude?: number;
+    longitude?: number;
+    name?: string;
+    phone?: string;
+    rating?: number;
+    review_count?: number;
+    state?: string;
+    website?: string;
+    zipcode?: string;
+    type?: 'provider' | 'facility';
+}
+
+/** Response shape from find-care/find-nearby-care-v2 API. */
+export interface FindNearbyCareResponse {
+    data?: FindNearbyCareResultItem[];
+}
+
