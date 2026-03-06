@@ -14,7 +14,7 @@ interface NormalizedProvider {
     address: string;
     phone: string;
     zipcode: string;
-    booking_links?: Array< { url: string; serviceProvider: string } >;
+    booking_links?: Array<{ url: string; serviceProvider: string }>;
     is_facility: boolean;
 }
 

@@ -29,10 +29,11 @@ interface LegacyProvider {
 interface ProviderDetailsModalProps {
     provider: Provider | Facility | LegacyProvider | null;
     onClose: () => void;
+    onBookAppointment?: (provider: Provider | Facility | LegacyProvider) => void;
     fetchProviderCareDetails?: (providerId: number | string, isFacility?: boolean) => Promise<ProviderDetails | null>;
 }
 
-const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, onClose, fetchProviderCareDetails }) => {
+const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, onClose, onBookAppointment, fetchProviderCareDetails }) => {
     const [details, set_details] = useState<ProviderDetails | null>(null);
     const [is_loading_details, set_is_loading_details] = useState(false);
     const [basic_info, set_basic_info] = useState<ProviderBasicInfo>({});
@@ -249,7 +250,7 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                                         </div>
                                     )}
 
-                                    {rating != null && (
+                                    {rating != null && Number(reviewCount) > 0 && (
                                         <div className="flex items-center mt-1 text-gray-500">
                                             <Star size={16} className="mr-1 text-yellow-400" fill="currentColor" />
                                             <span className="text-sm">{rating}</span>
@@ -377,8 +378,8 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                             </div>
                         )}
 
-                        {/* Reviews Section */}
-                        {!is_loading_details && reviews.Review && reviews.Review.length > 0 && (
+                        {/* Reviews Section - only when there is at least one review */}
+                        {!is_loading_details && Number(reviewCount) > 0 && reviews.Review && reviews.Review.length > 0 && (
                             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg lg:text-xl font-semibold text-gray-900">Patient Reviews</h2>
@@ -413,6 +414,7 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
                         <div className="space-y-3">
                             <button
                                 type="button"
+                                onClick={() => onBookAppointment?.(provider)}
                                 className="w-full py-4 rounded-lg font-medium hover:opacity-80 transition-colors flex items-center justify-center space-x-2 font-nav bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white">
                                 <Calendar size={20} />
                                 <span>Book Appointment</span>

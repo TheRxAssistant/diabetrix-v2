@@ -79,7 +79,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [currentCategory, setCurrentCategory] = useState<SearchCategory | null>(null);
     const [userLocation, setUserLocation] = useState<string>('');
     const [showBookingModal, setShowBookingModal] = useState(false);
-    const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | null>(null);
+    const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | LegacyProvider | null>(null);
     const [showEarliestAppointmentModal, setShowEarliestAppointmentModal] = useState(false);
     const [showProviderDetailsModal, setShowProviderDetailsModal] = useState(false);
     const [selectedProviderForDetails, setSelectedProviderForDetails] = useState<Provider | Facility | LegacyProvider | null>(null);
@@ -333,22 +333,22 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 style={
                     embedded
                         ? {
-                              height: '100vh',
-                              width: '100vw',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                          }
+                            height: '100vh',
+                            width: '100vw',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }
                         : {
-                              height: '100vh',
-                              width: '100vw',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                              backdropFilter: 'blur(2px)',
-                              WebkitBackdropFilter: 'blur(2px)',
-                          }
+                            height: '100vh',
+                            width: '100vw',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            backdropFilter: 'blur(2px)',
+                            WebkitBackdropFilter: 'blur(2px)',
+                        }
                 }>
                 <div
                     className="h-screen w-full max-w-full flex flex-col"
@@ -409,9 +409,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         // Convert insurance format if needed
         const insuranceOption = insurance
             ? {
-                  plan_name: insurance.plan_name,
-                  payer_name: insurance.payer_name,
-              }
+                plan_name: insurance.plan_name,
+                payer_name: insurance.payer_name,
+            }
             : null;
 
         // Call API with user-entered zipcode (or fall back to userLocation)
@@ -464,9 +464,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 provider.provider_full_address_obj ||
                 (provider.latitude && provider.longitude
                     ? {
-                          lat: provider.latitude,
-                          long: provider.longitude,
-                      }
+                        lat: provider.latitude,
+                        long: provider.longitude,
+                    }
                     : undefined),
             languages: provider.languages || (provider.provider_languages ? (typeof provider.provider_languages === 'string' ? provider.provider_languages.split(', ') : []) : []),
             insurance_accepted: provider.insurance_accepted || [],
@@ -551,9 +551,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                     provider.provider_full_address_obj ||
                                     (lat !== undefined && lng !== undefined
                                         ? {
-                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                          }
+                                            lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                            long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                        }
                                         : undefined),
                             });
                             setShowMapView(true);
@@ -631,9 +631,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                     facility.facility_full_address_obj ||
                                     (lat !== undefined && lng !== undefined
                                         ? {
-                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                          }
+                                            lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                            long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                        }
                                         : undefined),
                             } as MapProvider);
                             setShowMapView(true);
@@ -877,6 +877,12 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                     onClose={() => {
                         setShowProviderDetailsModal(false);
                         setSelectedProviderForDetails(null);
+                    }}
+                    onBookAppointment={(provider) => {
+                        setShowProviderDetailsModal(false);
+                        setSelectedProviderForDetails(null);
+                        setSelectedBookingProvider(provider);
+                        setShowBookingModal(true);
                     }}
                     fetchProviderCareDetails={fetchProviderCareDetails}
                 />
