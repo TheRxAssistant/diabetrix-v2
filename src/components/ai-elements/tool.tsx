@@ -20,6 +20,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
     title?: string;
     className?: string;
+    preliminary?: boolean;
 } & (
     | { type: ToolUIPart['type']; state: ToolUIPart['state']; toolName?: never }
     | {
@@ -49,14 +50,20 @@ const statusIcons: Record<ToolPart['state'], ReactNode> = {
     'output-error': <XCircleIcon className="size-4 text-red-600" />,
 };
 
-export const getStatusBadge = (status: ToolPart['state']) => (
-    <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
-        {statusIcons[status]}
-        {statusLabels[status]}
-    </Badge>
-);
+export const getStatusBadge = (state: ToolPart['state'], preliminary?: boolean) => {
+    const is_streaming = state === 'output-available' && preliminary === true;
+    const effective_label = is_streaming ? 'Running' : statusLabels[state];
+    const effective_icon = is_streaming ? <ClockIcon className="size-4 animate-pulse" /> : statusIcons[state];
 
-export const ToolHeader = ({ className, title, type, state, toolName, ...props }: ToolHeaderProps) => {
+    return (
+        <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
+            {effective_icon}
+            {effective_label}
+        </Badge>
+    );
+};
+
+export const ToolHeader = ({ className, title, type, state, preliminary, toolName, ...props }: ToolHeaderProps) => {
     const derivedName = type === 'dynamic-tool' ? toolName : type.split('-').slice(1).join('-');
 
     return (
@@ -64,7 +71,7 @@ export const ToolHeader = ({ className, title, type, state, toolName, ...props }
             <div className="flex items-center gap-2">
                 <WrenchIcon className="size-4 text-muted-foreground" />
                 <span className="font-medium text-sm">{title ?? derivedName}</span>
-                {getStatusBadge(state)}
+                {getStatusBadge(state, preliminary)}
             </div>
             <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>

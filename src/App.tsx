@@ -11,6 +11,7 @@ import Campaigns from './crm/pages/Campaigns';
 import Patients from './crm/pages/Patients';
 import PatientJourney from './crm/pages/PatientJourney';
 import Analytics from './crm/pages/Analytics';
+import Ads from './crm/pages/Ads';
 import ProtectedRoute from './crm/components/ProtectedRoute';
 
 function App() {
@@ -31,6 +32,9 @@ function App() {
                     <Route path="analytics" element={<Analytics />} />
                     <Route path="patients" element={<Patients />} />
                     <Route path="patients/journey" element={<PatientJourney />} />
+                </Route>
+                <Route path="/ads" element={<ProtectedRoute />}>
+                    <Route index element={<Ads />} />
                 </Route>
             </Routes>
         </BrowserRouter>

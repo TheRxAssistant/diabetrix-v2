@@ -119,7 +119,7 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
 
         return (
             <Tool key={`${message_id}-tool-${part_index}`}>
-                <ToolHeader type={part.type} state={part.state} toolName={tool_name} title={tool_name} />
+                <ToolHeader type={part.type} state={part.state} preliminary={part.preliminary} toolName={tool_name} title={tool_name} />
                 <ToolContent>
                     {part.input && <ToolInput input={part.input} />}
                     {part.output !== undefined && (
@@ -145,9 +145,55 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
     return null;
 };
 
+// Component to expose controller.setInput to parent components outside PromptInputProvider
+const InputClearBridge = ({ clear_input_ref }: { clear_input_ref: React.MutableRefObject<(() => void) | null> }) => {
+    const controller = usePromptInputController();
+
+    useEffect(() => {
+        clear_input_ref.current = () => {
+            controller.textInput.setInput('');
+        };
+
+        return () => {
+            clear_input_ref.current = null;
+        };
+    }, [controller, clear_input_ref]);
+
+    return null;
+};
+
+// Component to expose setInput function for transcription updates
+const TranscriptionInputBridge = ({
+    set_transcription_input_ref,
+}: {
+    set_transcription_input_ref: React.MutableRefObject<((text: string) => void) | null>;
+}) => {
+    const controller = usePromptInputController();
+
+    useEffect(() => {
+        set_transcription_input_ref.current = (text: string) => {
+            controller.textInput.setInput(text);
+        };
+
+        return () => {
+            set_transcription_input_ref.current = null;
+        };
+    }, [controller, set_transcription_input_ref]);
+
+    return null;
+};
+
 // Component to watch input value and auto-submit after 3 seconds of no changes
 // This must be inside PromptInputProvider to access the controller
-const AutoSubmitWatcher = ({ sendMessage, is_streaming }: { sendMessage: (message: { text: string }) => Promise<void>; is_streaming: boolean }) => {
+const AutoSubmitWatcher = ({
+    sendMessage,
+    is_streaming,
+    voice_input_ref,
+}: {
+    sendMessage: (message: { text: string }) => Promise<void>;
+    is_streaming: boolean;
+    voice_input_ref: React.MutableRefObject<string>;
+}) => {
     const controller = usePromptInputController();
     const submit_timeout_ref = useRef<NodeJS.Timeout | null>(null);
     const input_value = controller.textInput.value;
@@ -158,11 +204,14 @@ const AutoSubmitWatcher = ({ sendMessage, is_streaming }: { sendMessage: (messag
             clearTimeout(submit_timeout_ref.current);
         }
 
-        // If there's text, set timeout to auto-submit after 3s
-        if (input_value.trim() && !is_streaming) {
+        // Only auto-submit if the current input matches what voice transcription set
+        const is_voice_text = input_value.trim() !== '' && input_value === voice_input_ref.current;
+
+        if (is_voice_text && !is_streaming) {
             submit_timeout_ref.current = setTimeout(async () => {
                 const current_text = controller.textInput.value;
-                if (current_text.trim() && !is_streaming) {
+                if (current_text.trim() && current_text === voice_input_ref.current && !is_streaming) {
+                    voice_input_ref.current = '';
                     await sendMessage({ text: current_text });
                     controller.textInput.setInput('');
                 }
@@ -174,7 +223,7 @@ const AutoSubmitWatcher = ({ sendMessage, is_streaming }: { sendMessage: (messag
                 clearTimeout(submit_timeout_ref.current);
             }
         };
-    }, [input_value, is_streaming, sendMessage, controller]);
+    }, [input_value, is_streaming, sendMessage, controller, voice_input_ref]);
 
     return null;
 };
@@ -227,6 +276,13 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
     const auto_played_ref = useRef<Set<string>>(new Set());
     const [is_speech_enabled, set_is_speech_enabled] = useState(false);
     const speech_enabled_at_ref = useRef<number | null>(null);
+
+    // Track voice transcription text to gate auto-submit
+    const voice_input_ref = useRef<string>('');
+    // Ref to expose input clear function from PromptInputProvider
+    const clear_input_ref = useRef<(() => void) | null>(null);
+    // Ref to expose setInput function for transcription updates
+    const set_transcription_input_ref = useRef<((text: string) => void) | null>(null);
 
     // WebSocket for real-time speech recognition
     const { connect, disconnect, send_audio_chunk, is_connected, set_on_transcript, set_on_error } = useSpeechWebSocket();
@@ -395,16 +451,29 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
     const handle_submit = async (message: { text: string; files: any[] }) => {
         if (!message.text.trim() || is_streaming) return;
 
+        voice_input_ref.current = '';
+        // Clear field immediately before awaiting sendMessage (which blocks until streaming completes)
+        clear_input_ref.current?.();
         await sendMessage({ text: message.text });
     };
 
     // Handle streaming transcript updates
     const handle_streaming_transcript = useCallback(
         (text: string, is_final: boolean) => {
+            // Track voice transcription text for auto-submit gating
+            const trimmed_text = text.trim();
+            if (trimmed_text) {
+                voice_input_ref.current = trimmed_text;
+                // Update input field with transcription text
+                set_transcription_input_ref.current?.(trimmed_text);
+            }
+
             // Auto-submit on final result
-            // Note: SpeechInput component handles updating the input field directly via PromptInputProvider
-            if (is_final && text.trim() && !is_streaming) {
-                sendMessage({ text: text.trim() });
+            if (is_final && trimmed_text && !is_streaming) {
+                voice_input_ref.current = '';
+                sendMessage({ text: trimmed_text });
+                // Clear input field immediately after submit
+                clear_input_ref.current?.();
             }
         },
         [is_streaming, sendMessage],
@@ -431,6 +500,18 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
             disconnect();
         };
     }, [connect, disconnect]);
+
+    // Handle transcription change (for HTTP fallback path)
+    const handle_transcription_change = useCallback(
+        (text: string) => {
+            const trimmed_text = text.trim();
+            if (trimmed_text) {
+                voice_input_ref.current = trimmed_text;
+                set_transcription_input_ref.current?.(trimmed_text);
+            }
+        },
+        [],
+    );
 
     const handle_audio_recorded = async (audio_blob: Blob): Promise<string> => {
         try {
@@ -602,7 +683,9 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                 </Conversation>
 
                 <PromptInputProvider>
-                    <AutoSubmitWatcher sendMessage={sendMessage} is_streaming={is_streaming} />
+                    <AutoSubmitWatcher sendMessage={sendMessage} is_streaming={is_streaming} voice_input_ref={voice_input_ref} />
+                    <InputClearBridge clear_input_ref={clear_input_ref} />
+                    <TranscriptionInputBridge set_transcription_input_ref={set_transcription_input_ref} />
                     <div className="border-t bg-background p-4">
                         <PromptInput onSubmit={handle_submit}>
                             <PromptInputBody>
@@ -610,7 +693,7 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                             </PromptInputBody>
                             <PromptInputFooter>
                                 <div className="flex items-center gap-1">
-                                    <SpeechInput onAudioRecorded={handle_audio_recorded} onStreamingTranscript={handle_streaming_transcript} sendAudioChunk={is_connected ? send_audio_chunk : undefined} lang="en-US" size="icon-sm" variant="ghost" />
+                                    <SpeechInput onAudioRecorded={handle_audio_recorded} onTranscriptionChange={handle_transcription_change} onStreamingTranscript={handle_streaming_transcript} sendAudioChunk={is_connected ? send_audio_chunk : undefined} lang="en-US" size="icon-sm" variant="ghost" />
                                     <Button size="icon-sm" variant="ghost" onClick={() => set_is_speech_enabled(!is_speech_enabled)} className={is_speech_enabled ? 'text-primary' : 'text-muted-foreground'} aria-label={is_speech_enabled ? 'Disable speech output' : 'Enable speech output'}>
                                         {is_speech_enabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
                                     </Button>
