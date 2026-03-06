@@ -26,6 +26,8 @@ type MyUIMessage = UIMessage<MessageMetadata>;
 
 interface VoiceChatStepProps {
     onClose: () => void;
+    on_show_history?: () => void;
+    resume_conversation_id?: string | null;
 }
 
 const renderMessagePart = (part: any, part_index: number, message_id: string, is_streaming: boolean, is_last_part?: boolean): React.ReactNode => {
@@ -248,9 +250,10 @@ interface VoiceChatStepInnerProps {
     domain: string;
     conversation_id: string;
     onClose: () => void;
+    on_show_history?: () => void;
 }
 
-const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose }) => {
+const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose, on_show_history }) => {
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
@@ -567,24 +570,32 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
                     overflow: 'hidden',
                     boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
-                {/* Header with close button */}
-                <div style={{ padding: '16px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Voice Chat</h3>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '20px',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            color: '#666',
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.background = '#f0f0f0')}
-                        onMouseOut={(e) => (e.currentTarget.style.background = 'none')}>
-                        ×
-                    </button>
+                {/* Header — outer modal provides the close button; pad right to avoid overlap */}
+                <div style={{ padding: '16px', paddingRight: '80px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Chat with Alex</h3>
+                    {on_show_history && (
+                        <button
+                            onClick={on_show_history}
+                            title="Chat history"
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                color: '#666',
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.background = '#f0f0f0')}
+                            onMouseOut={(e) => (e.currentTarget.style.background = 'none')}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                <line x1="9" y1="9" x2="15" y2="9" />
+                                <line x1="9" y1="13" x2="12" y2="13" />
+                            </svg>
+                        </button>
+                    )}
                 </div>
 
                 <Conversation className="flex-1 overflow-hidden">
@@ -709,19 +720,20 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
 };
 
 // Wrapper: create conversation, load messages, then render inner
-export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
+export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose, on_show_history, resume_conversation_id }) => {
     const domain = 'diabetrix';
-    const [conversation_id, set_conversation_id] = useState<string | null>(null);
+    const [conversation_id, set_conversation_id] = useState<string | null>(resume_conversation_id ?? null);
     const [initial_messages, set_initial_messages] = useState<MyUIMessage[] | null>(null);
 
-    // Create conversation on mount
+    // Create a new conversation only when not resuming an existing one
     useEffect(() => {
+        if (resume_conversation_id) return;
         postAPI(CORE_ENGINE_API_URLS.SYNC_CHAT_THREAD, {}).then((res) => {
             if (res.statusCode === 200 && res.data?.conversation_id) {
                 set_conversation_id(res.data.conversation_id);
             }
         });
-    }, []);
+    }, [resume_conversation_id]);
 
     // Load messages when conversation_id exists
     useEffect(() => {
@@ -788,6 +800,7 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
             domain={domain}
             conversation_id={conversation_id ?? ''}
             onClose={onClose}
+            on_show_history={on_show_history}
         />
     );
 };

@@ -12,6 +12,15 @@ interface ConversationMessage {
     buttons?: string[];
 }
 
+export interface ConversationThread {
+    conversation_id: string;
+    title?: string;
+    thread_summary_text?: string;
+    created_at?: string;
+    updated_at?: string;
+    channel?: string;
+}
+
 export const useChat = () => {
     const [messages, set_messages] = useState<ConversationMessage[]>([]);
     const [conversation_id, set_conversation_id] = useState<string | null>(null);
@@ -91,6 +100,41 @@ export const useChat = () => {
             return null;
         }
     };
+
+    const getConversationList = useCallback(async (user_id?: string): Promise<ConversationThread[]> => {
+        try {
+            const resolved_user_id =
+                user_id ||
+                (() => {
+                    const authStore = useAuthStore.getState();
+                    const user = authStore.user;
+                    if (user?.userData?.user_id) return user.userData.user_id;
+                    try {
+                        const stored = localStorage.getItem('diabetrix_user_details');
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            if (parsed.user_id) return parsed.user_id;
+                        }
+                    } catch {
+                        /* ignore */
+                    }
+                    return '';
+                })();
+
+            const { statusCode, data } = await postAPI(CORE_ENGINE_API_URLS.GET_CHAT_THREADS, {
+                user_id: resolved_user_id,
+                channel: 'Chat',
+            });
+
+            if (statusCode === 200 && Array.isArray(data)) {
+                return data as ConversationThread[];
+            }
+            return [];
+        } catch (error) {
+            console.error('Failed to get conversation list:', error);
+            return [];
+        }
+    }, []);
 
     const getChatMessages = useCallback(async (conversation_id: string): Promise<ConversationMessage[]> => {
         try {
@@ -206,6 +250,7 @@ export const useChat = () => {
         error_message,
 
         // Actions
+        getConversationList,
         getChatMessages,
         createChatThread,
         sendMessage,
