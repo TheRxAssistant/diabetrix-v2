@@ -24,6 +24,18 @@ import styles from '../unified-modal.module.scss';
 
 type MyUIMessage = UIMessage<MessageMetadata>;
 
+/**
+ * Formats a tool name by replacing underscores with spaces and capitalizing each word.
+ * @param tool_name - The tool name with underscores (e.g., "get_medicine_cost_from_insurance_benefits")
+ * @returns The formatted tool name (e.g., "Get Medicine Cost From Insurance Benefits")
+ */
+const formatToolName = (tool_name: string): string => {
+    return tool_name
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+};
+
 interface VoiceChatStepProps {
     onClose: () => void;
     on_show_history?: () => void;
@@ -116,12 +128,29 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
 
     if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
         const tool_name = getToolName(part);
+        const formatted_tool_name = formatToolName(tool_name);
         const has_output = part.state === 'output-available';
         const is_tool_streaming = has_output && part.preliminary === true;
 
+        const tool_header_props =
+            part.type === 'dynamic-tool'
+                ? {
+                      type: part.type,
+                      state: part.state,
+                      preliminary: part.preliminary,
+                      toolName: formatted_tool_name,
+                      title: formatted_tool_name,
+                  }
+                : {
+                      type: part.type,
+                      state: part.state,
+                      preliminary: part.preliminary,
+                      title: formatted_tool_name,
+                  };
+
         return (
             <Tool key={`${message_id}-tool-${part_index}`}>
-                <ToolHeader type={part.type} state={part.state} preliminary={part.preliminary} toolName={tool_name} title={tool_name} />
+                <ToolHeader {...tool_header_props} />
                 <ToolContent>
                     {part.input && <ToolInput input={part.input} />}
                     {part.output !== undefined && (
