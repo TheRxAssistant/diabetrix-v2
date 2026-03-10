@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaFacebook, FaGoogle, FaShoppingCart, FaRobot, FaPills, FaSearch, FaFilter, FaDownload } from 'react-icons/fa';
 import DashboardLayout from '../components/DashboardLayout';
+import { useDomainPrefix } from '../../hooks/useDomainPrefix';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Button from '../components/ui/Button';
@@ -30,6 +31,7 @@ interface Campaign {
 }
 
 export default function CampaignsPage() {
+    const domainPrefix = useDomainPrefix();
     const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
     const [selectedAdType, setSelectedAdType] = useState<string>('all');
 
@@ -240,7 +242,7 @@ export default function CampaignsPage() {
             title: 'Actions',
             key: 'actions',
             render: (_: any, record: Campaign) => (
-                <Link to={`/crm/marketing/campaigns/${record.id}`}>
+                <Link to={`${domainPrefix}/crm/marketing/campaigns/${record.id}`}>
                     <Button type="link" size="small">
                         View Details
                     </Button>

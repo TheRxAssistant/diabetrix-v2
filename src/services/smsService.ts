@@ -1,5 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 import { CAPABILITIES_API_URLS, postAPI } from './api';
+import { getThemeConfig, getBrandName } from '../config/theme-config';
 
 /**
  * SMS Service for sending text messages
@@ -108,7 +109,12 @@ class SMSService {
     // Send a welcome message to the user from diabetrix number
     async sendWelcomeMessage(phoneNumber: string) {
         console.log('Sending welcome message to', phoneNumber);
-        const message = `Hi, I'm Alex, Your Diabetrix Concierge. How can I help you today?`;
+        // Get brand name from current pathname
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+        const themeConfig = getThemeConfig(pathname);
+        const brandName = getBrandName(themeConfig);
+        const capitalizedBrandName = brandName.charAt(0).toUpperCase() + brandName.slice(1);
+        const message = `Hi, I'm Alex, Your ${capitalizedBrandName} Concierge. How can I help you today?`;
         return this.sendSMS(message, { phoneNumber }, '+18629724788');
     }
 

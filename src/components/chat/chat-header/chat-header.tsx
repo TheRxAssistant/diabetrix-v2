@@ -1,6 +1,7 @@
 import React from "react";
 import avatar from "../../../assets/images/avatar.png";
 import "./chat-header.scss";
+import { ThemeConfig, getBrandName, getThemeConfig } from "../../../config/theme-config";
 
 interface ChatHeaderProps {
     onClose: () => void;
@@ -8,16 +9,21 @@ interface ChatHeaderProps {
     on_mode_change?: (mode: 'input' | 'mcq') => void;
     show_input?: boolean;
     on_toggle_input?: (show: boolean) => void;
+    themeConfig?: ThemeConfig;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', on_mode_change, show_input = true, on_toggle_input }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', on_mode_change, show_input = true, on_toggle_input, themeConfig }) => {
+    // Get theme config from prop or window.location
+    const effectiveThemeConfig = themeConfig || (typeof window !== 'undefined' ? getThemeConfig(window.location.pathname) : undefined);
+    const brandName = effectiveThemeConfig ? getBrandName(effectiveThemeConfig) : 'diabetrix';
+    
     return (
         <div className="chat-header">
             <div className="concierge-info">
                 <div className="avatar">
                     <img 
                         src={avatar}
-                        alt="Alex - Diabetrix Concierge"
+                        alt={`Alex - ${brandName.charAt(0).toUpperCase() + brandName.slice(1)} Concierge`}
                         onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = `data:image/svg+xml,${encodeURIComponent('<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="40" height="40" fill="#0066FF"/><text x="50%" y="50%" font-family="Arial" font-size="16" fill="white" text-anchor="middle" dy=".3em">A</text></svg>')}`;
@@ -32,7 +38,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onClose, chat_mode = 'input', o
                         </svg>
                     </div>
                     <div className="online-status">
-                        Diabetrix Concierge
+                        {brandName.charAt(0).toUpperCase() + brandName.slice(1)} Concierge
                     </div>
                 </div>
             </div>

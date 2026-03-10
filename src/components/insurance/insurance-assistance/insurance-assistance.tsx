@@ -12,6 +12,8 @@ import { checkAuthSession } from '../../unified-modal/services/auth-service';
 import { useAuthStore } from '../../../store/authStore';
 import { useUserDetails } from '../../../services/user-management/hooks-user-details';
 import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
+import { useThemeConfig } from '../../../hooks/useThemeConfig';
+import { getDomain, getBrandName } from '../../../config/theme-config';
 
 interface InsuranceAssistanceProps {
     onClose: () => void;
@@ -22,6 +24,7 @@ interface InsuranceAssistanceProps {
 }
 
 const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit = false, onChatOpen }: InsuranceAssistanceProps) => {
+    const themeConfig = useThemeConfig();
     const [selectedTab, setSelectedTab] = useState('pharmacies');
     const [pharmaciesEnabled, setPharmaciesEnabled] = useState(false);
     const [insuranceStatus, setInsuranceStatus] = useState('check_now');
@@ -35,7 +38,8 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
     const [showCashPharmacies, setShowCashPharmacies] = useState(false);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [pendingInsuranceAction, setPendingInsuranceAction] = useState<'coverage' | 'eligibility' | 'find_best_cost' | null>(null);
-    const drugName = (userData?.drug_name as string) || 'Diabetrix';
+    const brandName = getBrandName(themeConfig);
+    const drugName = (userData?.drug_name as string) || brandName.charAt(0).toUpperCase() + brandName.slice(1);
 
     // Use RX requests hook for API calls
     const { requestCopayCard, requestInsuranceCost, copay_loading, insurance_loading } = useRxRequests();
@@ -58,7 +62,7 @@ const InsuranceAssistance = ({ onClose, userData, embedded = true, requestOnInit
         try {
             const { data, statusCode } = await postAPI(CAPABILITIES_API_URLS.GET_APPROVED_REQUESTS, {
                 task_type_id,
-                domain: 'diabetrix',
+                domain: getDomain(themeConfig),
                 limit: 100, // Get enough to check if any exist
                 offset: 0,
             });

@@ -7,25 +7,41 @@ import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/componen
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { SpeechInput } from '@/components/ai-elements/speech-input';
 import { Transcription, TranscriptionSegment } from '@/components/ai-elements/transcription';
-import { AudioPlayer, AudioPlayerControlBar, AudioPlayerDurationDisplay, AudioPlayerElement, AudioPlayerMuteButton, AudioPlayerPlayButton, AudioPlayerSeekBackwardButton, AudioPlayerSeekForwardButton, AudioPlayerTimeDisplay, AudioPlayerTimeRange, AudioPlayerVolumeRange } from '@/components/ai-elements/audio-player';
+import {
+    AudioPlayer,
+    AudioPlayerControlBar,
+    AudioPlayerDurationDisplay,
+    AudioPlayerElement,
+    AudioPlayerMuteButton,
+    AudioPlayerPlayButton,
+    AudioPlayerSeekBackwardButton,
+    AudioPlayerSeekForwardButton,
+    AudioPlayerTimeDisplay,
+    AudioPlayerTimeRange,
+    AudioPlayerVolumeRange
+} from '@/components/ai-elements/audio-player';
 import { BASE_URL, CORE_ENGINE_API_URLS, postAPI } from '@/services/api';
 import { generateSpeech } from '@/services/voice/speech';
 import { transcribeAudio } from '@/services/voice/transcribe';
 import type { MessageMetadata } from '@/services/types/chat/message-metadata';
 import { useSpeechWebSocket } from '@/hooks/use-speech-websocket';
+import { useThemeConfig } from '@/hooks/useThemeConfig';
+import { getBrandName, getDomain } from '@/config/theme-config';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'react-toastify';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX, Loader2 } from 'lucide-react';
 import styles from '../unified-modal.module.scss';
 
 type MyUIMessage = UIMessage<MessageMetadata>;
 
 interface VoiceChatStepProps {
     onClose: () => void;
+    initialMessageToSend?: string;
+    onInitialMessageSent?: () => void;
 }
 
 const renderMessagePart = (part: any, part_index: number, message_id: string, is_streaming: boolean, is_last_part?: boolean): React.ReactNode => {
@@ -248,9 +264,11 @@ interface VoiceChatStepInnerProps {
     domain: string;
     conversation_id: string;
     onClose: () => void;
+    initialMessageToSend?: string;
+    onInitialMessageSent?: () => void;
 }
 
-const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose }) => {
+const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose, initialMessageToSend, onInitialMessageSent }) => {
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
@@ -268,6 +286,16 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
     });
 
     const is_streaming = status === 'streaming' || status === 'submitted';
+    const initial_message_sent_ref = useRef(false);
+
+    // Send initial message (e.g. from learn question) when chat is ready
+    useEffect(() => {
+        if (initialMessageToSend?.trim() && !initial_message_sent_ref.current && status !== 'streaming' && status !== 'submitted') {
+            initial_message_sent_ref.current = true;
+            sendMessage({ text: initialMessageToSend.trim() });
+            onInitialMessageSent?.();
+        }
+    }, [initialMessageToSend, status, sendMessage, onInitialMessageSent]);
 
     // State for audio data per message
     const [message_audio_data, set_message_audio_data] = useState<Record<string, MessageAudioData>>({});
@@ -709,8 +737,10 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
 };
 
 // Wrapper: create conversation, load messages, then render inner
-export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
-    const domain = 'diabetrix';
+export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose, initialMessageToSend, onInitialMessageSent }) => {
+    const themeConfig = useThemeConfig();
+    const domain = getDomain(themeConfig);
+    const brandName = getBrandName(themeConfig);
     const [conversation_id, set_conversation_id] = useState<string | null>(null);
     const [initial_messages, set_initial_messages] = useState<MyUIMessage[] | null>(null);
 
@@ -774,7 +804,11 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
                     </div>
                     <Conversation className="flex-1 overflow-hidden">
                         <ConversationContent>
-                            <ConversationEmptyState title="Loading conversation..." description="Please wait" />
+                            <ConversationEmptyState
+                                icon={<Loader2 className="size-10 animate-spin text-blue-500" />}
+                                title="Initializing agent"
+                                description="Setting up your conversation..."
+                            />
                         </ConversationContent>
                     </Conversation>
                 </div>
@@ -788,6 +822,8 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
             domain={domain}
             conversation_id={conversation_id ?? ''}
             onClose={onClose}
+            initialMessageToSend={initialMessageToSend}
+            onInitialMessageSent={onInitialMessageSent}
         />
     );
 };

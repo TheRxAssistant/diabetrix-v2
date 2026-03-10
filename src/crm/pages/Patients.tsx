@@ -9,6 +9,7 @@ import Badge from '../components/ui/Badge';
 import Tag from '../components/ui/Tag';
 import Statistic from '../components/ui/Statistic';
 import { postAPI, CAPABILITIES_API_URLS } from '../../services/api';
+import { useDomainPrefix } from '../../hooks/useDomainPrefix';
 
 interface Patient {
     user_id: string;
@@ -46,6 +47,7 @@ interface CoreEngineUser {
 }
 
 export default function AllPatients() {
+    const domainPrefix = useDomainPrefix();
     const [searchText, setSearchText] = useState('');
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
@@ -275,8 +277,9 @@ export default function AllPatients() {
                     params.set('anonymous_id', record.original_anonymous_id);
                 }
 
+                const journeyPath = `${domainPrefix}/crm/patients/journey?${params.toString()}`;
                 return (
-                    <Link to={`/crm/patients/journey?${params.toString()}`}>
+                    <Link to={journeyPath}>
                         <Button type="primary" size="small" icon={<FaRocket />} className="bg-[#0078D4] border-[#0078D4]">
                             Journey
                         </Button>

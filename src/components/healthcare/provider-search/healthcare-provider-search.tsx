@@ -7,6 +7,8 @@ import PlotMap from './plot-map';
 import SearchModal from './search-modal';
 import ProviderDetailsModal from './provider-details-modal';
 import InsuranceSearchModal from './insurance-search-modal';
+import { useThemeConfig } from '../../../hooks/useThemeConfig';
+import { getCondition } from '../../../config/theme-config';
 
 import { ArrowLeft, MapPin, Search, Star, User, Zap } from 'lucide-react';
 // Interface for providers with map coordinates
@@ -46,7 +48,10 @@ interface HealthcareProviderSearchProps {
     embedded?: boolean; // Whether component is embedded in another modal
 }
 
-export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinology', embedded = false }) => {
+export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery, embedded = false }) => {
+    const themeConfig = useThemeConfig();
+    const condition = getCondition(themeConfig);
+    const defaultSearchQuery = searchQuery || condition;
     const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection } = useProviderSearch();
 
     // Legacy state for backward compatibility
@@ -55,7 +60,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
 
     const [selectedProvider, setSelectedProvider] = useState<LegacyProvider | null>(null);
     const [isBooking, setIsBooking] = useState(false);
-    const [searchTerm, setSearchTerm] = useState(searchQuery);
+    const [searchTerm, setSearchTerm] = useState(defaultSearchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [categorySelected, setCategorySelected] = useState(false);
     const [currentCategory, setCurrentCategory] = useState<SearchCategory | null>(null);
@@ -822,7 +827,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         if (currentCategory) {
                             // Call API with current category and selected insurance
                             await handleCategorySelection(currentCategory, userLocation, first_name, last_name, insuranceOption);
-                        } else if (searchTerm && searchTerm.trim() !== 'endocrinology') {
+                        } else if (searchTerm && searchTerm.trim() !== condition) {
                             // Create a default category from searchTerm
                             const defaultCategory: SearchCategory = {
                                 care_category_name: searchTerm,
@@ -832,10 +837,10 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                             };
                             await handleCategorySelection(defaultCategory, userLocation, first_name, last_name, insuranceOption);
                         } else {
-                            // Use default endocrinologist category
+                            // Use condition from theme config as default category
                             const defaultCategory: SearchCategory = {
-                                care_category_name: 'endocrinology',
-                                category_name: 'endocrinology',
+                                care_category_name: condition,
+                                category_name: condition,
                                 care_category_type: 'specialty',
                                 category_type: 'specialty',
                             };

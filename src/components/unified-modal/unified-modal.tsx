@@ -35,6 +35,8 @@ import { SERVICE_TYPES } from './utils/constants';
 import { checkAuthSession, generateAccessToken, syncUser, verifyOtp, verifyUserByVerified } from './services/auth-service';
 import { trackingService } from '@/services/tracking/tracking-service.ts';
 import { useAuthStore } from '@/store/authStore.ts';
+import { useThemeConfig } from '../../hooks/useThemeConfig';
+import { getDomain, getBrandName, getCondition } from '../../config/theme-config';
 
 interface UnifiedModalProps {
     onClose: () => void;
@@ -44,7 +46,9 @@ interface UnifiedModalProps {
 }
 
 export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVerificationComplete }: UnifiedModalProps) => {
-    const isGoodRx = useMemo(() => window.location.pathname.includes('goodrx'), []);
+    const themeConfig = useThemeConfig();
+    const brandName = getBrandName(themeConfig);
+    const condition = getCondition(themeConfig);
 
     // Create a wrapper for onClose that removes the session storage item
     const handleClose = useCallback(() => {
@@ -95,19 +99,16 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
     };
 
     const openEmbeddedChatAndSend = useCallback(
-        async (message?: string) => {
+        (message?: string) => {
             setIsChatActive(true);
-            // Create chat thread if not already created
-            if (!conversation_id) {
-                await createChatThread();
-            }
             setStep('embedded_chat' as any);
-            // Send initial message if provided
+            // Send initial message if provided (e.g. from learn question click)
             if (message && typeof message === 'string' && message.trim().length > 0) {
                 setPendingMessages([message]);
             }
+            // VoiceChatStep handles its own sync and loading; no need to block on createChatThread
         },
-        [conversation_id, createChatThread, setIsChatActive, setStep],
+        [setIsChatActive, setStep],
     );
 
     // AI-powered quick replies generation
@@ -475,7 +476,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
         setPendingExternalUrl('');
     };
 
-    const renderIntroStep = () => <IntroStep isTyping={isTyping} isGoodRx={isGoodRx} onServiceSelect={handleServiceSelect} />;
+    const renderIntroStep = () => <IntroStep isTyping={isTyping} themeConfig={themeConfig} onServiceSelect={handleServiceSelect} />;
 
     const renderServiceDetailStep = () => {
         const service = serviceContents[selectedService] || serviceContents.doctor;
@@ -703,7 +704,13 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} />;
 
-    const renderEmbeddedChatStep = () => <VoiceChatStep onClose={() => setStep('intro')} />;
+    const renderEmbeddedChatStep = () => (
+        <VoiceChatStep
+            onClose={() => setStep('intro')}
+            initialMessageToSend={pendingMessages[0]}
+            onInitialMessageSent={() => setPendingMessages((prev) => prev.slice(1))}
+        />
+    );
 
     const pharmacies = featuredPharmacies;
 
@@ -737,7 +744,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
             const drug_brand_name = drugName || userData?.drug_name || 'Diabetrix';
             const drug_strength = userData?.drug_strength || userData?.strength || '';
             const drug_quantity = userData?.drug_quantity || userData?.quantity || '1';
-            const domain = 'diabetrix';
+            const domain = getDomain(themeConfig);
 
             if (user_id && user_phone) {
                 await postAPI(CAPABILITIES_API_URLS.SYNC_PHARMACY_STOCK_CHECK, {

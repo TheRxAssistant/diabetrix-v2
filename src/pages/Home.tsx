@@ -7,6 +7,9 @@ import ChatButton from '../components/chat/chat-button/chat-button';
 import { UnifiedModal } from '../components/unified-modal/unified-modal';
 import AuthModal from '../crm/components/ui/AuthModal';
 import { isAuthenticated, setAuthenticated } from '../store/authStore';
+import { useThemeConfig } from '../hooks/useThemeConfig';
+import { useDomainPrefix } from '../hooks/useDomainPrefix';
+import { getHomePageConfig } from '../config/theme-config';
 // import { useApprovedRequests } from '../services/crm/hooks-approved-requests';
 // import { useAuthStore } from '../store/authStore';
 
@@ -16,6 +19,10 @@ const Home = () => {
     const [unifiedModalInitialStep, setUnifiedModalInitialStep] = useState<'intro' | 'service_selection' | 'home'>('intro');
     const [is_authenticated, setIsAuthenticated] = useState(false);
     const [show_auth_modal, setShowAuthModal] = useState(false);
+
+    const themeConfig = useThemeConfig();
+    const domainPrefix = useDomainPrefix();
+    const homePageConfig = getHomePageConfig(themeConfig);
 
     // const { approved_requests, is_loading, error, fetch_approved_requests } = useApprovedRequests();
 
@@ -64,69 +71,79 @@ const Home = () => {
         return <AuthModal isOpen={show_auth_modal} onSuccess={handleAuthSuccess} />;
     }
 
+    const { hero, benefits, testimonials, resources, cta } = homePageConfig;
+    const primaryColor = themeConfig.primary_color;
+    const secondaryColor = themeConfig.secondary_color;
+
     return (
         <main>
+            <style>{`
+                .hero-secondary-btn:hover { background-color: white !important; color: ${primaryColor} !important; }
+                .hero-outline-btn:hover { background-color: ${secondaryColor || primaryColor} !important; border-color: ${secondaryColor || primaryColor} !important; }
+                .cta-secondary-btn:hover { background-color: white !important; color: ${primaryColor} !important; border-color: white !important; }
+            `}</style>
             {/* Hero Section */}
-            <section className="bg-gradient-blue text-white py-20 overflow-hidden">
+            <section
+                className="py-20 overflow-hidden"
+                style={{
+                    background: hero.bg_gradient ?? hero.bg_color,
+                    backgroundColor: !hero.bg_gradient ? hero.bg_color : undefined,
+                    color: hero.text_color ?? '#ffffff',
+                }}
+            >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
                     {/* Top-right links */}
-                    <div className="absolute top-4 sm:top-6 lg:top-0 right-4 sm:right-6 lg:right-8 flex flex-wrap justify-end gap-3 sm:gap-4 z-10">
-                        <a 
-                            href="https://drive.google.com/file/d/1XXdfzRJJS8K1bRUNeELMK5112CcGlcec/view?usp=sharing&t=71" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
-                        >
-                            Benefits Check
-                        </a>
-                        <a 
-                            href="https://drive.google.com/file/d/1HD1hCvCIhPYZAj4EYkEcsRX4hiHlj6Ry/view?usp=sharing&t=132" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
-                        >
-                            Copay Automation
-                        </a>
-                        <a 
-                            href="https://drive.google.com/file/d/1UUlSyi_Oiixq13nDQOhM5BUesM7hIU7B/view?usp=sharing" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
-                        >
-                            Scheduling Appointment
-                        </a>
-                        <a 
-                            href="https://drive.google.com/drive/u/0/folders/1Ax4GPGjtEeaez3LIhZyrBE-9Et37P8dP" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-white text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
-                        >
-                            Find Stock Call
-                        </a>
-                    </div>
+                    {hero.header_links && hero.header_links.length > 0 && (
+                        <div className="absolute top-4 sm:top-6 lg:top-0 right-4 sm:right-6 lg:right-8 flex flex-wrap justify-end gap-3 sm:gap-4 z-10">
+                            {hero.header_links.map((link) => (
+                                <a
+                                    key={link.label}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm sm:text-base hover:underline transition-all duration-300 whitespace-nowrap"
+                                    style={{ color: hero.text_color ?? '#ffffff' }}
+                                >
+                                    {link.label}
+                                </a>
+                            ))}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center pt-16 sm:pt-20 lg:pt-0">
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="lg:pr-10">
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-6">Transform Your Diabetes Management with Diabetrix®</h1>
-                            <p className="text-xl mb-8 text-white">A revolutionary once-daily oral treatment for adults with Type 2 Diabetes, designed to help achieve better glycemic control.</p>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-6">{hero.headline}</h1>
+                            <p className="text-xl mb-8" style={{ color: hero.text_color ?? '#ffffff' }}>{hero.description}</p>
                             <div className="flex flex-wrap gap-4">
-                                <Link to="/medication-info" className="bg-white text-[#0066cc] font-semibold py-3 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-                                    Learn About Diabetrix®
-                                </Link>
-                                <Link to="/patient-support" className="bg-transparent border-2 border-white text-white font-semibold py-3 px-6 rounded-full hover:bg-white hover:text-[#0066cc] transition-all duration-300">
-                                    Patient Support
-                                </Link>
-                                <Link to="/quiz" className="bg-[#0066cc] border-2 border-[#0066cc] text-white font-semibold py-3 px-6 rounded-full hover:bg-[#0055aa] hover:border-[#0055aa] transition-all duration-300 flex items-center gap-2">
-                                    <AcademicCapIcon className="h-5 w-5 text-white" />
-                                    Take Knowledge Quiz
-                                </Link>
+                                {hero.cta_buttons?.map((btn) => {
+                                    const path = `${domainPrefix}/${btn.path}`.replace(/\/+/g, '/');
+                                    if (btn.variant === 'primary') {
+                                        return (
+                                            <Link key={btn.label} to={path} className="bg-white font-semibold py-3 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-300" style={{ color: primaryColor }}>
+                                                {btn.label}
+                                            </Link>
+                                        );
+                                    }
+                                    if (btn.variant === 'secondary') {
+                                        return (
+                                            <Link key={btn.label} to={path} className="hero-secondary-btn bg-transparent border-2 font-semibold py-3 px-6 rounded-full transition-all duration-300" style={{ borderColor: hero.text_color ?? '#ffffff', color: hero.text_color ?? '#ffffff' }}>
+                                                {btn.label}
+                                            </Link>
+                                        );
+                                    }
+                                    return (
+                                        <Link key={btn.label} to={path} className="border-2 font-semibold py-3 px-6 rounded-full flex items-center gap-2 transition-all duration-300 hero-outline-btn" style={{ borderColor: primaryColor, backgroundColor: primaryColor, color: hero.text_color ?? '#ffffff' }}>
+                                            <AcademicCapIcon className="h-5 w-5" style={{ color: hero.text_color ?? '#ffffff' }} />
+                                            {btn.label}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </motion.div>
 
                         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative hidden lg:block">
-                            {/* Happy couple image with white background */}
-                            <div className="w-full h-96 bg-[#0099dd] bg-opacity-30 rounded-full flex items-center justify-center">
+                            <div className="w-full h-96 rounded-full flex items-center justify-center" style={{ backgroundColor: `${primaryColor}4D` }}>
                                 <div className="bg-white rounded-3xl w-[420px] h-72 shadow-xl flex items-center justify-center p-4">
-                                    <img src="/images/diabetrixpeopleimage.png" alt="Happy couple managing diabetes with Diabetrix" className="w-full h-full object-cover rounded-2xl" />
+                                    <img src={hero.hero_image ?? '/images/diabetrixpeopleimage.png'} alt={hero.headline} className="w-full h-full object-cover rounded-2xl" />
                                 </div>
                             </div>
                         </motion.div>
@@ -135,124 +152,87 @@ const Home = () => {
             </section>
 
             {/* Key Benefits Section */}
-            <section className="py-20 bg-white">
+            <section className="py-20" style={{ backgroundColor: benefits.bg_color ?? '#ffffff' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">A New Standard in Diabetes Care</h2>
-                        <p className="text-lg text-gray-600 max-w-3xl mx-auto">Diabetrix® (metformelate) helps adults with Type 2 Diabetes achieve better glycemic control with a convenient once-daily dosing regimen.</p>
+                        <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: benefits.heading_color ?? primaryColor }}>{benefits.title}</h2>
+                        <p className="text-lg max-w-3xl mx-auto" style={{ color: benefits.body_color ?? '#4b5563' }}>{benefits.subtitle}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Benefit 1 */}
-                        <motion.div whileHover={{ y: -5 }} className="card p-8">
-                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mb-6">
-                                <ChartBarIcon className="h-8 w-8 text-primary" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-3">Improved Glycemic Control</h3>
-                            <p className="text-gray-600">In clinical trials, Diabetrix® demonstrated significant reductions in HbA1c compared to placebo, helping patients reach their glycemic goals.</p>
-                        </motion.div>
-
-                        {/* Benefit 2 */}
-                        <motion.div whileHover={{ y: -5 }} className="card p-8">
-                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mb-6">
-                                <BeakerIcon className="h-8 w-8 text-primary" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-3">Once-Daily Convenience</h3>
-                            <p className="text-gray-600">A simple once-daily oral tablet that fits easily into your routine, helping to simplify your diabetes management.</p>
-                        </motion.div>
-
-                        {/* Benefit 3 */}
-                        <motion.div whileHover={{ y: -5 }} className="card p-8">
-                            <div className="bg-blue-100 w-14 h-14 rounded-full flex items-center justify-center mb-6">
-                                <HeartIcon className="h-8 w-8 text-primary" />
-                            </div>
-                            <h3 className="text-xl font-semibold mb-3">Well-Studied Safety Profile</h3>
-                            <p className="text-gray-600">Backed by extensive clinical research and built on the foundation of trusted diabetes treatments.</p>
-                        </motion.div>
+                        {benefits.features?.map((feature, idx) => {
+                            const IconComponent = feature.icon === 'beaker' ? BeakerIcon : feature.icon === 'heart' ? HeartIcon : ChartBarIcon;
+                            return (
+                                <motion.div key={idx} whileHover={{ y: -5 }} className="card p-8">
+                                    <div className="w-14 h-14 rounded-full flex items-center justify-center mb-6" style={{ backgroundColor: `${primaryColor}20` }}>
+                                        <IconComponent className="h-8 w-8" style={{ color: primaryColor }} />
+                                    </div>
+                                    <h3 className="text-xl font-semibold mb-3" style={{ color: benefits.body_color ?? '#1f2937' }}>{feature.title}</h3>
+                                    <p style={{ color: benefits.body_color ?? '#4b5563' }}>{feature.description}</p>
+                                </motion.div>
+                            );
+                        })}
                     </div>
 
-                    <div className="mt-12 text-center">
-                        <Link to="/medication-info" className="inline-flex items-center text-primary font-semibold hover:text-secondary transition-colors">
-                            Learn more about Diabetrix® benefits
-                            <ArrowRightIcon className="ml-2 h-5 w-5" />
-                        </Link>
-                    </div>
+                    {benefits.cta_text && benefits.cta_path && (
+                        <div className="mt-12 text-center">
+                            <Link to={`${domainPrefix}/${benefits.cta_path}`.replace(/\/+/g, '/')} className="inline-flex items-center font-semibold hover:opacity-80 transition-opacity" style={{ color: primaryColor }}>
+                                {benefits.cta_text}
+                                <ArrowRightIcon className="ml-2 h-5 w-5" style={{ color: primaryColor }} />
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </section>
 
             {/* Patient testimonials */}
-            <section className="py-20 bg-gray-50">
+            <section className="py-20" style={{ backgroundColor: testimonials.bg_color ?? '#f9fafb' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Real Stories from Real Patients*</h2>
-                        <p className="text-gray-600 max-w-3xl mx-auto">Hear how Diabetrix® has helped people with Type 2 Diabetes take control of their condition.</p>
+                        <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: testimonials.heading_color ?? primaryColor }}>{testimonials.title}</h2>
+                        <p className="max-w-3xl mx-auto" style={{ color: testimonials.body_color ?? '#4b5563' }}>{testimonials.subtitle}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {/* Testimonial 1 */}
-                        <div className="bg-white p-8 rounded-xl shadow-md">
-                            <div className="flex flex-col h-full">
-                                <div className="flex-1">
-                                    <p className="text-gray-600 italic mb-4">"Since starting Diabetrix®, my blood sugar levels have been more consistent, and I feel like I have more energy throughout the day. It's been a real game-changer for me."</p>
-                                </div>
-                                <div className="mt-6 flex items-center">
-                                    <div className="w-12 h-12 rounded-full bg-primary"></div>
-                                    <div className="ml-4">
-                                        <p className="font-semibold">Michael T.</p>
-                                        <p className="text-sm text-gray-500">Living with T2D for 8 years</p>
+                        {testimonials.testimonials?.map((t, idx) => (
+                            <div key={idx} className="bg-white p-8 rounded-xl shadow-md">
+                                <div className="flex flex-col h-full">
+                                    <div className="flex-1">
+                                        <p className="italic mb-4" style={{ color: testimonials.body_color ?? '#4b5563' }}>&quot;{t.quote}&quot;</p>
+                                    </div>
+                                    <div className="mt-6 flex items-center">
+                                        {t.avatar_url ? (
+                                            <img src={t.avatar_url} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-full" style={{ backgroundColor: primaryColor }}></div>
+                                        )}
+                                        <div className="ml-4">
+                                            <p className="font-semibold" style={{ color: testimonials.body_color ?? '#1f2937' }}>{t.name}</p>
+                                            <p className="text-sm" style={{ color: testimonials.body_color ?? '#6b7280' }}>{t.descriptor}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Testimonial 2 */}
-                        <div className="bg-white p-8 rounded-xl shadow-md">
-                            <div className="flex flex-col h-full">
-                                <div className="flex-1">
-                                    <p className="text-gray-600 italic mb-4">"What I appreciate most is the once-daily dosing. It fits perfectly into my morning routine, and I don't have to worry about taking multiple pills throughout the day."</p>
-                                </div>
-                                <div className="mt-6 flex items-center">
-                                    <div className="w-12 h-12 rounded-full bg-primary"></div>
-                                    <div className="ml-4">
-                                        <p className="font-semibold">Sarah L.</p>
-                                        <p className="text-sm text-gray-500">Living with T2D for 5 years</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Testimonial 3 */}
-                        <div className="bg-white p-8 rounded-xl shadow-md">
-                            <div className="flex flex-col h-full">
-                                <div className="flex-1">
-                                    <p className="text-gray-600 italic mb-4">"After discussing with my doctor, we decided to try Diabetrix®. My A1C has improved significantly, and I've experienced fewer spikes in my glucose levels."</p>
-                                </div>
-                                <div className="mt-6 flex items-center">
-                                    <div className="w-12 h-12 rounded-full bg-primary"></div>
-                                    <div className="ml-4">
-                                        <p className="font-semibold">Robert J.</p>
-                                        <p className="text-sm text-gray-500">Living with T2D for 12 years</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-8 text-center">*Individual results may vary. These testimonials represent the experiences of specific individuals. Consult your healthcare provider to determine if Diabetrix® is right for you.</p>
+                    {testimonials.disclaimer && (
+                        <p className="text-xs mt-8 text-center" style={{ color: testimonials.body_color ?? '#6b7280' }}>{testimonials.disclaimer}</p>
+                    )}
                 </div>
             </section>
 
             {/* Resources Section */}
-            <section className="py-20 bg-gray-50">
+            <section className="py-20" style={{ backgroundColor: resources.bg_color ?? '#f9fafb' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-display font-bold text-primary mb-4">Important Resources</h2>
-                        <p className="text-lg text-gray-600 max-w-3xl mx-auto">Access important information about Diabetrix®, including prescribing information, side effects, and patient assistance programs.</p>
+                        <h2 className="text-3xl md:text-4xl font-display font-bold mb-4" style={{ color: primaryColor }}>{resources.title}</h2>
+                        <p className="text-lg max-w-3xl mx-auto" style={{ color: '#4b5563' }}>{resources.subtitle}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                         {/* PI & Medication Guide */}
-                        <Link to="/pi-medication-guide" className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                        <Link to={`${domainPrefix}/pi-medication-guide`.replace(/\/+/g, '/')} className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
                                     <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,7 +245,7 @@ const Home = () => {
                         </Link>
 
                         {/* Side Effects */}
-                        <Link to="/side-effects" className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                        <Link to={`${domainPrefix}/side-effects`.replace(/\/+/g, '/')} className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-red-200 transition-colors">
                                     <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,7 +258,7 @@ const Home = () => {
                         </Link>
 
                         {/* Savings & Assistance */}
-                        <Link to="/savings-assistance" className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                        <Link to={`${domainPrefix}/savings-assistance`.replace(/\/+/g, '/')} className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
                                     <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,7 +284,7 @@ const Home = () => {
                         </Link>
 
                         {/* Knowledge Quiz */}
-                        <Link to="/quiz" className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-left">
+                        <Link to={`${domainPrefix}/quiz`.replace(/\/+/g, '/')} className="group bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-left">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-200 transition-colors">
                                     <AcademicCapIcon className="w-8 h-8 text-indigo-600" />
@@ -407,17 +387,24 @@ const Home = () => {
             </section> */}
 
             {/* Call to Action */}
-            <section className="py-16 bg-primary text-white">
+            <section className="py-16" style={{ backgroundColor: cta.bg_color ?? primaryColor, color: cta.text_color ?? '#ffffff' }}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">Ready to Take Control of Your Type 2 Diabetes?</h2>
-                    <p className="text-xl mb-8 max-w-3xl mx-auto">Talk to your healthcare provider to see if Diabetrix® is right for you.</p>
+                    <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">{cta.title}</h2>
+                    <p className="text-xl mb-8 max-w-3xl mx-auto">{cta.description}</p>
                     <div className="flex flex-wrap justify-center gap-4">
-                        <Link to="/medication-info" className="bg-white text-primary font-semibold py-3 px-8 rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-                            Learn More
-                        </Link>
-                        <Link to="/patient-support" className="bg-transparent border-2 border-white text-white font-semibold py-3 px-8 rounded-full hover:bg-white hover:text-primary transition-all duration-300">
-                            Patient Support Resources
-                        </Link>
+                        {cta.buttons?.map((btn, idx) => (
+                            <Link
+                                key={btn.label}
+                                to={`${domainPrefix}/${btn.path}`.replace(/\/+/g, '/')}
+                                className={`font-semibold py-3 px-8 rounded-full shadow-md hover:shadow-lg transition-all duration-300 ${idx === 0 ? '' : 'cta-secondary-btn'}`}
+                                style={idx === 0
+                                    ? { backgroundColor: '#ffffff', color: primaryColor }
+                                    : { backgroundColor: 'transparent', border: `2px solid ${cta.text_color ?? '#ffffff'}`, color: cta.text_color ?? '#ffffff' }
+                                }
+                            >
+                                {btn.label}
+                            </Link>
+                        ))}
                     </div>
                 </div>
             </section>

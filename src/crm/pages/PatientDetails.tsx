@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaUser, FaComment, FaFile, FaShieldAlt, FaPhone, FaEnvelope, FaMapMarkerAlt, FaBirthdayCake, FaIdCard, FaSpinner } from 'react-icons/fa';
 import DashboardLayout from '../components/DashboardLayout';
+import { useDomainPrefix } from '../../hooks/useDomainPrefix';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -106,6 +107,7 @@ const getStatusColor = (status: string): string => {
 
 export default function PatientDetails() {
     const { id } = useParams<{ id: string }>();
+    const domainPrefix = useDomainPrefix();
     const navigate = useNavigate();
     const [patientData, setPatientData] = useState<PatientDetails | null>(null);
     const [loading, setLoading] = useState(true);
@@ -201,7 +203,7 @@ export default function PatientDetails() {
             title: 'Actions',
             key: 'actions',
             render: (_: any, record: Conversation) => (
-                <Button type="default" size="small" onClick={() => navigate(`/crm/patients/${id}/journey`)}>
+                <Button type="default" size="small" onClick={() => navigate(`${domainPrefix}/crm/patients/${id}/journey`)}>
                     View Details
                 </Button>
             ),
@@ -238,7 +240,7 @@ export default function PatientDetails() {
             dataIndex: 'request_id',
             key: 'request_id',
             render: (reqId: string) => (
-                <button onClick={() => window.open(`${window.location.origin}/crm/patients/${id}`, '_blank', 'noopener,noreferrer')} className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                <button onClick={() => window.open(`${window.location.origin}${domainPrefix}/crm/patients/${id}`, '_blank', 'noopener,noreferrer')} className="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
                     {reqId?.slice(0, 8)}...
                 </button>
             ),
@@ -261,7 +263,7 @@ export default function PatientDetails() {
             <DashboardLayout>
                 <div className="p-6 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
                     <p className="text-red-600 mb-4">Error: {error || 'Patient not found'}</p>
-                    <Button onClick={() => navigate('/crm/patients')}>Back to Patients</Button>
+                    <Button onClick={() => navigate(`${domainPrefix}/crm/patients`)}>Back to Patients</Button>
                 </div>
             </DashboardLayout>
         );
@@ -272,7 +274,7 @@ export default function PatientDetails() {
             <div className="p-6 bg-gray-50 min-h-screen overflow-x-hidden">
                 {/* Header */}
                 <div className="mb-5">
-                    <Link to="/crm/patients">
+                    <Link to={`${domainPrefix}/crm/patients`}>
                         <Button type="link" icon={<FaArrowLeft />} className="pl-0 mb-3 text-sm h-auto text-[#0078D4]">
                             Back to Patients
                         </Button>

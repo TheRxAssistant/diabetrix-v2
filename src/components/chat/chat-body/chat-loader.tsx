@@ -1,23 +1,30 @@
 // ChatLoader.tsx
 import React, { useEffect, useState } from "react";
 import "./chat-body.scss";
+import { ThemeConfig, getBrandName, getThemeConfig } from "../../../config/theme-config";
 
 interface ChatLoaderProps {
     is_reconnecting?: boolean;
     is_initial_load?: boolean;
+    themeConfig?: ThemeConfig;
 }
 
-const LoadingSteps = [
-    { text: "Connecting to Diabetrix network", duration: 1500 },
+const getLoadingSteps = (brandName: string) => [
+    { text: `Connecting to ${brandName.charAt(0).toUpperCase() + brandName.slice(1)} network`, duration: 1500 },
     { text: "Finding your personal concierge", duration: 2000 },
     { text: "Establishing secure connection", duration: 1500 },
     { text: "Almost ready", duration: 1000 }
 ];
 
-const ChatLoader: React.FC<ChatLoaderProps> = ({ is_reconnecting, is_initial_load }) => {
+const ChatLoader: React.FC<ChatLoaderProps> = ({ is_reconnecting, is_initial_load, themeConfig }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [isAvatarVisible, setIsAvatarVisible] = useState(false);
     const [showDots, setShowDots] = useState(true);
+    
+    // Get theme config from prop or window.location
+    const effectiveThemeConfig = themeConfig || (typeof window !== 'undefined' ? getThemeConfig(window.location.pathname) : undefined);
+    const brandName = effectiveThemeConfig ? getBrandName(effectiveThemeConfig) : 'diabetrix';
+    const LoadingSteps = getLoadingSteps(brandName);
 
     useEffect(() => {
         if (is_initial_load) {
@@ -40,7 +47,7 @@ const ChatLoader: React.FC<ChatLoaderProps> = ({ is_reconnecting, is_initial_loa
                 currentTimeout += step.duration;
             });
         }
-    }, [is_initial_load]);
+    }, [is_initial_load, LoadingSteps]);
 
     if (is_reconnecting) {
         return (
@@ -77,7 +84,7 @@ const ChatLoader: React.FC<ChatLoaderProps> = ({ is_reconnecting, is_initial_loa
                 <div className={`avatar-container ${isAvatarVisible ? 'visible' : ''}`}>
                     <img 
                         src="/assets/images/avatar.png" 
-                        alt="Alex - Diabetrix Concierge"
+                        alt={`Alex - ${brandName.charAt(0).toUpperCase() + brandName.slice(1)} Concierge`}
                         onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = `data:image/svg+xml,${encodeURIComponent('<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" fill="#0066FF"/><text x="50%" y="50%" font-family="Arial" font-size="32" fill="white" text-anchor="middle" dy=".3em">A</text></svg>')}`;

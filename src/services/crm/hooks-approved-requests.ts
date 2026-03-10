@@ -2,8 +2,11 @@ import { useState, useCallback } from 'react';
 import { postAPI, CAPABILITIES_API_URLS } from '../api';
 import { ApprovedRequest, GetAllApprovedRequestsResult } from './types-approved-requests';
 import { useAuthStore } from '../../store/authStore';
+import { useThemeConfig } from '../../hooks/useThemeConfig';
+import { getDomain } from '../../config/theme-config';
 
 export const useApprovedRequests = () => {
+    const themeConfig = useThemeConfig();
     const [approved_requests, set_approved_requests] = useState<ApprovedRequest[]>([]);
     const [is_loading, set_is_loading] = useState(false);
     const [error, set_error] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export const useApprovedRequests = () => {
             const response = await postAPI(CAPABILITIES_API_URLS.GET_APPROVED_REQUESTS, {
                 user_id: target_user_id,
                 limit,
-                domain: 'diabetrix',
+                domain: getDomain(themeConfig),
                 offset: 0,
             });
 
@@ -45,7 +48,7 @@ export const useApprovedRequests = () => {
         } finally {
             set_is_loading(false);
         }
-    }, []);
+    }, [themeConfig]);
 
     const clear_approved_requests = useCallback(() => {
         set_approved_requests([]);
