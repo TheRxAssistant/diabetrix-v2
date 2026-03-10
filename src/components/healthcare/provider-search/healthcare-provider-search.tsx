@@ -8,7 +8,25 @@ import SearchModal from './search-modal';
 import ProviderDetailsModal from './provider-details-modal';
 import InsuranceSearchModal from './insurance-search-modal';
 
-import { ArrowLeft, MapPin, Search, Star, User, Zap } from 'lucide-react';
+import { ArrowLeft, MapPin, Pencil, Search, Star, User, Zap } from 'lucide-react';
+
+const ProviderAvatar: React.FC<{ src?: string; alt: string; variant?: 'provider' | 'facility' }> = ({ src, alt, variant = 'provider' }) => {
+    const [img_error, set_img_error] = useState(false);
+    const show_img = src && !img_error;
+    const placeholder_class = variant === 'facility' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600';
+    return (
+        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+            {show_img ? (
+                <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => set_img_error(true)} />
+            ) : (
+                <div className={`w-full h-full flex items-center justify-center ${placeholder_class}`}>
+                    <User size={24} />
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Interface for providers with map coordinates
 interface MapProvider extends Provider {
     provider_lat?: number;
@@ -47,7 +65,7 @@ interface HealthcareProviderSearchProps {
 }
 
 export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinology', embedded = false }) => {
-    const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection } = useProviderSearch();
+    const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection, fetchProviderCareDetails } = useProviderSearch();
 
     // Legacy state for backward compatibility
     const [legacyProviders] = useState<LegacyProvider[]>([]);
@@ -61,7 +79,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [currentCategory, setCurrentCategory] = useState<SearchCategory | null>(null);
     const [userLocation, setUserLocation] = useState<string>('');
     const [showBookingModal, setShowBookingModal] = useState(false);
-    const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | null>(null);
+    const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | LegacyProvider | null>(null);
     const [showEarliestAppointmentModal, setShowEarliestAppointmentModal] = useState(false);
     const [showProviderDetailsModal, setShowProviderDetailsModal] = useState(false);
     const [selectedProviderForDetails, setSelectedProviderForDetails] = useState<Provider | Facility | LegacyProvider | null>(null);
@@ -124,6 +142,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     ];
 
     const [selectedInsurance, setSelectedInsurance] = useState<{ id: number; payor: string; plan: string } | null>(null);
+
+    const [is_editing_zip, set_is_editing_zip] = useState(false);
+    const [zip_edit_value, set_zip_edit_value] = useState('');
 
     // Map view state
     const [showMapView, setShowMapView] = useState(false);
@@ -312,22 +333,22 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 style={
                     embedded
                         ? {
-                              height: '100vh',
-                              width: '100vw',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                          }
+                            height: '100vh',
+                            width: '100vw',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }
                         : {
-                              height: '100vh',
-                              width: '100vw',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                              backdropFilter: 'blur(2px)',
-                              WebkitBackdropFilter: 'blur(2px)',
-                          }
+                            height: '100vh',
+                            width: '100vw',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            backdropFilter: 'blur(2px)',
+                            WebkitBackdropFilter: 'blur(2px)',
+                        }
                 }>
                 <div
                     className="h-screen w-full max-w-full flex flex-col"
@@ -367,7 +388,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         }, 2000);
     };
 
-    const handleCategoryClick = async (category: SearchCategory, insurance?: { plan_name: string; payer_name: string } | null) => {
+    const handleCategoryClick = async (category: SearchCategory, insurance?: { plan_name: string; payer_name: string } | null, zipcode?: string) => {
         setShowSearchModal(false);
         setCategorySelected(true);
         setCurrentCategory(category);
@@ -376,6 +397,11 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         const categoryName = category.category_name || category.care_category_name || searchTerm;
         setSearchTerm(categoryName);
 
+        // Update displayed location if zipcode was entered
+        if (zipcode) {
+            setUserLocation(zipcode);
+        }
+
         // Extract user information from userData
         const first_name = userData?.first_name || userData?.user?.first_name;
         const last_name = userData?.last_name || userData?.user?.last_name;
@@ -383,13 +409,35 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         // Convert insurance format if needed
         const insuranceOption = insurance
             ? {
-                  plan_name: insurance.plan_name,
-                  payer_name: insurance.payer_name,
-              }
+                plan_name: insurance.plan_name,
+                payer_name: insurance.payer_name,
+            }
             : null;
 
-        // Call API based on category type with new parameters
-        await handleCategorySelection(category, userLocation, first_name, last_name, insuranceOption);
+        // Call API with user-entered zipcode (or fall back to userLocation)
+        await handleCategorySelection(category, userLocation, first_name, last_name, insuranceOption, zipcode);
+    };
+
+    const handleZipUpdate = async () => {
+        const trimmed = zip_edit_value.trim();
+        if (!/^\d{5}$/.test(trimmed)) {
+            return;
+        }
+        if (!currentCategory) return;
+        setUserLocation(trimmed);
+        set_is_editing_zip(false);
+        set_zip_edit_value('');
+        const first_name = userData?.first_name || userData?.user?.first_name;
+        const last_name = userData?.last_name || userData?.user?.last_name;
+        const insuranceOption = selectedInsurance
+            ? { plan_name: selectedInsurance.plan, payer_name: selectedInsurance.payor }
+            : null;
+        await handleCategorySelection(currentCategory, trimmed, first_name, last_name, insuranceOption, trimmed);
+    };
+
+    const startEditingZip = () => {
+        set_zip_edit_value(userLocation);
+        set_is_editing_zip(true);
     };
 
     // Generate mock distance for demo
@@ -416,9 +464,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 provider.provider_full_address_obj ||
                 (provider.latitude && provider.longitude
                     ? {
-                          lat: provider.latitude,
-                          long: provider.longitude,
-                      }
+                        lat: provider.latitude,
+                        long: provider.longitude,
+                    }
                     : undefined),
             languages: provider.languages || (provider.provider_languages ? (typeof provider.provider_languages === 'string' ? provider.provider_languages.split(', ') : []) : []),
             insurance_accepted: provider.insurance_accepted || [],
@@ -447,15 +495,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         return (
             <div key={providerId} className="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200">
                 <div className="flex items-start space-x-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                        {providerImage ? (
-                            <img src={providerImage} alt={providerName} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
-                                <User size={24} />
-                            </div>
-                        )}
-                    </div>
+                    <ProviderAvatar src={providerImage} alt={providerName} variant="provider" />
                     <div className="flex-1">
                         <h3 className="font-semibold text-lg text-gray-900 mb-1">{providerName}</h3>
                         <p className="text-gray-600 text-sm mb-2">{providerSpecialty}</p>
@@ -511,9 +551,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                     provider.provider_full_address_obj ||
                                     (lat !== undefined && lng !== undefined
                                         ? {
-                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                          }
+                                            lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                            long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                        }
                                         : undefined),
                             });
                             setShowMapView(true);
@@ -537,15 +577,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         return (
             <div key={facility.facility_id} className="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200">
                 <div className="flex items-start space-x-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                        {facility.facility_image ? (
-                            <img src={facility.facility_image} alt={facility.facility_name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-green-100 text-green-600">
-                                <User size={24} />
-                            </div>
-                        )}
-                    </div>
+                    <ProviderAvatar src={facility.facility_image} alt={facility.facility_name} variant="facility" />
                     <div className="flex-1">
                         <h3 className="font-semibold text-lg text-gray-900 mb-1">{facility.facility_name}</h3>
                         <p className="text-gray-600 text-sm mb-2">Type: {facility.facility_type}</p>
@@ -599,9 +631,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                                     facility.facility_full_address_obj ||
                                     (lat !== undefined && lng !== undefined
                                         ? {
-                                              lat: typeof lat === 'number' ? lat : parseFloat(lat),
-                                              long: typeof lng === 'number' ? lng : parseFloat(lng),
-                                          }
+                                            lat: typeof lat === 'number' ? lat : parseFloat(lat),
+                                            long: typeof lng === 'number' ? lng : parseFloat(lng),
+                                        }
                                         : undefined),
                             } as MapProvider);
                             setShowMapView(true);
@@ -623,15 +655,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         return (
             <div key={provider.id} className="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200">
                 <div className="flex items-start space-x-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                        {provider.avatar ? (
-                            <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
-                                <User size={24} />
-                            </div>
-                        )}
-                    </div>
+                    <ProviderAvatar src={provider.avatar} alt={provider.name} variant="provider" />
                     <div className="flex-1">
                         <h3 className="font-semibold text-lg text-gray-900 mb-1">{provider.name}</h3>
                         <p className="text-gray-600 text-sm mb-2">{provider.specialty}</p>
@@ -694,8 +718,13 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     };
 
     // Main content of the component
+    const has_results =
+        apiProviders.filter((p) => p.name || p.provider_name).length > 0 ||
+        facilities.filter((f) => f.facility_name).length > 0 ||
+        filteredLegacyProviders.filter((p) => p.name).length > 0;
+
     const searchContent = (
-        <div className={'bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col'}>
+        <div className={`bg-white rounded-lg max-w-4xl w-full ${embedded ? 'h-full' : 'max-h-[90vh]'} flex flex-col`}>
             {/* Header - Fixed */}
             <div className="flex items-center p-4 border-b border-gray-200 flex-shrink-0">
                 <button className="mr-4 p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={onClose} aria-label="Back">
@@ -720,11 +749,50 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         placeholder="Search specialty (e.g., Dermatology)"
                     />
                 </div>
-                {/* 
-                <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2" onClick={() => setShowEarliestAppointmentModal(true)}>
-                    <Zap size={20} />
-                    <span>Book Earliest Appointment</span>
-                </button> */}
+
+                {(categorySelected || has_results) && (
+                    <div className="mb-4">
+                        {is_editing_zip ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={5}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    value={zip_edit_value}
+                                    onChange={(e) => set_zip_edit_value(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                                    placeholder="Zip code"
+                                />
+                                <button
+                                    className="px-4 py-2 bg-[#0077cc] text-white rounded-lg font-medium hover:bg-[#0066b3] transition-colors disabled:opacity-50"
+                                    onClick={handleZipUpdate}
+                                    disabled={!/^\d{5}$/.test(zip_edit_value.trim())}>
+                                    Update
+                                </button>
+                                <button
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                                    onClick={() => {
+                                        set_is_editing_zip(false);
+                                        set_zip_edit_value('');
+                                    }}>
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 text-gray-600">
+                                <MapPin size={18} className="flex-shrink-0" />
+                                <span>Location: {userLocation || '—'}</span>
+                                <button
+                                    className="flex items-center gap-1 px-2 py-1 text-sm text-[#0077cc] hover:bg-blue-50 rounded transition-colors"
+                                    onClick={startEditingZip}
+                                    aria-label="Edit zip code">
+                                    <Pencil size={14} />
+                                    <span>Edit</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 mt-4" onClick={() => setShowInsuranceSearchModal(true)}>
                     <Search size={20} />
@@ -770,6 +838,21 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 </div>
             </div>
 
+            {/* Show on Map - footer bar, naturally above the bottom nav */}
+            {has_results && (
+                <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-white">
+                    <button
+                        className="w-full bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-3 px-6 rounded-full font-medium hover:shadow-lg transition-all duration-200 shadow-sm flex items-center justify-center space-x-2"
+                        onClick={() => {
+                            setSelectedMapProvider(null);
+                            setShowMapView(true);
+                        }}>
+                        <MapPin size={16} />
+                        <span>Show on Map</span>
+                    </button>
+                </div>
+            )}
+
             {/* Search Results Modal */}
             {showSearchModal && <SearchModal searchTerm={searchTerm} setSearchTerm={setSearchTerm} onClose={() => setShowSearchModal(false)} onCategoryClick={handleCategoryClick} userLocation={userLocation} />}
 
@@ -795,6 +878,13 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         setShowProviderDetailsModal(false);
                         setSelectedProviderForDetails(null);
                     }}
+                    onBookAppointment={(provider) => {
+                        setShowProviderDetailsModal(false);
+                        setSelectedProviderForDetails(null);
+                        setSelectedBookingProvider(provider);
+                        setShowBookingModal(true);
+                    }}
+                    fetchProviderCareDetails={fetchProviderCareDetails}
                 />
             )}
 
@@ -847,27 +937,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         </div>
     );
 
-    // Show Map button that appears above the bottom navigation
-    const showMapButton = (
-        <button
-            className="fixed bottom-32 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white py-3 px-6 rounded-full font-medium hover:shadow-lg transition-all duration-200 shadow-lg z-40 flex items-center space-x-2"
-            onClick={() => {
-                // Show all providers on map
-                setSelectedMapProvider(null);
-                setShowMapView(true);
-            }}>
-            <MapPin size={16} />
-            <span>Show on Map</span>
-        </button>
-    );
-
     if (embedded) {
-        return (
-            <>
-                {searchContent}
-                {(apiProviders.filter((provider) => provider.name || provider.provider_name).length > 0 || facilities.filter((facility) => facility.facility_name).length > 0 || filteredLegacyProviders.filter((provider) => provider.name).length > 0) && showMapButton}
-            </>
-        );
+        return <>{searchContent}</>;
     }
 
     return (
@@ -879,7 +950,6 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                 WebkitBackdropFilter: 'blur(2px)',
             }}>
             {searchContent}
-            {(apiProviders.filter((provider) => provider.name || provider.provider_name).length > 0 || facilities.filter((facility) => facility.facility_name).length > 0 || filteredLegacyProviders.filter((provider) => provider.name).length > 0) && showMapButton}
         </div>
     );
 };

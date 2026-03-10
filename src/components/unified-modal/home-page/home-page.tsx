@@ -356,12 +356,12 @@ const HomePage = ({ setStep, openEmbeddedChatAndSend, setPendingMessages, setIsC
 
             {/* Healthcare Options Grid */}
             <div className="grid grid-cols-3 gap-3 p-5 mt-4 bg-white/80 backdrop-blur-sm rounded-t-3xl border-t border-gray-200/60 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-purple-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-purple-100/50 hover:border-purple-300/80 hover:bg-gradient-to-br hover:from-purple-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Schedule and dosage', 'About diabetrix')}>
+                <button className="flex flex-col items-center p-4 px-3 bg-white/90 backdrop-blur-sm border border-purple-100/60 rounded-2xl cursor-pointer transition-all duration-500 text-center min-h-[110px] hover:-translate-y-1.5 hover:shadow-xl hover:shadow-purple-100/50 hover:border-purple-300/80 hover:bg-gradient-to-br hover:from-purple-50/40 hover:to-white active:translate-y-0 group relative overflow-hidden" onClick={() => openChatWithMessage('Schedule and dosage', 'About Diabetrix')}>
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/0 to-purple-600/0 group-hover:from-purple-500/8 group-hover:via-purple-500/4 group-hover:to-purple-600/8 transition-all duration-500"></div>
                     <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-50 via-purple-100/70 to-purple-50 rounded-2xl mb-2.5 text-purple-600 transition-all duration-500 group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:via-purple-600 group-hover:to-purple-700 group-hover:text-white group-hover:scale-110 group-hover:rotate-2 group-hover:shadow-lg group-hover:shadow-purple-200/50 relative z-10">
                         <Pill className="w-6 h-6 transition-transform duration-500 group-hover:scale-110" />
                     </div>
-                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-purple-700 transition-colors duration-300">About diabetrix</h4>
+                    <h4 className="m-0 mb-1 text-xs font-bold text-gray-900 leading-tight relative z-10 group-hover:text-purple-700 transition-colors duration-300">About Diabetrix</h4>
                     <p className="m-0 text-xs text-gray-600 leading-snug relative z-10 font-medium">Schedule and dosage</p>
                 </button>
 

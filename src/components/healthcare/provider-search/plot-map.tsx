@@ -52,14 +52,7 @@ const create_info_window = (
   const image_section = document.createElement("div");
   image_section.className = "flex justify-center mb-3";
 
-  if (item.provider_image || item.facility_image) {
-    const img = document.createElement("img");
-    img.src = item.provider_image || item.facility_image;
-    img.alt = item.provider_name || item.facility_name || "";
-    img.className =
-      "w-24 h-24 object-cover rounded-full border-2 border-blue-500 shadow-md";
-    image_section.appendChild(img);
-  } else {
+  const add_avatar_placeholder = () => {
     const avatar = document.createElement("div");
     avatar.className =
       "w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-500 shadow-md";
@@ -76,6 +69,21 @@ const create_info_window = (
 
     avatar.appendChild(initials);
     image_section.appendChild(avatar);
+  };
+
+  if (item.provider_image || item.facility_image) {
+    const img = document.createElement("img");
+    img.src = item.provider_image || item.facility_image;
+    img.alt = item.provider_name || item.facility_name || "";
+    img.className =
+      "w-24 h-24 object-cover rounded-full border-2 border-blue-500 shadow-md";
+    img.onerror = () => {
+      image_section.removeChild(img);
+      add_avatar_placeholder();
+    };
+    image_section.appendChild(img);
+  } else {
+    add_avatar_placeholder();
   }
 
   content_element.appendChild(image_section);

@@ -28,8 +28,22 @@ import styles from '../unified-modal.module.scss';
 
 type MyUIMessage = UIMessage<MessageMetadata>;
 
+/**
+ * Formats a tool name by replacing underscores with spaces and capitalizing each word.
+ * @param tool_name - The tool name with underscores (e.g., "get_medicine_cost_from_insurance_benefits")
+ * @returns The formatted tool name (e.g., "Get Medicine Cost From Insurance Benefits")
+ */
+const formatToolName = (tool_name: string): string => {
+    return tool_name
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+};
+
 interface VoiceChatStepProps {
     onClose: () => void;
+    on_show_history?: () => void;
+    resume_conversation_id?: string | null;
 }
 
 const renderMessagePart = (part: any, part_index: number, message_id: string, is_streaming: boolean, is_last_part?: boolean): React.ReactNode => {
@@ -118,12 +132,29 @@ const renderMessagePart = (part: any, part_index: number, message_id: string, is
 
     if (part.type.startsWith('tool-') || part.type === 'dynamic-tool') {
         const tool_name = getToolName(part);
+        const formatted_tool_name = formatToolName(tool_name);
         const has_output = part.state === 'output-available';
         const is_tool_streaming = has_output && part.preliminary === true;
 
+        const tool_header_props =
+            part.type === 'dynamic-tool'
+                ? {
+                      type: part.type,
+                      state: part.state,
+                      preliminary: part.preliminary,
+                      toolName: formatted_tool_name,
+                      title: formatted_tool_name,
+                  }
+                : {
+                      type: part.type,
+                      state: part.state,
+                      preliminary: part.preliminary,
+                      title: formatted_tool_name,
+                  };
+
         return (
             <Tool key={`${message_id}-tool-${part_index}`}>
-                <ToolHeader type={part.type} state={part.state} preliminary={part.preliminary} toolName={tool_name} title={tool_name} />
+                <ToolHeader {...tool_header_props} />
                 <ToolContent>
                     {part.input && <ToolInput input={part.input} />}
                     {part.output !== undefined && (
@@ -252,9 +283,10 @@ interface VoiceChatStepInnerProps {
     domain: string;
     conversation_id: string;
     onClose: () => void;
+    on_show_history?: () => void;
 }
 
-const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose }) => {
+const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_messages, domain, conversation_id, onClose, on_show_history }) => {
     const api_url = `${BASE_URL()}/conversation/stream-message/v2`;
 
     const { messages, sendMessage, status, stop } = useChat<MyUIMessage>({
@@ -888,19 +920,20 @@ const VoiceChatStepInner: React.FC<VoiceChatStepInnerProps> = ({ initial_message
 };
 
 // Wrapper: create conversation, load messages, then render inner
-export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
+export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose, on_show_history, resume_conversation_id }) => {
     const domain = 'diabetrix';
-    const [conversation_id, set_conversation_id] = useState<string | null>(null);
+    const [conversation_id, set_conversation_id] = useState<string | null>(resume_conversation_id ?? null);
     const [initial_messages, set_initial_messages] = useState<MyUIMessage[] | null>(null);
 
-    // Create conversation on mount
+    // Create a new conversation only when not resuming an existing one
     useEffect(() => {
+        if (resume_conversation_id) return;
         postAPI(CORE_ENGINE_API_URLS.SYNC_CHAT_THREAD, {}).then((res) => {
             if (res.statusCode === 200 && res.data?.conversation_id) {
                 set_conversation_id(res.data.conversation_id);
             }
         });
-    }, []);
+    }, [resume_conversation_id]);
 
     // Load messages when conversation_id exists
     useEffect(() => {
@@ -967,6 +1000,7 @@ export const VoiceChatStep: React.FC<VoiceChatStepProps> = ({ onClose }) => {
             domain={domain}
             conversation_id={conversation_id ?? ''}
             onClose={onClose}
+            on_show_history={on_show_history}
         />
     );
 };

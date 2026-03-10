@@ -150,11 +150,12 @@ export const InsuranceCardScanModal: React.FC<InsuranceCardScanModalProps> = ({
       }
 
       set_is_loading(true);
-      const userData = user.userData;
+      const user_data = user.userData;
 
-      // Prepare payload with insurance details and address
-      const payload = {
-        ...userData,
+      // Prepare payload: only include address when present (avoids crash when user has no address)
+      const payload: Record<string, unknown> = {
+        user_id: user_data.user_id,
+        email: user_data.email,
         insurance_details: {
           provider: form_data.provider,
           member_id: form_data.member_id,
@@ -162,9 +163,18 @@ export const InsuranceCardScanModal: React.FC<InsuranceCardScanModalProps> = ({
           group_number: form_data.group_number,
         },
       };
+      if (user_data.address) {
+        payload.address = {
+          street: user_data.address.street,
+          city: user_data.address.city,
+          state: user_data.address.state,
+          zip_code: user_data.address.zip_code,
+          country: user_data.address.country,
+          coordinates: user_data.address.coordinates,
+        };
+      }
 
-      // sync_user now handles both backend sync AND store update
-      const phoneNumber = user.phoneNumber || userData.phone_number || '';
+      const phoneNumber = user.phoneNumber || user_data.phone_number || '';
       const result = await syncUser(payload, phoneNumber);
 
       if (result.statusCode === 200) {

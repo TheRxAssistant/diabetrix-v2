@@ -1,5 +1,6 @@
 import { Camera, CreditCard, Hospital, Microscope, Search, Stethoscope, Syringe, User2, X } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 import { SearchCategory, useProviderSearch } from '../../../services/provider-search/useProviderSearch';
 import { InsuranceCardScanModal } from '../../insurance/insurance-card-scan/insurance-card-scan-modal';
 import { postAPI, CAPABILITIES_API_URLS } from '../../../services/api';
@@ -32,17 +33,20 @@ interface SearchModalProps {
     searchTerm: string;
     setSearchTerm: (term: string) => void;
     onClose: () => void;
-    onCategoryClick: (category: SearchCategory, insurance?: InsuranceOption | null) => void;
+    onCategoryClick: (category: SearchCategory, insurance?: InsuranceOption | null, zipcode?: string) => void;
     userLocation: string;
+    initialZipCode?: string;
 }
 
-const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, onClose, onCategoryClick, userLocation }) => {
-    // Step management
-    const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, onClose, onCategoryClick, userLocation, initialZipCode = '' }) => {
+    // Step management: 1 = Specialty, 2 = Location, 3 = Insurance
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
     const [selectedSpecialty, setSelectedSpecialty] = useState<SearchCategory | null>(null);
     const [selectedInsurance, setSelectedInsurance] = useState<InsuranceProvider | null>(null);
     const [showInsuranceCardModal, setShowInsuranceCardModal] = useState(false);
     const [scannedInsuranceData, setScannedInsuranceData] = useState<InsuranceCardData | null>(null);
+    const [zipCode, setZipCode] = useState<string>(initialZipCode);
+    const [zipCodeError, setZipCodeError] = useState<string>('');
 
     // API-based category search
     const [filteredCategories, setFilteredCategories] = useState<SearchCategory[]>([]);
@@ -161,10 +165,20 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         }
     }, [selectedInsurance, fetchCategories]);
 
-    // Handle specialty selection and move to step 2
+    // Handle specialty selection and move to step 2 (location)
     const handleSpecialtySelect = (specialty: SearchCategory) => {
         setSelectedSpecialty(specialty);
         setCurrentStep(2);
+    };
+
+    // Handle location step continue to step 3 (insurance)
+    const handleLocationContinue = () => {
+        if (!zipCode.trim() || !/^\d{5}$/.test(zipCode.trim())) {
+            setZipCodeError('Please enter a valid 5-digit zip code');
+            return;
+        }
+        setZipCodeError('');
+        setCurrentStep(3);
     };
 
     // Handle insurance selection
@@ -193,7 +207,6 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
     // Handle final search
     const handleSearch = () => {
         if (selectedSpecialty) {
-            // Convert insurance to the format expected by the API
             let insuranceOption: InsuranceOption | null = null;
             if (selectedInsurance) {
                 insuranceOption = {
@@ -207,16 +220,23 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                 };
             }
 
-            // Pass the selected specialty and insurance information
-            onCategoryClick(selectedSpecialty, insuranceOption);
-
+            onCategoryClick(selectedSpecialty, insuranceOption, zipCode.trim() || undefined);
             onClose();
         }
     };
 
+    // Handle "I'm paying for myself" — proceed with Self Pay and close
+    const handlePayingMyself = () => {
+        if (!selectedSpecialty) return;
+        onCategoryClick(selectedSpecialty, { plan_name: 'Self Pay', payer_name: 'Self Pay' }, zipCode.trim() || undefined);
+        onClose();
+    };
+
     // Go back to previous step
     const handleGoBack = () => {
-        if (currentStep === 2) {
+        if (currentStep === 3) {
+            setCurrentStep(2);
+        } else if (currentStep === 2) {
             setCurrentStep(1);
         }
     };
@@ -227,7 +247,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
             <div className="top-0 left-0 right-0 flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl z-10">
                 <div>
                     <h3 className="text-xl font-semibold text-gray-900">Search Healthcare Services</h3>
-                    <p className="text-sm text-gray-500 mt-1">Step 1 of 2</p>
+                    <p className="text-sm text-gray-500 mt-1">Step 1 of 3</p>
                 </div>
                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={onClose} aria-label="Close search">
                     <X size={20} className="text-gray-500" />
@@ -317,6 +337,75 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         </div>
     );
 
+    // Render Step 2: Location / Zip Code
+    const renderStep2 = () => (
+        <div className="relative h-full">
+            <button
+                className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors z-10"
+                onClick={handleGoBack}
+                aria-label="Go back">
+                <i className="fas fa-arrow-left text-lg"></i>
+            </button>
+            <div className="top-0 left-0 right-0 flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl z-10">
+                <div className="pl-10">
+                    <h3 className="text-xl font-semibold text-gray-900">Your Location</h3>
+                    <p className="text-sm text-gray-500 mt-1">Step 2 of 3</p>
+                </div>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={onClose} aria-label="Close search">
+                    <X size={20} className="text-gray-500" />
+                </button>
+            </div>
+
+            <div className="top-20 bottom-0 left-0 right-0 p-4 overflow-y-auto">
+                <div className="space-y-6">
+                    {selectedSpecialty && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                            <span className="font-medium">Looking for:</span> {selectedSpecialty.care_category_name || selectedSpecialty.category_name}
+                        </div>
+                    )}
+
+                    <div className="space-y-3">
+                        <h4 className="text-lg font-medium text-gray-900">Search by Zip Code</h4>
+                        <p className="text-sm text-gray-600">Enter any zip code to find providers near that location</p>
+
+                        <div className={`flex items-center border rounded-lg p-3 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 ${zipCodeError ? 'border-red-400' : 'border-gray-300'}`}>
+                            <Search size={18} className="text-gray-400 mr-3 flex-shrink-0" />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={5}
+                                className="w-full outline-none border-none text-gray-900 placeholder-gray-500 bg-transparent"
+                                style={{ padding: 0, margin: 0, outline: 'none', boxShadow: 'none' }}
+                                value={zipCode}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setZipCode(val);
+                                    if (zipCodeError) setZipCodeError('');
+                                }}
+                                placeholder="e.g. 10001"
+                                autoFocus
+                            />
+                            {zipCode && (
+                                <button onClick={() => setZipCode('')} className="text-gray-400 hover:text-gray-600">
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+                        {zipCodeError && <p className="text-sm text-red-500">{zipCodeError}</p>}
+                    </div>
+
+                    <div className="pt-2">
+                        <button
+                            onClick={handleLocationContinue}
+                            className="w-full py-3 px-4 bg-gradient-to-br from-[#0077cc] to-[#0099dd] text-white font-medium rounded-lg hover:shadow-lg focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     // State for insurance provider search
     const [insuranceSearchTerm, setInsuranceSearchTerm] = useState('');
     const [filteredInsuranceProviders, setFilteredInsuranceProviders] = useState<InsuranceProvider[]>([]);
@@ -342,18 +431,19 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
         setFilteredInsuranceProviders(filtered);
     }, [insuranceSearchTerm, isInsuranceInputFocused]);
 
-    // Render Step 2: Insurance Selection
-    const renderStep2 = () => (
+    // Render Step 3: Insurance Selection
+    const renderStep3 = () => (
         <div className="relative h-full">
+            <button
+                className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors z-10"
+                onClick={handleGoBack}
+                aria-label="Go back">
+                <i className="fas fa-arrow-left text-lg"></i>
+            </button>
             <div className="top-0 left-0 right-0 flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl z-10">
-                <div className="flex items-center space-x-4">
-                    {/* <button onClick={handleGoBack} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Go back">
-                        <ChevronLeft size={20} className="text-gray-600" />
-                    </button> */}
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-900">Insurance Information</h3>
-                        <p className="text-sm text-gray-500 mt-1">Step 2 of 2</p>
-                    </div>
+                <div className="pl-10">
+                    <h3 className="text-xl font-semibold text-gray-900">Insurance Information</h3>
+                    <p className="text-sm text-gray-500 mt-1">Step 3 of 3</p>
                 </div>
                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={onClose} aria-label="Close search">
                     <X size={20} className="text-gray-500" />
@@ -496,6 +586,13 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
 
                         {!selectedInsurance && !scannedInsuranceData && <p className="text-xs text-gray-500 text-center mt-2">Please select an insurance provider or scan your card to continue</p>}
                     </div>
+
+                    {/* I'm paying for myself */}
+                    <div className="pt-4 border-t border-gray-200">
+                        <Button onClick={handlePayingMyself} variant="link" disabled={!selectedSpecialty} className="w-full text-center text-sm font-medium">
+                            I'm paying for myself
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -512,7 +609,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ searchTerm, setSearchTerm, on
                 }}
                 onClick={onClose}>
                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ height: 'calc(100vh - 300px)', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                    {currentStep === 1 ? renderStep1() : renderStep2()}
+                    {currentStep === 1 ? renderStep1() : currentStep === 2 ? renderStep2() : renderStep3()}
                 </div>
             </div>
 

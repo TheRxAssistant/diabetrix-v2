@@ -21,6 +21,7 @@ import { InsuranceAssistanceStep } from './insurance-assistance-step/insurance-a
 import { PharmacySelectStep } from './pharmacy-select-step/pharmacy-select-step';
 import { PharmacyCheckingStep } from './pharmacy-checking-step/pharmacy-checking-step';
 import { VoiceChatStep } from './voice-chat-step/voice-chat-step';
+import { ChatHistoryStep } from './chat-history-step/chat-history-step';
 
 // Custom hooks
 import { useModalState } from './hooks/useModalState';
@@ -701,9 +702,27 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     const renderHealthcareSearchStep = () => <HealthcareSearchStep onBack={() => setStep('home')} />;
 
-    const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} />;
+    const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} onChatOpen={() => setStep('embedded_chat')} />;
 
-    const renderEmbeddedChatStep = () => <VoiceChatStep onClose={() => setStep('intro')} />;
+    const [resume_conversation_id, set_resume_conversation_id] = React.useState<string | null>(null);
+
+    const renderEmbeddedChatStep = () => (
+        <VoiceChatStep
+            onClose={() => setStep('intro')}
+            on_show_history={() => setStep('chat_history' as any)}
+            resume_conversation_id={resume_conversation_id}
+        />
+    );
+
+    const renderChatHistoryStep = () => (
+        <ChatHistoryStep
+            onBack={() => setStep('embedded_chat' as any)}
+            onSelectThread={(conversation_id) => {
+                set_resume_conversation_id(conversation_id);
+                setStep('embedded_chat' as any);
+            }}
+        />
+    );
 
     const pharmacies = featuredPharmacies;
 
@@ -901,7 +920,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
 
     // Helper function to determine if bottom navigation should be shown
     const hasBottomNavigation = () => {
-        const showNavigationSteps = ['healthcare_search', 'insurance_assistance', 'pharmacy_select', 'home', 'more', 'pharmacy_checking', 'embedded_chat', 'profile'];
+        const showNavigationSteps = ['healthcare_search', 'insurance_assistance', 'pharmacy_select', 'home', 'more', 'pharmacy_checking', 'embedded_chat', 'profile', 'chat_history'];
         return showNavigationSteps.includes(step);
     };
 
@@ -987,6 +1006,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
                         {step === 'pharmacy_select' && renderPharmacySelectStep()}
                         {step === 'pharmacy_checking' && renderPharmacyCheckingStep()}
                         {step === 'embedded_chat' && renderEmbeddedChatStep()}
+                        {step === ('chat_history' as any) && renderChatHistoryStep()}
                         {step === 'home' && renderHomePage()}
                         {step === 'profile' && renderProfilePage()}
                     </div>

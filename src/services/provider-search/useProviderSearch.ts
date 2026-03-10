@@ -105,6 +105,78 @@ export interface InsuranceOption {
     payer_name: string;
 }
 
+export interface ProviderSpecialty {
+    display_name?: string;
+    is_primary?: boolean;
+}
+
+export interface ProviderFacility {
+    name?: string;
+    phone?: string[];
+    formattedAddress?: string;
+}
+
+export interface ProviderCondition {
+    condition: string;
+    count: number;
+    pct: number;
+}
+
+export interface ProviderProcedure {
+    procedure: string;
+    count: number;
+    pct: number;
+}
+
+export interface ProviderReview {
+    date: string;
+    rating: number;
+    review: string;
+}
+
+export interface ProviderReviews {
+    Count: number;
+    Review: ProviderReview[];
+}
+
+export interface ProviderBasicInfo {
+    npi?: number;
+    first_name?: string;
+    last_name?: string;
+    gender?: string;
+    specialties?: ProviderSpecialty[];
+    image?: string;
+    facilities?: ProviderFacility[];
+    accepts_new_patients?: boolean;
+    languages?: string[];
+    rating?: number;
+    review_count?: number;
+    degrees?: string[];
+    emails?: string[];
+    insurances?: Array<{ payer_name?: string; plan_name?: string }>;
+    distance?: number;
+    about?: string[];
+}
+
+export interface ProviderFocusArea {
+    conditions?: {
+        conditions: ProviderCondition[];
+        total_std_icd10_count?: number;
+        total_unique_icd10_count?: number;
+    };
+    procedures?: {
+        procedures: ProviderProcedure[];
+        total_std_hcpcs_count?: number;
+        total_unique_hcpcs_count?: number;
+    };
+}
+
+export interface ProviderDetails {
+    basic_info?: ProviderBasicInfo;
+    focus_areas?: ProviderFocusArea;
+    reviews?: ProviderReviews;
+}
+
 export const useProviderSearch = () => {
     const [providers, setProviders] = useState<Provider[]>([]);
     const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -118,7 +190,8 @@ export const useProviderSearch = () => {
             location: string = '',
             first_name?: string,
             last_name?: string,
-            selected_insurance?: InsuranceOption | null
+            selected_insurance?: InsuranceOption | null,
+            zipcode?: string
         ) => {
             // Use new format if available, otherwise fall back to old format
             const care_category_id = category.care_category_id || category.reference_third_party_id;
@@ -139,19 +212,14 @@ export const useProviderSearch = () => {
             // Create new abort controller for this request
             abort_controller_ref.current = new AbortController();
 
-            // Hardcoded values for find care APIs
-            const HARDCODED_ZIP = '98006';
-            const HARDCODED_FIRST_NAME = 'Richard';
-            const HARDCODED_LAST_NAME = 'Hendricks';
-            const HARDCODED_PAYER_NAME = 'MultiPlan';
-            const HARDCODED_PLAN_NAME = 'PPO';
+            const resolved_zipcode = zipcode || location || '';
 
             const payload: any = {
-                zipcode: HARDCODED_ZIP,
-                first_name: first_name || HARDCODED_FIRST_NAME,
-                last_name: last_name || HARDCODED_LAST_NAME,
-                payer_name: selected_insurance?.payer_name || HARDCODED_PAYER_NAME,
-                plan_name: selected_insurance?.plan_name || HARDCODED_PLAN_NAME,
+                zipcode: resolved_zipcode,
+                first_name: first_name || '',
+                last_name: last_name || '',
+                payer_name: selected_insurance?.payer_name || '',
+                plan_name: selected_insurance?.plan_name || '',
                 care_category_id: care_category_id,
                 care_category_type: care_category_type,
                 care_category_name: care_category_name,
@@ -208,22 +276,18 @@ export const useProviderSearch = () => {
         []
     );
 
-    const fetchProviderCareDetails = useCallback(async (providerId: number | string): Promise<string | null> => {
+    const fetchProviderCareDetails = useCallback(async (providerId: number | string, isFacility?: boolean): Promise<ProviderDetails | null> => {
         if (!providerId) return null;
 
         try {
-            const result = await postAPI(CAPABILITIES_API_URLS.GET_NEARBY_CARE_DETAILS, {
-                provider_id: providerId
-            });
+            const payload = isFacility
+                ? { facility_id: providerId }
+                : { provider_id: providerId };
+
+            const result = await postAPI(CAPABILITIES_API_URLS.GET_NEARBY_CARE_DETAILS, payload);
 
             if (result.statusCode === 200 && result.data) {
-                const basicInfo = result.data.basic_info;
-                if (basicInfo?.facilities && Array.isArray(basicInfo.facilities) && basicInfo.facilities.length > 0) {
-                    const firstFacility = basicInfo.facilities[0];
-                    if (firstFacility?.phone && Array.isArray(firstFacility.phone) && firstFacility.phone.length > 0) {
-                        return firstFacility.phone[0];
-                    }
-                }
+                return result.data as ProviderDetails;
             }
         } catch (error) {
             console.error(`Error fetching care details for provider ${providerId}:`, error);
@@ -235,12 +299,12 @@ export const useProviderSearch = () => {
     const enrichProviderWithCareDetails = useCallback(async (provider: Provider): Promise<Provider> => {
         if (!provider.provider_id) return provider;
 
-        const phone = await fetchProviderCareDetails(provider.provider_id);
-        if (phone) {
+        const details = await fetchProviderCareDetails(provider.provider_id);
+        if (details?.basic_info?.facilities?.[0]?.phone?.[0]) {
             return {
                 ...provider,
-                phone: phone,
-                provider_phone: phone
+                phone: details.basic_info.facilities[0].phone[0],
+                provider_phone: details.basic_info.facilities[0].phone[0],
             };
         }
 
