@@ -42,7 +42,11 @@ export interface Provider {
     languages?: string[];
     insurance_accepted?: string[];
     type?: 'provider' | 'facility';
-    
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    npi?: number;
+
     // Legacy format support (for backward compatibility)
     provider_name?: string;
     provider_specialty?: string;
@@ -142,6 +146,7 @@ export interface ProviderReviews {
 export interface ProviderBasicInfo {
     npi?: number;
     first_name?: string;
+    middle_name?: string;
     last_name?: string;
     gender?: string;
     specialties?: ProviderSpecialty[];

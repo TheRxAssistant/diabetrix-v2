@@ -48,7 +48,14 @@ const ProviderDetailsModal: React.FC<ProviderDetailsModalProps> = ({ provider, o
     const isLegacyProvider = 'name' in provider && !('provider_name' in provider) && !('facility_name' in provider) && !('provider_id' in provider);
 
     const getName = () => {
-        if (isApiProvider) return (provider as Provider).provider_name || '';
+        if (basic_info?.first_name || basic_info?.last_name) {
+            return [basic_info.first_name, basic_info.middle_name, basic_info.last_name].filter(Boolean).join(' ').trim();
+        }
+        if (isApiProvider) {
+            const p = provider as Provider;
+            const built = [p.first_name, p.middle_name, p.last_name].filter(Boolean).join(' ').trim();
+            return p.provider_name || p.name || built || '';
+        }
         if (isFacility) return (provider as Facility).facility_name || '';
         if (isLegacyProvider) return (provider as LegacyProvider).name;
         return '';
