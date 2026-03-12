@@ -700,7 +700,7 @@ export const UnifiedModal = ({ onClose, onChatOpen, initialStep = 'home', onVeri
         return <SuccessStep userData={userData} selectedService={selectedService} onBack={() => setStep('otp')} onContinue={handleContinue} />;
     };
 
-    const renderHealthcareSearchStep = () => <HealthcareSearchStep onBack={() => setStep('home')} />;
+    const renderHealthcareSearchStep = () => <HealthcareSearchStep onBack={() => setStep('home')} userData={userData} />;
 
     const renderInsuranceAssistanceStep = () => <InsuranceAssistanceStep requestInsuranceOnInit={requestInsuranceOnInit} onBack={() => setStep('home')} onChatOpen={() => setStep('embedded_chat')} />;
 

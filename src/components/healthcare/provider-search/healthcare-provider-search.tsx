@@ -7,6 +7,7 @@ import PlotMap from './plot-map';
 import SearchModal from './search-modal';
 import ProviderDetailsModal from './provider-details-modal';
 import InsuranceSearchModal from './insurance-search-modal';
+import { useAuthStore } from '../../../store/authStore';
 
 import { ArrowLeft, MapPin, Pencil, Search, Star, User, Zap } from 'lucide-react';
 
@@ -64,7 +65,18 @@ interface HealthcareProviderSearchProps {
     embedded?: boolean; // Whether component is embedded in another modal
 }
 
+const getInitialZipFromUserData = (data: any): string => {
+    if (!data) return '';
+    const addr = data.address;
+    if (Array.isArray(addr) && addr.length > 0) return addr[0]?.zip_code || '';
+    if (addr && typeof addr === 'object') return addr.zip_code || '';
+    return data.zip_code || '';
+};
+
 export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> = ({ onClose, userData, searchQuery = 'endocrinology', embedded = false }) => {
+    const effective_user_data = userData ?? useAuthStore.getState().user?.userData;
+    const initial_zip = getInitialZipFromUserData(effective_user_data);
+
     const { providers: apiProviders, facilities, isLoading, error, handleCategorySelection, fetchProviderCareDetails } = useProviderSearch();
 
     // Legacy state for backward compatibility
@@ -77,7 +89,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [categorySelected, setCategorySelected] = useState(false);
     const [currentCategory, setCurrentCategory] = useState<SearchCategory | null>(null);
-    const [userLocation, setUserLocation] = useState<string>('');
+    const [userLocation, setUserLocation] = useState<string>(initial_zip);
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [selectedBookingProvider, setSelectedBookingProvider] = useState<Provider | Facility | LegacyProvider | null>(null);
     const [showEarliestAppointmentModal, setShowEarliestAppointmentModal] = useState(false);
@@ -402,9 +414,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             setUserLocation(zipcode);
         }
 
-        // Extract user information from userData
-        const first_name = userData?.first_name || userData?.user?.first_name;
-        const last_name = userData?.last_name || userData?.user?.last_name;
+        // Extract user information from effective_user_data
+        const first_name = effective_user_data?.first_name || effective_user_data?.user?.first_name;
+        const last_name = effective_user_data?.last_name || effective_user_data?.user?.last_name;
 
         // Convert insurance format if needed
         const insuranceOption = insurance
@@ -427,8 +439,8 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
         setUserLocation(trimmed);
         set_is_editing_zip(false);
         set_zip_edit_value('');
-        const first_name = userData?.first_name || userData?.user?.first_name;
-        const last_name = userData?.last_name || userData?.user?.last_name;
+        const first_name = effective_user_data?.first_name || effective_user_data?.user?.first_name;
+        const last_name = effective_user_data?.last_name || effective_user_data?.user?.last_name;
         const insuranceOption = selectedInsurance
             ? { plan_name: selectedInsurance.plan, payer_name: selectedInsurance.payor }
             : null;
@@ -854,7 +866,7 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
             )}
 
             {/* Search Results Modal */}
-            {showSearchModal && <SearchModal searchTerm={searchTerm} setSearchTerm={setSearchTerm} onClose={() => setShowSearchModal(false)} onCategoryClick={handleCategoryClick} userLocation={userLocation} />}
+            {showSearchModal && <SearchModal searchTerm={searchTerm} setSearchTerm={setSearchTerm} onClose={() => setShowSearchModal(false)} onCategoryClick={handleCategoryClick} userLocation={userLocation} initialZipCode={userLocation || initial_zip} />}
 
             {/* Booking Modal */}
             {showBookingModal && (
@@ -898,9 +910,9 @@ export const HealthcareProviderSearch: React.FC<HealthcareProviderSearchProps> =
                         setShowInsuranceSearchModal(false);
                         console.log('Selected insurance:', insurance);
 
-                        // Extract user information from userData
-                        const first_name = userData?.first_name || userData?.user?.first_name;
-                        const last_name = userData?.last_name || userData?.user?.last_name;
+                        // Extract user information from effective_user_data
+                        const first_name = effective_user_data?.first_name || effective_user_data?.user?.first_name;
+                        const last_name = effective_user_data?.last_name || effective_user_data?.user?.last_name;
 
                         // Convert insurance format
                         const insuranceOption = {
