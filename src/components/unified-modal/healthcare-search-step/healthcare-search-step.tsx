@@ -3,9 +3,10 @@ import HealthcareProviderSearch from '../../healthcare/provider-search/healthcar
 
 interface HealthcareSearchStepProps {
     onBack: () => void;
+    userData?: any;
 }
 
-export const HealthcareSearchStep: React.FC<HealthcareSearchStepProps> = ({ onBack }) => {
-    return <HealthcareProviderSearch embedded={true} onClose={onBack} userData={null} />;
+export const HealthcareSearchStep: React.FC<HealthcareSearchStepProps> = ({ onBack, userData }) => {
+    return <HealthcareProviderSearch embedded={true} onClose={onBack} userData={userData} />;
 };
 
